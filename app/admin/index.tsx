@@ -2,25 +2,11 @@ import React from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import Button from '../../components/Button';
 import { commonStyles, spacing } from '../../styles/commonStyles';
+import Button from '../../components/Button';
 
 export default function AdminScreen() {
   const { userData } = useAuth();
-
-  if (userData?.role !== 'admin') {
-    return (
-      <View style={commonStyles.centerContent}>
-        <Text style={commonStyles.text}>Access Denied</Text>
-        <Text style={commonStyles.textMuted}>You don&apos;t have admin privileges</Text>
-        <Button
-          text="Back to Dashboard"
-          onPress={() => router.replace('/dashboard')}
-          style={{ marginTop: spacing.md }}
-        />
-      </View>
-    );
-  }
 
   const handleBack = () => {
     router.back();
@@ -34,51 +20,63 @@ export default function AdminScreen() {
     router.push('/admin/news');
   };
 
+  const handleManageAnalysis = () => {
+    router.push('/admin/analysis');
+  };
+
   const handleManageUsers = () => {
     router.push('/admin/users');
   };
 
+  if (!userData?.isAdmin) {
+    return (
+      <View style={commonStyles.centerContent}>
+        <Text style={commonStyles.text}>Access denied. Admin privileges required.</Text>
+        <Button text="Go Back" onPress={handleBack} style={{ marginTop: spacing.lg }} />
+      </View>
+    );
+  }
+
   return (
     <View style={commonStyles.container}>
-      <View style={[commonStyles.spaceBetween, { padding: spacing.md, paddingBottom: 0 }]}>
+      <View style={{ padding: spacing.lg }}>
         <Text style={commonStyles.title}>Admin Panel</Text>
-        <Button
-          text="Back"
-          onPress={handleBack}
-          variant="outline"
-          style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
-        />
+        <Text style={commonStyles.textSecondary}>
+          Welcome, {userData.displayName}. Manage your forex signals platform.
+        </Text>
       </View>
 
       <ScrollView style={commonStyles.content}>
-        <View style={commonStyles.card}>
-          <Text style={[commonStyles.text, { fontWeight: '600', marginBottom: spacing.md }]}>
-            Content Management
-          </Text>
-
+        <View style={{ padding: spacing.lg, gap: spacing.md }}>
           <Button
             text="Manage Signals"
             onPress={handleManageSignals}
-            style={{ marginBottom: spacing.sm }}
+            variant="primary"
           />
-
+          
+          <Button
+            text="Manage Analysis"
+            onPress={handleManageAnalysis}
+            variant="primary"
+          />
+          
           <Button
             text="Manage News"
             onPress={handleManageNews}
-            variant="secondary"
-            style={{ marginBottom: spacing.sm }}
+            variant="primary"
           />
-        </View>
-
-        <View style={commonStyles.card}>
-          <Text style={[commonStyles.text, { fontWeight: '600', marginBottom: spacing.md }]}>
-            User Management
-          </Text>
-
+          
           <Button
             text="Manage Users"
             onPress={handleManageUsers}
-            variant="success"
+            variant="primary"
+          />
+          
+          <Button
+            text="Back to App"
+            onPress={handleBack}
+            variant="outline"
+            style={{ marginTop: spacing.lg }}
           />
         </View>
       </ScrollView>

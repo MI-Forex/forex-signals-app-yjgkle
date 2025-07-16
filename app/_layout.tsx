@@ -79,6 +79,8 @@ export default function RootLayout() {
               <Stack.Screen name="admin/signals/add" />
               <Stack.Screen name="admin/news/index" />
               <Stack.Screen name="admin/news/add" />
+              <Stack.Screen name="admin/analysis/index" />
+              <Stack.Screen name="admin/analysis/add" />
               <Stack.Screen name="admin/users/index" />
             </Stack>
           </SafeAreaView>

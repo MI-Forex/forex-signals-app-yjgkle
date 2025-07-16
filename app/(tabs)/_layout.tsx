@@ -25,15 +25,6 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="news"
-        options={{
-          title: 'News',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="newspaper-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="signals"
         options={{
           title: 'Signals',
@@ -48,6 +39,15 @@ export default function TabLayout() {
           title: 'Analysis',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="analytics-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="news"
+        options={{
+          title: 'News',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="newspaper-outline" size={size} color={color} />
           ),
         }}
       />

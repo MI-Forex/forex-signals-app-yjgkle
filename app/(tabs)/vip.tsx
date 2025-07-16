@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Alert, Linking } from 'react-native';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import Button from '../../components/Button';
+import { useAuth } from '../../contexts/AuthContext';
 
 const styles = StyleSheet.create({
   header: {
@@ -50,21 +51,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: spacing.md,
   },
-  comingSoon: {
-    backgroundColor: colors.warning + '20',
-    borderRadius: 8,
-    padding: spacing.md,
-    marginTop: spacing.lg,
-  },
-  comingSoonText: {
+  description: {
     fontSize: 16,
-    color: colors.warning,
+    color: colors.textSecondary,
     textAlign: 'center',
-    fontWeight: '600',
+    marginBottom: spacing.lg,
+    lineHeight: 24,
   },
 });
 
 export default function VIPScreen() {
+  const { userData } = useAuth();
+
+  const handleUpgradeToVIP = () => {
+    // Open WhatsApp or Telegram to chat with admin
+    const message = encodeURIComponent('Hi, I would like to upgrade to VIP membership. Please provide me with the payment details.');
+    const whatsappUrl = `https://wa.me/1234567890?text=${message}`;
+    
+    Alert.alert(
+      'Contact Admin',
+      'You will be redirected to chat with our admin for VIP upgrade.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Chat Now',
+          onPress: () => {
+            Linking.openURL(whatsappUrl).catch(() => {
+              Alert.alert('Error', 'Unable to open WhatsApp. Please contact admin directly.');
+            });
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={commonStyles.container}>
       <View style={styles.header}>
@@ -72,6 +95,11 @@ export default function VIPScreen() {
       </View>
 
       <ScrollView style={styles.content}>
+        <Text style={styles.description}>
+          Unlock premium trading signals and exclusive features with our VIP membership.
+          Get access to high-accuracy signals and direct support from our trading experts.
+        </Text>
+
         <View style={styles.vipCard}>
           <Text style={styles.vipTitle}>🌟 VIP Premium Signals</Text>
           
@@ -93,23 +121,34 @@ export default function VIPScreen() {
           <View style={styles.feature}>
             <Text style={styles.featureText}>✓ 1-on-1 trading consultation</Text>
           </View>
+          <View style={styles.feature}>
+            <Text style={styles.featureText}>✓ Direct chat with admin</Text>
+          </View>
 
           <Text style={styles.price}>$99/month</Text>
 
           <Button
             text="Upgrade to VIP"
-            onPress={() => {}}
+            onPress={handleUpgradeToVIP}
             variant="primary"
-            disabled={true}
           />
         </View>
 
-        <View style={styles.comingSoon}>
-          <Text style={styles.comingSoonText}>
-            VIP membership features are coming soon! 
-            Stay tuned for premium trading signals and exclusive content.
-          </Text>
-        </View>
+        {userData?.role === 'admin' && (
+          <View style={[styles.vipCard, { borderColor: colors.success }]}>
+            <Text style={[styles.vipTitle, { color: colors.success }]}>👑 Admin Panel</Text>
+            <Text style={styles.description}>
+              As an admin, you can manage VIP memberships and pricing from the admin panel.
+            </Text>
+            <Button
+              text="Manage VIP Settings"
+              onPress={() => {
+                Alert.alert('Admin Feature', 'VIP management features will be available in the admin panel.');
+              }}
+              variant="success"
+            />
+          </View>
+        )}
       </ScrollView>
     </View>
   );

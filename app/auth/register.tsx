@@ -168,7 +168,7 @@ export default function RegisterScreen() {
       const fullPhoneNumber = `+${callingCode}${formData.phoneNumber}`;
       await signUp(formData.email, formData.password, formData.displayName, fullPhoneNumber);
       console.log('Registration successful');
-      router.replace('/dashboard');
+      router.replace('/(tabs)/signals');
     } catch (error: any) {
       console.error('Registration error:', error);
       Alert.alert('Registration Failed', error.message);
@@ -201,12 +201,12 @@ export default function RegisterScreen() {
       >
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/images/8a93b85e-322d-41a3-9a3d-7f464ab694bb.png')}
+            source={require('../../assets/images/f9d6c6d4-79e6-487b-9dff-8e0d8a79f68b.png')}
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.title}>Forex Signals</Text>
-          <Text style={styles.subtitle}>Create your account</Text>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Join our trading community</Text>
         </View>
 
         <View style={styles.inputContainer}>
