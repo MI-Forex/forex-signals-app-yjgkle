@@ -1,92 +1,150 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
-import { useAuth } from '../../../contexts/AuthContext';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../../firebase/config';
-import { Picker } from '@react-native-picker/picker';
-import Button from '../../../components/Button';
 import { commonStyles, colors, spacing, borderRadius } from '../../../styles/commonStyles';
+import Button from '../../../components/Button';
+import { useAuth } from '../../../contexts/AuthContext';
+import { db } from '../../../firebase/config';
+import { router } from 'expo-router';
+import { Picker } from '@react-native-picker/picker';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const CURRENCY_PAIRS = [
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD',
-  'EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'CHF/JPY', 'EUR/CHF', 'AUD/JPY', 'GBP/CHF'
+  'EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'CHF/JPY', 'EUR/CHF', 'AUD/JPY', 'GBP/CHF',
+  'NZD/JPY', 'CAD/JPY', 'AUD/CHF', 'AUD/CAD', 'CAD/CHF', 'NZD/CHF', 'NZD/CAD',
+  'GBP/AUD', 'GBP/CAD', 'GBP/NZD', 'EUR/AUD', 'EUR/CAD', 'EUR/NZD'
 ];
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    padding: spacing.lg,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: spacing.xl,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    marginBottom: spacing.lg,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  textArea: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  pickerContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  picker: {
+    color: colors.text,
+    backgroundColor: colors.surface,
+  },
+  buttonContainer: {
+    marginTop: spacing.xl,
+    gap: spacing.md,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  flex1: {
+    flex: 1,
+  },
+});
 
 export default function AddSignalScreen() {
   const [formData, setFormData] = useState({
     pair: 'EUR/USD',
-    type: 'BUY' as 'BUY' | 'SELL',
+    type: 'BUY',
     entryPoint: '',
     stopLoss: '',
     takeProfit: '',
     notes: '',
-    status: 'active' as 'active' | 'closed' | 'hit_tp' | 'hit_sl'
   });
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-
-  const { user, userData } = useAuth();
+  const { userData } = useAuth();
 
   const validateForm = () => {
-    const newErrors: { [key: string]: string } = {};
-
     if (!formData.pair) {
-      newErrors.pair = 'Currency pair is required';
+      Alert.alert('Error', 'Please select a currency pair');
+      return false;
     }
-
-    if (!formData.entryPoint) {
-      newErrors.entryPoint = 'Entry point is required';
-    } else if (isNaN(Number(formData.entryPoint))) {
-      newErrors.entryPoint = 'Entry point must be a valid number';
+    if (!formData.type) {
+      Alert.alert('Error', 'Please select signal type');
+      return false;
     }
-
-    if (!formData.stopLoss) {
-      newErrors.stopLoss = 'Stop loss is required';
-    } else if (isNaN(Number(formData.stopLoss))) {
-      newErrors.stopLoss = 'Stop loss must be a valid number';
+    if (!formData.entryPoint || isNaN(Number(formData.entryPoint))) {
+      Alert.alert('Error', 'Please enter a valid entry point');
+      return false;
     }
-
-    if (!formData.takeProfit) {
-      newErrors.takeProfit = 'Take profit is required';
-    } else if (isNaN(Number(formData.takeProfit))) {
-      newErrors.takeProfit = 'Take profit must be a valid number';
+    if (!formData.stopLoss || isNaN(Number(formData.stopLoss))) {
+      Alert.alert('Error', 'Please enter a valid stop loss');
+      return false;
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!formData.takeProfit || isNaN(Number(formData.takeProfit))) {
+      Alert.alert('Error', 'Please enter a valid take profit');
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    if (userData?.role !== 'admin') {
-      Alert.alert('Error', 'You do not have permission to add signals');
-      return;
-    }
-
     setLoading(true);
     try {
       const signalData = {
         pair: formData.pair,
-        type: formData.type,
+        type: formData.type as 'BUY' | 'SELL',
         entryPoint: Number(formData.entryPoint),
         stopLoss: Number(formData.stopLoss),
         takeProfit: Number(formData.takeProfit),
-        notes: formData.notes.trim() || null,
-        status: formData.status,
+        notes: formData.notes,
+        status: 'active',
         createdAt: serverTimestamp(),
-        createdBy: user?.uid
+        createdBy: userData?.uid || '',
       };
 
       await addDoc(collection(db, 'signals'), signalData);
-      console.log('Signal added successfully');
-      Alert.alert('Success', 'Signal added successfully!', [
+      
+      Alert.alert('Success', 'Signal added successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
       console.error('Error adding signal:', error);
-      Alert.alert('Error', error.message || 'Failed to add signal');
+      Alert.alert('Error', 'Failed to add signal. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -102,162 +160,111 @@ export default function AddSignalScreen() {
 
   return (
     <KeyboardAvoidingView 
-      style={commonStyles.container} 
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={[commonStyles.spaceBetween, { padding: spacing.md, paddingBottom: 0 }]}>
-        <Text style={commonStyles.title}>Add New Signal</Text>
-        <Button
-          text="Back"
-          onPress={handleBack}
-          variant="outline"
-          style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
-        />
-      </View>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.title}>Add New Signal</Text>
 
-      <ScrollView style={commonStyles.content}>
-        <View style={commonStyles.card}>
-          <View style={{ marginBottom: spacing.md }}>
-            <Text style={[commonStyles.text, { fontWeight: '600', marginBottom: spacing.sm }]}>
-              Currency Pair
-            </Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={formData.pair}
-                onValueChange={(value) => updateFormData('pair', value)}
-                style={styles.picker}
-                dropdownIconColor={colors.text}
-              >
-                {CURRENCY_PAIRS.map(pair => (
-                  <Picker.Item 
-                    key={pair} 
-                    label={pair} 
-                    value={pair}
-                    color={colors.text}
-                  />
-                ))}
-              </Picker>
-            </View>
-            {errors.pair && <Text style={commonStyles.errorText}>{errors.pair}</Text>}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Currency Pair</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.pair}
+              onValueChange={(value) => updateFormData('pair', value)}
+              style={styles.picker}
+            >
+              {CURRENCY_PAIRS.map((pair) => (
+                <Picker.Item key={pair} label={pair} value={pair} />
+              ))}
+            </Picker>
           </View>
+        </View>
 
-          <View style={{ marginBottom: spacing.md }}>
-            <Text style={[commonStyles.text, { fontWeight: '600', marginBottom: spacing.sm }]}>
-              Signal Type
-            </Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={formData.type}
-                onValueChange={(value) => updateFormData('type', value)}
-                style={styles.picker}
-                dropdownIconColor={colors.text}
-              >
-                <Picker.Item label="BUY" value="BUY" color={colors.text} />
-                <Picker.Item label="SELL" value="SELL" color={colors.text} />
-              </Picker>
-            </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Signal Type</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.type}
+              onValueChange={(value) => updateFormData('type', value)}
+              style={styles.picker}
+            >
+              <Picker.Item label="BUY" value="BUY" />
+              <Picker.Item label="SELL" value="SELL" />
+            </Picker>
           </View>
+        </View>
 
-          <View style={{ marginBottom: spacing.md }}>
-            <Text style={[commonStyles.text, { fontWeight: '600', marginBottom: spacing.sm }]}>
-              Entry Point
-            </Text>
+        <View style={styles.row}>
+          <View style={[styles.inputContainer, styles.flex1]}>
+            <Text style={styles.label}>Entry Point</Text>
             <TextInput
-              style={[commonStyles.input, errors.entryPoint && commonStyles.inputError]}
-              placeholder="1.12345"
-              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+              placeholder="0.0000"
+              placeholderTextColor={colors.textSecondary}
               value={formData.entryPoint}
               onChangeText={(value) => updateFormData('entryPoint', value)}
               keyboardType="decimal-pad"
             />
-            {errors.entryPoint && <Text style={commonStyles.errorText}>{errors.entryPoint}</Text>}
           </View>
 
-          <View style={{ marginBottom: spacing.md }}>
-            <Text style={[commonStyles.text, { fontWeight: '600', marginBottom: spacing.sm }]}>
-              Stop Loss
-            </Text>
+          <View style={[styles.inputContainer, styles.flex1]}>
+            <Text style={styles.label}>Stop Loss</Text>
             <TextInput
-              style={[commonStyles.input, errors.stopLoss && commonStyles.inputError]}
-              placeholder="1.12000"
-              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+              placeholder="0.0000"
+              placeholderTextColor={colors.textSecondary}
               value={formData.stopLoss}
               onChangeText={(value) => updateFormData('stopLoss', value)}
               keyboardType="decimal-pad"
             />
-            {errors.stopLoss && <Text style={commonStyles.errorText}>{errors.stopLoss}</Text>}
           </View>
+        </View>
 
-          <View style={{ marginBottom: spacing.md }}>
-            <Text style={[commonStyles.text, { fontWeight: '600', marginBottom: spacing.sm }]}>
-              Take Profit
-            </Text>
-            <TextInput
-              style={[commonStyles.input, errors.takeProfit && commonStyles.inputError]}
-              placeholder="1.13000"
-              placeholderTextColor={colors.textMuted}
-              value={formData.takeProfit}
-              onChangeText={(value) => updateFormData('takeProfit', value)}
-              keyboardType="decimal-pad"
-            />
-            {errors.takeProfit && <Text style={commonStyles.errorText}>{errors.takeProfit}</Text>}
-          </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Take Profit</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="0.0000"
+            placeholderTextColor={colors.textSecondary}
+            value={formData.takeProfit}
+            onChangeText={(value) => updateFormData('takeProfit', value)}
+            keyboardType="decimal-pad"
+          />
+        </View>
 
-          <View style={{ marginBottom: spacing.md }}>
-            <Text style={[commonStyles.text, { fontWeight: '600', marginBottom: spacing.sm }]}>
-              Status
-            </Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={formData.status}
-                onValueChange={(value) => updateFormData('status', value)}
-                style={styles.picker}
-                dropdownIconColor={colors.text}
-              >
-                <Picker.Item label="Active" value="active" color={colors.text} />
-                <Picker.Item label="Closed" value="closed" color={colors.text} />
-                <Picker.Item label="Take Profit Hit" value="hit_tp" color={colors.text} />
-                <Picker.Item label="Stop Loss Hit" value="hit_sl" color={colors.text} />
-              </Picker>
-            </View>
-          </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Notes (Optional)</Text>
+          <TextInput
+            style={styles.textArea}
+            placeholder="Add any additional notes or analysis..."
+            placeholderTextColor={colors.textSecondary}
+            value={formData.notes}
+            onChangeText={(value) => updateFormData('notes', value)}
+            multiline
+            numberOfLines={4}
+          />
+        </View>
 
-          <View style={{ marginBottom: spacing.md }}>
-            <Text style={[commonStyles.text, { fontWeight: '600', marginBottom: spacing.sm }]}>
-              Notes (Optional)
-            </Text>
-            <TextInput
-              style={[commonStyles.input, { height: 80, textAlignVertical: 'top' }]}
-              placeholder="Additional notes about this signal..."
-              placeholderTextColor={colors.textMuted}
-              value={formData.notes}
-              onChangeText={(value) => updateFormData('notes', value)}
-              multiline
-              numberOfLines={3}
-            />
-          </View>
-
+        <View style={styles.buttonContainer}>
           <Button
-            text={loading ? "Adding Signal..." : "Add Signal"}
+            text="Add Signal"
             onPress={handleSubmit}
+            loading={loading}
             disabled={loading}
-            variant="success"
+          />
+          
+          <Button
+            text="Cancel"
+            onPress={handleBack}
+            variant="outline"
+            disabled={loading}
           />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  pickerContainer: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  picker: {
-    color: colors.text,
-    backgroundColor: 'transparent',
-  },
-});

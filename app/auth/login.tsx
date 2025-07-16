@@ -6,7 +6,6 @@ import DevelopmentNote from '../../components/DevelopmentNote';
 import TroubleshootingGuide from '../../components/TroubleshootingGuide';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { isGoogleSignInAvailable } from '../../utils/googleSignInConfig';
 
 const styles = StyleSheet.create({
   container: {
@@ -71,28 +70,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  dividerContainer: {
+  signUpContainer: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: spacing.lg,
+    marginTop: spacing.lg,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    marginHorizontal: spacing.md,
+  signUpText: {
     color: colors.textSecondary,
-    fontSize: 14,
-  },
-  googleButton: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  googleButtonText: {
-    color: colors.text,
+    fontSize: 16,
   },
 });
 
@@ -100,10 +86,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const { signIn, signInWithGoogle } = useAuth();
-  
-  const googleSignInAvailable = isGoogleSignInAvailable();
+  const { signIn } = useAuth();
 
   const validateForm = () => {
     if (!email.trim()) {
@@ -137,35 +120,6 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    try {
-      await signInWithGoogle();
-      console.log('Google sign in successful');
-      router.replace('/dashboard');
-    } catch (error: any) {
-      console.error('Google sign in error:', error);
-      
-      let errorMessage = error.message;
-      let errorTitle = 'Google Sign-In Failed';
-      
-      if (error.message.includes('not available') || error.message.includes('not supported')) {
-        errorTitle = 'Google Sign-In Unavailable';
-        errorMessage = 'Google Sign-In is not available in Expo Go. Please use email/password login or create a development build to use Google Sign-In.';
-      } else if (error.message.includes('cancelled')) {
-        errorTitle = 'Sign-In Cancelled';
-        errorMessage = 'Google Sign-In was cancelled by the user.';
-      } else if (error.message.includes('Play Services')) {
-        errorTitle = 'Google Play Services Required';
-        errorMessage = 'Google Play Services is required for Google Sign-In. Please update Google Play Services and try again.';
-      }
-      
-      Alert.alert(errorTitle, errorMessage);
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
   const handleForgotPassword = () => {
     router.push('/auth/forgot-password');
   };
@@ -189,12 +143,12 @@ export default function LoginScreen() {
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to your Forex account</Text>
+          <Text style={styles.title}>Forex Signals</Text>
+          <Text style={styles.subtitle}>Sign in to your account</Text>
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>Email *</Text>
           <TextInput
             style={styles.input}
             placeholder="Enter your email"
@@ -208,7 +162,7 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password</Text>
+          <Text style={styles.label}>Password *</Text>
           <TextInput
             style={styles.input}
             placeholder="Enter your password"
@@ -226,30 +180,7 @@ export default function LoginScreen() {
             text="Sign In"
             onPress={handleLogin}
             loading={loading}
-            disabled={loading || googleLoading}
-          />
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {!googleSignInAvailable && (
-            <DevelopmentNote 
-              message="Google Sign-In is not available in Expo Go. Create a development build to enable Google authentication."
-              type="warning"
-            />
-          )}
-
-          <Button
-            text="Continue with Google"
-            onPress={handleGoogleSignIn}
-            loading={googleLoading}
-            disabled={loading || googleLoading || !googleSignInAvailable}
-            style={[styles.googleButton, !googleSignInAvailable && { opacity: 0.5 }]}
-            textStyle={styles.googleButtonText}
-            variant="outline"
+            disabled={loading}
           />
         </View>
 
@@ -263,9 +194,9 @@ export default function LoginScreen() {
           />
         </View>
 
-        <View style={styles.linkContainer}>
-          <Text style={{ color: colors.textSecondary }}>
-            Don't have an account?{' '}
+        <View style={styles.signUpContainer}>
+          <Text style={styles.signUpText}>
+            Don&apos;t have an account?{' '}
           </Text>
           <Button
             text="Sign Up"
@@ -275,6 +206,11 @@ export default function LoginScreen() {
             textStyle={styles.linkText}
           />
         </View>
+
+        <DevelopmentNote 
+          message="Use email and password authentication. Google Sign-In has been removed to prevent build errors."
+          type="info"
+        />
 
         <TroubleshootingGuide />
       </ScrollView>

@@ -22,7 +22,7 @@
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "^8.3.0",
-    "@react-native-google-signin/google-signin": "^15.0.0",
+
     "@react-native-picker/picker": "^2.11.1",
     "@react-navigation/drawer": "^7.1.1",
     "@react-navigation/native": "^7.0.14",
@@ -85,12 +85,10 @@
   },
   "resolutions": {
     "@expo/prebuild-config": "latest",
-    "react-async-hook": "4.0.0",
-    "@react-native-google-signin/google-signin": "^15.0.0"
+    "react-async-hook": "4.0.0"
   },
   "overrides": {
-    "react-async-hook": "4.0.0",
-    "@react-native-google-signin/google-signin": "^15.0.0"
+    "react-async-hook": "4.0.0"
   },
   "private": true
 }

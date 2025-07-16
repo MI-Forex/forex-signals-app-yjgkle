@@ -6,18 +6,10 @@ import {
   signOut, 
   onAuthStateChanged,
   sendPasswordResetEmail,
-  updateProfile,
-  GoogleAuthProvider,
-  signInWithCredential
+  updateProfile
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
-import { 
-  configureGoogleSignIn, 
-  isGoogleSignInAvailable, 
-  performGoogleSignIn, 
-  signOutFromGoogle 
-} from '../utils/googleSignInConfig';
 
 interface UserData {
   uid: string;
@@ -33,7 +25,6 @@ interface AuthContextType {
   userData: UserData | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string, displayName: string, phoneNumber?: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -56,9 +47,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Configure Google Sign-In
-    configureGoogleSignIn();
-
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('Auth state changed:', user?.email);
       setUser(user);
@@ -93,42 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      console.log('Attempting Google sign in');
-      
-      if (!isGoogleSignInAvailable()) {
-        throw new Error('Google Sign-In is not available on this platform');
-      }
-
-      const result = await performGoogleSignIn();
-      console.log('Google Sign-In result received');
-
-      const googleCredential = GoogleAuthProvider.credential(result.idToken);
-      const { user } = await signInWithCredential(auth, googleCredential);
-      
-      // Check if user document exists, if not create one
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (!userDoc.exists()) {
-        const userData: UserData = {
-          uid: user.uid,
-          email: user.email!,
-          displayName: user.displayName || '',
-          role: 'user',
-          createdAt: new Date()
-        };
-        
-        await setDoc(doc(db, 'users', user.uid), userData);
-        setUserData(userData);
-      }
-      
-      console.log('Google sign in successful');
-    } catch (error: any) {
-      console.error('Google sign in error:', error);
-      throw error;
-    }
-  };
-
   const signUp = async (email: string, password: string, displayName: string, phoneNumber?: string) => {
     try {
       console.log('Creating user:', email);
@@ -158,10 +110,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       console.log('Logging out user');
-      
-      // Sign out from Google if available
-      await signOutFromGoogle();
-      
       await signOut(auth);
     } catch (error: any) {
       console.error('Logout error:', error);
@@ -206,7 +154,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userData,
     loading,
     signIn,
-    signInWithGoogle,
     signUp,
     logout,
     resetPassword,
