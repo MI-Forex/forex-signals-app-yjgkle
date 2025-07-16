@@ -16,6 +16,8 @@ export const colors = {
   border: '#e2e8f0',
   borderLight: '#f1f5f9',
   shadow: '#00000010',
+  white: '#ffffff',
+  black: '#000000',
 };
 
 export const spacing = {
@@ -70,11 +72,21 @@ export const commonStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  wrapper: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   centerContent: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.lg,
+  },
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
   },
   section: {
     marginBottom: spacing.lg,

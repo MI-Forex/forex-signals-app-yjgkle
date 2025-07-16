@@ -14,24 +14,34 @@ const firebaseConfig = {
   appId: "1:940152361938:android:a72b610bdcb1e2459eee0b"
 };
 
+console.log('Firebase: Initializing Firebase app');
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+console.log('Firebase: App initialized successfully');
 
 // Initialize Auth with persistence for React Native
 let auth;
 if (Platform.OS === 'web') {
+  console.log('Firebase: Initializing auth for web');
   auth = getAuth(app);
 } else {
+  console.log('Firebase: Initializing auth for mobile with AsyncStorage persistence');
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage)
   });
 }
 
+console.log('Firebase: Auth initialized successfully');
+
 // Initialize Firestore
 export const db = getFirestore(app);
+console.log('Firebase: Firestore initialized successfully');
 
 // Initialize Storage
 export const storage = getStorage(app);
+console.log('Firebase: Storage initialized successfully');
 
 export { auth };
 export default app;

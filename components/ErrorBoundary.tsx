@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
   },
   errorDetails: {
     fontSize: 14,
-    color: colors.error,
+    color: colors.danger,
     textAlign: 'center',
     marginBottom: spacing.lg,
     fontFamily: 'monospace',
@@ -51,6 +51,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    console.log('ErrorBoundary: Error caught:', error.message);
     return { hasError: true, error };
   }
 
@@ -64,11 +65,14 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   resetError = () => {
+    console.log('ErrorBoundary: Resetting error state');
     this.setState({ hasError: false, error: undefined });
   };
 
   render() {
     if (this.state.hasError) {
+      console.log('ErrorBoundary: Rendering error UI');
+      
       if (this.props.fallback) {
         const FallbackComponent = this.props.fallback;
         return <FallbackComponent error={this.state.error} resetError={this.resetError} />;
@@ -93,6 +97,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       );
     }
 
+    console.log('ErrorBoundary: Rendering children normally');
     return this.props.children;
   }
 }

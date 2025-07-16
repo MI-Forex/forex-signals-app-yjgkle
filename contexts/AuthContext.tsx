@@ -47,28 +47,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('AuthProvider: Setting up auth state listener');
+    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed:', user?.email);
+      console.log('Auth state changed:', user?.email || 'No user');
       setUser(user);
       
       if (user) {
+        console.log('User authenticated, fetching user data from Firestore');
         // Fetch user data from Firestore
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
+            console.log('User data found in Firestore');
             setUserData(userDoc.data() as UserData);
+          } else {
+            console.log('No user data found in Firestore');
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
         }
       } else {
+        console.log('No user, clearing user data');
         setUserData(null);
       }
       
+      console.log('Setting loading to false');
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      console.log('AuthProvider: Cleaning up auth state listener');
+      unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -159,6 +170,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resetPassword,
     updateUserProfile
   };
+
+  console.log('AuthProvider rendering with loading:', loading, 'user:', user?.email || 'No user');
 
   return (
     <AuthContext.Provider value={value}>

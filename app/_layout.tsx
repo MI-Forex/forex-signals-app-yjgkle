@@ -15,7 +15,10 @@ export default function RootLayout() {
   const { emulate } = useGlobalSearchParams<{ emulate?: string }>();
   const [storedEmulate, setStoredEmulate] = useState<string | null>(null);
 
+  console.log('RootLayout rendering');
+
   useEffect(() => {
+    console.log('RootLayout useEffect - setting up error logging');
     // Set up global error logging
     setupErrorLogging();
 
@@ -47,6 +50,8 @@ export default function RootLayout() {
     insetsToUse = deviceToEmulate ? simulatedInsets[deviceToEmulate as keyof typeof simulatedInsets] || actualInsets : actualInsets;
   }
 
+  console.log('RootLayout rendering with insets:', insetsToUse);
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
@@ -63,7 +68,19 @@ export default function RootLayout() {
                 headerShown: false,
                 animation: 'default',
               }}
-            />
+            >
+              <Stack.Screen name="index" />
+              <Stack.Screen name="test" />
+              <Stack.Screen name="auth/login" />
+              <Stack.Screen name="auth/register" />
+              <Stack.Screen name="auth/forgot-password" />
+              <Stack.Screen name="dashboard/index" />
+              <Stack.Screen name="profile/index" />
+              <Stack.Screen name="news/index" />
+              <Stack.Screen name="admin/index" />
+              <Stack.Screen name="admin/signals/index" />
+              <Stack.Screen name="admin/signals/add" />
+            </Stack>
           </SafeAreaView>
         </AuthProvider>
       </SafeAreaProvider>

@@ -23,15 +23,15 @@ export default function Button({
   const getButtonStyle = () => {
     switch (variant) {
       case 'secondary':
-        return buttonStyles.secondary;
+        return [buttonStyles.base, buttonStyles.secondary];
       case 'success':
-        return buttonStyles.success;
+        return [buttonStyles.base, buttonStyles.success];
       case 'danger':
-        return buttonStyles.danger;
+        return [buttonStyles.base, buttonStyles.danger];
       case 'outline':
-        return buttonStyles.outline;
+        return [buttonStyles.base, buttonStyles.outline];
       default:
-        return buttonStyles.primary;
+        return [buttonStyles.base, buttonStyles.primary];
     }
   };
 
@@ -45,9 +45,8 @@ export default function Button({
   return (
     <TouchableOpacity 
       style={[
-        styles.button, 
         getButtonStyle(), 
-        disabled && styles.disabled,
+        disabled && buttonStyles.disabled,
         style
       ]} 
       onPress={onPress} 
@@ -66,17 +65,9 @@ export default function Button({
 }
 
 const styles = StyleSheet.create({
-  button: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-  },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
-  },
-  disabled: {
-    opacity: 0.6,
   },
 });
