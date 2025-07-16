@@ -6,6 +6,7 @@ import { commonStyles } from '../styles/commonStyles';
 import { useEffect, useState } from 'react';
 import { setupErrorLogging } from '../utils/errorLogger';
 import { AuthProvider } from '../contexts/AuthContext';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const STORAGE_KEY = 'emulated_device';
 
@@ -47,23 +48,25 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <SafeAreaView style={[commonStyles.wrapper, {
-            paddingTop: insetsToUse.top,
-            paddingBottom: insetsToUse.bottom,
-            paddingLeft: insetsToUse.left,
-            paddingRight: insetsToUse.right,
-         }]}>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              animation: 'default',
-            }}
-          />
-        </SafeAreaView>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <SafeAreaView style={[commonStyles.wrapper, {
+              paddingTop: insetsToUse.top,
+              paddingBottom: insetsToUse.bottom,
+              paddingLeft: insetsToUse.left,
+              paddingRight: insetsToUse.right,
+           }]}>
+            <StatusBar style="light" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                animation: 'default',
+              }}
+            />
+          </SafeAreaView>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

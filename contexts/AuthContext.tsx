@@ -12,7 +12,12 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { 
+  configureGoogleSignIn, 
+  isGoogleSignInAvailable, 
+  performGoogleSignIn, 
+  signOutFromGoogle 
+} from '../utils/googleSignInConfig';
 
 interface UserData {
   uid: string;
@@ -52,9 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Configure Google Sign-In
-    GoogleSignin.configure({
-      webClientId: '940152361938-YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // You'll need to get this from Firebase Console
-    });
+    configureGoogleSignIn();
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('Auth state changed:', user?.email);
@@ -92,10 +95,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      console.log('Signing in with Google');
-      await GoogleSignin.hasPlayServices();
-      const { idToken } = await GoogleSignin.signIn();
-      const googleCredential = GoogleAuthProvider.credential(idToken);
+      console.log('Attempting Google sign in');
+      
+      if (!isGoogleSignInAvailable()) {
+        throw new Error('Google Sign-In is not available on this platform');
+      }
+
+      const result = await performGoogleSignIn();
+      console.log('Google Sign-In result received');
+
+      const googleCredential = GoogleAuthProvider.credential(result.idToken);
       const { user } = await signInWithCredential(auth, googleCredential);
       
       // Check if user document exists, if not create one
@@ -112,9 +121,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await setDoc(doc(db, 'users', user.uid), userData);
         setUserData(userData);
       }
+      
+      console.log('Google sign in successful');
     } catch (error: any) {
       console.error('Google sign in error:', error);
-      throw new Error(error.message);
+      throw error;
     }
   };
 
@@ -147,7 +158,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       console.log('Logging out user');
-      await GoogleSignin.signOut();
+      
+      // Sign out from Google if available
+      await signOutFromGoogle();
+      
       await signOut(auth);
     } catch (error: any) {
       console.error('Logout error:', error);

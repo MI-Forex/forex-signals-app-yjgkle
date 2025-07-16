@@ -4,11 +4,13 @@
   "main": "index.ts",
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start --tunnel",
+    "dev:clear": "EXPO_NO_TELEMETRY=1 expo start --clear --tunnel",
     "android": "EXPO_NO_TELEMETRY=1 expo start --android",
     "ios": "EXPO_NO_TELEMETRY=1 expo start --ios",
     "web": "EXPO_NO_TELEMETRY=1 expo start --web",
     "build:web": "expo export -p web && npx workbox generateSW workbox-config.js",
     "build:android": "expo prebuild -p android",
+    "reset": "expo start --clear",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -46,7 +48,7 @@
     "firebase": "^11.10.0",
     "libphonenumber-js": "^1.12.10",
     "react": "19.0.0",
-    "react-async-hook": "^4.0.0",
+    "react-async-hook": "4.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.2",
     "react-native-country-picker-modal": "^2.0.0",
@@ -82,7 +84,12 @@
   },
   "resolutions": {
     "@expo/prebuild-config": "latest",
-    "react-async-hook": "^4.0.0"
+    "react-async-hook": "4.0.0",
+    "@react-native-google-signin/google-signin": "^15.0.0"
+  },
+  "overrides": {
+    "react-async-hook": "4.0.0",
+    "@react-native-google-signin/google-signin": "^15.0.0"
   },
   "private": true
 }
