@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/Button';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
+import CountryPicker from 'react-native-country-picker-modal';
+import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 
 export default function RegisterScreen() {
   const [formData, setFormData] = useState({
     displayName: '',
     email: '',
+    phoneNumber: '',
     password: '',
     confirmPassword: '',
   });
+  const [countryCode, setCountryCode] = useState('US');
+  const [callingCode, setCallingCode] = useState('1');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -28,6 +34,19 @@ export default function RegisterScreen() {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email';
+    }
+
+    if (!formData.phoneNumber.trim()) {
+      newErrors.phoneNumber = 'Mobile number is required';
+    } else {
+      try {
+        const fullPhoneNumber = `+${callingCode}${formData.phoneNumber}`;
+        if (!isValidPhoneNumber(fullPhoneNumber)) {
+          newErrors.phoneNumber = 'Please enter a valid mobile number';
+        }
+      } catch (error) {
+        newErrors.phoneNumber = 'Please enter a valid mobile number';
+      }
     }
 
     if (!formData.password) {
@@ -49,7 +68,13 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await signUp(formData.email.trim(), formData.password, formData.displayName.trim());
+      const fullPhoneNumber = `+${callingCode}${formData.phoneNumber}`;
+      await signUp(
+        formData.email.trim(), 
+        formData.password, 
+        formData.displayName.trim(),
+        fullPhoneNumber
+      );
       console.log('Registration successful');
       Alert.alert('Success', 'Account created successfully!', [
         { text: 'OK', onPress: () => router.replace('/dashboard') }
@@ -70,6 +95,12 @@ export default function RegisterScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const onSelectCountry = (country: any) => {
+    setCountryCode(country.cca2);
+    setCallingCode(country.callingCode[0]);
+    setShowCountryPicker(false);
+  };
+
   return (
     <KeyboardAvoidingView 
       style={commonStyles.container} 
@@ -77,6 +108,15 @@ export default function RegisterScreen() {
     >
       <ScrollView contentContainerStyle={commonStyles.centerContent}>
         <View style={{ width: '100%', maxWidth: 400 }}>
+          {/* Logo */}
+          <View style={styles.logoContainer}>
+            <Image 
+              source={require('../../assets/images/49726930-1960-4f49-bc71-d0712257518e.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+          
           <Text style={commonStyles.title}>Create Account</Text>
           <Text style={[commonStyles.textSecondary, { textAlign: 'center', marginBottom: spacing.xl }]}>
             Join our forex signal community
@@ -85,7 +125,7 @@ export default function RegisterScreen() {
           <View style={commonStyles.section}>
             <TextInput
               style={[commonStyles.input, errors.displayName && commonStyles.inputError]}
-              placeholder="Full Name"
+              placeholder="Full Name *"
               placeholderTextColor={colors.textMuted}
               value={formData.displayName}
               onChangeText={(value) => updateFormData('displayName', value)}
@@ -95,7 +135,7 @@ export default function RegisterScreen() {
 
             <TextInput
               style={[commonStyles.input, errors.email && commonStyles.inputError]}
-              placeholder="Email"
+              placeholder="Email *"
               placeholderTextColor={colors.textMuted}
               value={formData.email}
               onChangeText={(value) => updateFormData('email', value)}
@@ -104,6 +144,41 @@ export default function RegisterScreen() {
               autoCorrect={false}
             />
             {errors.email && <Text style={commonStyles.errorText}>{errors.email}</Text>}
+
+            {/* Phone Number with Country Code */}
+            <View style={styles.phoneContainer}>
+              <Button
+                text={`+${callingCode}`}
+                onPress={() => setShowCountryPicker(true)}
+                variant="outline"
+                style={styles.countryCodeButton}
+                textStyle={styles.countryCodeText}
+              />
+              <TextInput
+                style={[
+                  commonStyles.input, 
+                  styles.phoneInput,
+                  errors.phoneNumber && commonStyles.inputError
+                ]}
+                placeholder="Mobile Number *"
+                placeholderTextColor={colors.textMuted}
+                value={formData.phoneNumber}
+                onChangeText={(value) => updateFormData('phoneNumber', value)}
+                keyboardType="phone-pad"
+              />
+            </View>
+            {errors.phoneNumber && <Text style={commonStyles.errorText}>{errors.phoneNumber}</Text>}
+
+            <CountryPicker
+              countryCode={countryCode as any}
+              withFilter
+              withFlag
+              withCallingCode
+              withEmoji
+              onSelect={onSelectCountry}
+              visible={showCountryPicker}
+              onClose={() => setShowCountryPicker(false)}
+            />
 
             <TextInput
               style={[commonStyles.input, errors.password && commonStyles.inputError]}
@@ -127,6 +202,8 @@ export default function RegisterScreen() {
             />
             {errors.confirmPassword && <Text style={commonStyles.errorText}>{errors.confirmPassword}</Text>}
 
+            <Text style={styles.requiredText}>* Required fields</Text>
+
             <Button
               text={loading ? "Creating Account..." : "Create Account"}
               onPress={handleRegister}
@@ -149,3 +226,36 @@ export default function RegisterScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+  },
+  phoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  countryCodeButton: {
+    minWidth: 80,
+    paddingHorizontal: spacing.sm,
+  },
+  countryCodeText: {
+    fontSize: 16,
+  },
+  phoneInput: {
+    flex: 1,
+    marginTop: 0,
+  },
+  requiredText: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    marginTop: spacing.sm,
+  },
+});

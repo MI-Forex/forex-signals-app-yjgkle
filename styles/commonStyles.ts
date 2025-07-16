@@ -1,55 +1,21 @@
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 export const colors = {
-  primary: '#1B4332',      // Dark Green
-  secondary: '#2D6A4F',    // Medium Green
-  accent: '#40916C',       // Light Green
-  success: '#52B788',      // Success Green
-  danger: '#E63946',       // Red for losses
-  warning: '#F77F00',      // Orange for warnings
-  background: '#081C15',   // Very Dark Green
-  backgroundAlt: '#1B4332', // Dark Green Alt
-  surface: '#2D6A4F',      // Surface color
-  text: '#D8F3DC',         // Light Green Text
-  textSecondary: '#95D5B2', // Secondary Text
-  textMuted: '#74C69D',    // Muted Text
-  border: '#40916C',       // Border color
-  card: '#1B4332',         // Card background
-  white: '#FFFFFF',
-  black: '#000000',
-};
-
-export const typography = {
-  h1: {
-    fontSize: 32,
-    fontWeight: '800' as const,
-    lineHeight: 40,
-  },
-  h2: {
-    fontSize: 24,
-    fontWeight: '700' as const,
-    lineHeight: 32,
-  },
-  h3: {
-    fontSize: 20,
-    fontWeight: '600' as const,
-    lineHeight: 28,
-  },
-  body: {
-    fontSize: 16,
-    fontWeight: '400' as const,
-    lineHeight: 24,
-  },
-  caption: {
-    fontSize: 14,
-    fontWeight: '400' as const,
-    lineHeight: 20,
-  },
-  small: {
-    fontSize: 12,
-    fontWeight: '400' as const,
-    lineHeight: 16,
-  },
+  primary: '#2563eb',
+  primaryDark: '#1d4ed8',
+  secondary: '#64748b',
+  success: '#10b981',
+  danger: '#ef4444',
+  warning: '#f59e0b',
+  background: '#f8fafc',
+  surface: '#ffffff',
+  surfaceDisabled: '#f1f5f9',
+  text: '#1e293b',
+  textSecondary: '#475569',
+  textMuted: '#94a3b8',
+  border: '#e2e8f0',
+  borderLight: '#f1f5f9',
+  shadow: '#00000010',
 };
 
 export const spacing = {
@@ -66,139 +32,98 @@ export const borderRadius = {
   md: 8,
   lg: 12,
   xl: 16,
-  full: 9999,
-};
-
-export const shadows = {
-  small: {
-    boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.12)',
-    elevation: 2,
-  },
-  medium: {
-    boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)',
-    elevation: 4,
-  },
-  large: {
-    boxShadow: '0px 10px 15px rgba(0, 0, 0, 0.1)',
-    elevation: 8,
-  },
 };
 
 export const buttonStyles = StyleSheet.create({
-  primary: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+  base: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    ...shadows.small,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  primary: {
+    backgroundColor: colors.primary,
   },
   secondary: {
     backgroundColor: colors.secondary,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    ...shadows.small,
   },
   success: {
     backgroundColor: colors.success,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    ...shadows.small,
   },
   danger: {
     backgroundColor: colors.danger,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    ...shadows.small,
   },
   outline: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md - 2,
-    paddingHorizontal: spacing.lg - 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  disabled: {
+    opacity: 0.6,
   },
 });
 
 export const commonStyles = StyleSheet.create({
-  wrapper: {
-    backgroundColor: colors.background,
-    width: '100%',
-    height: '100%',
-  },
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    width: '100%',
-    height: '100%',
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
   },
   centerContent: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.md,
-  },
-  title: {
-    ...typography.h1,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  subtitle: {
-    ...typography.h2,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  text: {
-    ...typography.body,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  textSecondary: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  textMuted: {
-    ...typography.caption,
-    color: colors.textMuted,
+    padding: spacing.lg,
   },
   section: {
     marginBottom: spacing.lg,
   },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.text,
+    textAlign: 'center',
     marginBottom: spacing.md,
-    ...shadows.medium,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.md,
   },
-  spaceBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  text: {
+    fontSize: 16,
+    color: colors.text,
+    lineHeight: 24,
+  },
+  textSecondary: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    lineHeight: 24,
+  },
+  textMuted: {
+    fontSize: 14,
+    color: colors.textMuted,
+    lineHeight: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
   },
   input: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    color: colors.text,
-    fontSize: 16,
-    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    marginTop: spacing.sm,
   },
   inputError: {
     borderColor: colors.danger,
@@ -206,42 +131,31 @@ export const commonStyles = StyleSheet.create({
   errorText: {
     color: colors.danger,
     fontSize: 14,
-    marginBottom: spacing.sm,
+    marginTop: spacing.xs,
   },
-  successText: {
-    color: colors.success,
-    fontSize: 14,
-    marginBottom: spacing.sm,
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    shadowColor: colors.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   badge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
+    borderRadius: borderRadius.sm,
     alignSelf: 'flex-start',
-  },
-  badgeSuccess: {
-    backgroundColor: colors.success,
-  },
-  badgeDanger: {
-    backgroundColor: colors.danger,
-  },
-  badgeWarning: {
-    backgroundColor: colors.warning,
-  },
-  badgeText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.md,
-  },
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
   },
 });
