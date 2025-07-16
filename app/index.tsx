@@ -1,63 +1,30 @@
-import { Text, View, Image, SafeAreaView } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { useState, useEffect } from 'react';
-import Button from '../components/Button';
-import { commonStyles, buttonStyles } from '../styles/commonStyles';
+import { useAuth } from '../contexts/AuthContext';
+import { commonStyles } from '../styles/commonStyles';
 
-// Declare the window properties we're using
-declare global {
-  interface Window {
-    handleInstallClick: () => void;
-    canInstall: boolean;
-  }
-}
-
-export default function MainScreen() {
-  const [canInstall, setCanInstall] = useState(false);
+export default function IndexScreen() {
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    // Initial check
-    setCanInstall(false);
-
-    // Set up polling interval
-    const intervalId = setInterval(() => {
-      if(window.canInstall) {
-        setCanInstall(true);
-        clearInterval(intervalId);
+    if (!loading) {
+      if (user) {
+        console.log('User authenticated, redirecting to dashboard');
+        router.replace('/dashboard');
+      } else {
+        console.log('User not authenticated, redirecting to login');
+        router.replace('/auth/login');
       }
-    }, 500);
-
-    // Cleanup
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []);
+    }
+  }, [user, loading]);
 
   return (
-    <View style={commonStyles.container}>
-      <View style={commonStyles.content}>
-        <Image
-          source={require('../assets/images/final_quest_240x240.png')}
-          style={{ width: 180, height: 180 }}
-          resizeMode="contain"
-        />
-        <Text style={commonStyles.title}>This is a placeholder app.</Text>
-        <Text style={commonStyles.text}>Your app will be displayed here when it's ready.</Text>
-        <View style={commonStyles.buttonContainer}>
-          {canInstall && (
-            <Button
-              text="Install App"
-              onPress={() => {
-                if(window.handleInstallClick) {
-                  window.handleInstallClick();
-                  setCanInstall(false); // Update state after installation
-                }
-              }}
-              style={buttonStyles.instructionsButton}
-            />
-          )}
-        </View>
-      </View>
+    <View style={commonStyles.loading}>
+      <ActivityIndicator size="large" color="#40916C" />
+      <Text style={[commonStyles.text, { marginTop: 16 }]}>
+        Loading Forex Signals...
+      </Text>
     </View>
   );
 }

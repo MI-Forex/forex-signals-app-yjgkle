@@ -1,26 +1,125 @@
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 export const colors = {
-  primary: '#162456',    // Material Blue
-  secondary: '#193cb8',  // Darker Blue
-  accent: '#64B5F6',     // Light Blue
-  background: '#101824',  // Keeping dark background
-  backgroundAlt: '#162133',  // Keeping dark background
-  text: '#e3e3e3',       // Keeping light text
-  grey: '#90CAF9',       // Light Blue Grey
-  card: '#193cb8',       // Keeping dark card background
+  primary: '#1B4332',      // Dark Green
+  secondary: '#2D6A4F',    // Medium Green
+  accent: '#40916C',       // Light Green
+  success: '#52B788',      // Success Green
+  danger: '#E63946',       // Red for losses
+  warning: '#F77F00',      // Orange for warnings
+  background: '#081C15',   // Very Dark Green
+  backgroundAlt: '#1B4332', // Dark Green Alt
+  surface: '#2D6A4F',      // Surface color
+  text: '#D8F3DC',         // Light Green Text
+  textSecondary: '#95D5B2', // Secondary Text
+  textMuted: '#74C69D',    // Muted Text
+  border: '#40916C',       // Border color
+  card: '#1B4332',         // Card background
+  white: '#FFFFFF',
+  black: '#000000',
+};
+
+export const typography = {
+  h1: {
+    fontSize: 32,
+    fontWeight: '800' as const,
+    lineHeight: 40,
+  },
+  h2: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    lineHeight: 32,
+  },
+  h3: {
+    fontSize: 20,
+    fontWeight: '600' as const,
+    lineHeight: 28,
+  },
+  body: {
+    fontSize: 16,
+    fontWeight: '400' as const,
+    lineHeight: 24,
+  },
+  caption: {
+    fontSize: 14,
+    fontWeight: '400' as const,
+    lineHeight: 20,
+  },
+  small: {
+    fontSize: 12,
+    fontWeight: '400' as const,
+    lineHeight: 16,
+  },
+};
+
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+};
+
+export const borderRadius = {
+  sm: 4,
+  md: 8,
+  lg: 12,
+  xl: 16,
+  full: 9999,
+};
+
+export const shadows = {
+  small: {
+    boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.12)',
+    elevation: 2,
+  },
+  medium: {
+    boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)',
+    elevation: 4,
+  },
+  large: {
+    boxShadow: '0px 10px 15px rgba(0, 0, 0, 0.1)',
+    elevation: 8,
+  },
 };
 
 export const buttonStyles = StyleSheet.create({
-  instructionsButton: {
+  primary: {
     backgroundColor: colors.primary,
-    alignSelf: 'center',
-    width: '100%',
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    ...shadows.small,
   },
-  backButton: {
-    backgroundColor: colors.backgroundAlt,
-    alignSelf: 'center',
-    width: '100%',
+  secondary: {
+    backgroundColor: colors.secondary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    ...shadows.small,
+  },
+  success: {
+    backgroundColor: colors.success,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    ...shadows.small,
+  },
+  danger: {
+    backgroundColor: colors.danger,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    ...shadows.small,
+  },
+  outline: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md - 2,
+    paddingHorizontal: spacing.lg - 2,
   },
 });
 
@@ -35,55 +134,114 @@ export const commonStyles = StyleSheet.create({
     backgroundColor: colors.background,
     width: '100%',
     height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   content: {
     flex: 1,
-    alignItems: 'center',
+    padding: spacing.md,
+  },
+  centerContent: {
+    flex: 1,
     justifyContent: 'center',
-    maxWidth: 800,
-    width: '100%',
+    alignItems: 'center',
+    padding: spacing.md,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '800',
-    textAlign: 'center',
+    ...typography.h1,
     color: colors.text,
-    marginBottom: 10
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  subtitle: {
+    ...typography.h2,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.md,
   },
   text: {
-    fontSize: 16,
-    fontWeight: '500',
+    ...typography.body,
     color: colors.text,
-    marginBottom: 8,
-    lineHeight: 24,
-    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  textSecondary: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  textMuted: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
   section: {
-    width: '100%',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  buttonContainer: {
-    width: '100%',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+    marginBottom: spacing.lg,
   },
   card: {
-    backgroundColor: colors.backgroundAlt,
-    borderColor: colors.grey,
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
-    marginVertical: 8,
-    width: '100%',
-    boxShadow: '0px 2px 3px rgba(0, 0, 0, 0.1)',
-    elevation: 2,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...shadows.medium,
   },
-  icon: {
-    width: 60,
-    height: 60,
-    tintColor: "white",
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  spaceBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    color: colors.text,
+    fontSize: 16,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  inputError: {
+    borderColor: colors.danger,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 14,
+    marginBottom: spacing.sm,
+  },
+  successText: {
+    color: colors.success,
+    fontSize: 14,
+    marginBottom: spacing.sm,
+  },
+  badge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    alignSelf: 'flex-start',
+  },
+  badgeSuccess: {
+    backgroundColor: colors.success,
+  },
+  badgeDanger: {
+    backgroundColor: colors.danger,
+  },
+  badgeWarning: {
+    backgroundColor: colors.warning,
+  },
+  badgeText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
+  },
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
   },
 });
