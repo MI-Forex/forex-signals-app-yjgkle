@@ -139,7 +139,7 @@ export default function LoginScreen() {
       >
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/images/79dba73d-dd79-4fc8-a354-4149cac3d408.png')}
+            source={require('../../assets/images/8a93b85e-322d-41a3-9a3d-7f464ab694bb.png')}
             style={styles.logo}
             resizeMode="contain"
           />

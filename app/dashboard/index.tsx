@@ -124,7 +124,7 @@ export default function DashboardScreen() {
       {/* Header with Logo */}
       <View style={styles.header}>
         <Image 
-          source={require('../../assets/images/49726930-1960-4f49-bc71-d0712257518e.png')}
+          source={require('../../assets/images/8a93b85e-322d-41a3-9a3d-7f464ab694bb.png')}
           style={styles.headerLogo}
           resizeMode="contain"
         />
