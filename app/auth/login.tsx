@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet } from 'react-native';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import Button from '../../components/Button';
-import DevelopmentNote from '../../components/DevelopmentNote';
-import TroubleshootingGuide from '../../components/TroubleshootingGuide';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -111,7 +109,7 @@ export default function LoginScreen() {
     try {
       await signIn(email, password);
       console.log('Login successful');
-      router.replace('/dashboard');
+      router.replace('/(tabs)/signals');
     } catch (error: any) {
       console.error('Login error:', error);
       Alert.alert('Login Failed', error.message);
@@ -139,7 +137,7 @@ export default function LoginScreen() {
       >
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/images/8a93b85e-322d-41a3-9a3d-7f464ab694bb.png')}
+            source={require('../../assets/images/f9d6c6d4-79e6-487b-9dff-8e0d8a79f68b.png')}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -206,13 +204,6 @@ export default function LoginScreen() {
             textStyle={styles.linkText}
           />
         </View>
-
-        <DevelopmentNote 
-          message="Use email and password authentication. Google Sign-In has been removed to prevent build errors."
-          type="info"
-        />
-
-        <TroubleshootingGuide />
       </ScrollView>
     </KeyboardAvoidingView>
   );

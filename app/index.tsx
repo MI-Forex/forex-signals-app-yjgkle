@@ -17,10 +17,10 @@ export default function IndexScreen() {
     
     if (!loading) {
       if (user) {
-        console.log('User authenticated, redirecting to dashboard');
-        setDebugInfo('Redirecting to dashboard...');
+        console.log('User authenticated, redirecting to tabs');
+        setDebugInfo('Redirecting to app...');
         setTimeout(() => {
-          router.replace('/dashboard');
+          router.replace('/(tabs)/signals');
         }, 100);
       } else {
         console.log('User not authenticated, redirecting to login');

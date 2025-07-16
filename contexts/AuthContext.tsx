@@ -17,6 +17,7 @@ interface UserData {
   displayName?: string;
   phoneNumber?: string;
   role: 'user' | 'admin';
+  isAdmin: boolean;
   createdAt: Date;
 }
 
@@ -60,7 +61,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
             console.log('User data found in Firestore');
-            setUserData(userDoc.data() as UserData);
+            const data = userDoc.data();
+            const userData: UserData = {
+              ...data,
+              role: data.isAdmin ? 'admin' : 'user',
+            } as UserData;
+            setUserData(userData);
           } else {
             console.log('No user data found in Firestore');
           }
@@ -107,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName,
         phoneNumber,
         role: 'user',
+        isAdmin: false,
         createdAt: new Date()
       };
       

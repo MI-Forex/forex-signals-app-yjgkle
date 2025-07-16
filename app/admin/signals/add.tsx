@@ -8,28 +8,28 @@ import { router } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-const CURRENCY_PAIRS = [
-  'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD',
-  'EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'CHF/JPY', 'EUR/CHF', 'AUD/JPY', 'GBP/CHF',
-  'NZD/JPY', 'CAD/JPY', 'AUD/CHF', 'AUD/CAD', 'CAD/CHF', 'NZD/CHF', 'NZD/CAD',
-  'GBP/AUD', 'GBP/CAD', 'GBP/NZD', 'EUR/AUD', 'EUR/CAD', 'EUR/NZD'
-];
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  scrollContainer: {
-    flexGrow: 1,
-    padding: spacing.lg,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
-    marginBottom: spacing.xl,
-    textAlign: 'center',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    padding: spacing.lg,
   },
   inputContainer: {
     marginBottom: spacing.lg,
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
 
 export default function AddSignalScreen() {
   const [formData, setFormData] = useState({
-    pair: 'EUR/USD',
+    pair: '',
     type: 'BUY',
     entryPoint: '',
     stopLoss: '',
@@ -97,8 +97,8 @@ export default function AddSignalScreen() {
   const { userData } = useAuth();
 
   const validateForm = () => {
-    if (!formData.pair) {
-      Alert.alert('Error', 'Please select a currency pair');
+    if (!formData.pair.trim()) {
+      Alert.alert('Error', 'Please enter a currency pair');
       return false;
     }
     if (!formData.type) {
@@ -126,7 +126,7 @@ export default function AddSignalScreen() {
     setLoading(true);
     try {
       const signalData = {
-        pair: formData.pair,
+        pair: formData.pair.toUpperCase(),
         type: formData.type as 'BUY' | 'SELL',
         entryPoint: Number(formData.entryPoint),
         stopLoss: Number(formData.stopLoss),
@@ -163,29 +163,35 @@ export default function AddSignalScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <View style={styles.header}>
+        <Text style={styles.title}>Add New Signal</Text>
+        <Button
+          text="Cancel"
+          onPress={handleBack}
+          variant="outline"
+          style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+        />
+      </View>
+
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Add New Signal</Text>
-
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Currency Pair</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formData.pair}
-              onValueChange={(value) => updateFormData('pair', value)}
-              style={styles.picker}
-            >
-              {CURRENCY_PAIRS.map((pair) => (
-                <Picker.Item key={pair} label={pair} value={pair} />
-              ))}
-            </Picker>
-          </View>
+          <Text style={styles.label}>Currency Pair *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g., EUR/USD, GBP/JPY, BTC/USD"
+            placeholderTextColor={colors.textSecondary}
+            value={formData.pair}
+            onChangeText={(value) => updateFormData('pair', value)}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Signal Type</Text>
+          <Text style={styles.label}>Signal Type *</Text>
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={formData.type}
@@ -200,7 +206,7 @@ export default function AddSignalScreen() {
 
         <View style={styles.row}>
           <View style={[styles.inputContainer, styles.flex1]}>
-            <Text style={styles.label}>Entry Point</Text>
+            <Text style={styles.label}>Entry Point *</Text>
             <TextInput
               style={styles.input}
               placeholder="0.0000"
@@ -212,7 +218,7 @@ export default function AddSignalScreen() {
           </View>
 
           <View style={[styles.inputContainer, styles.flex1]}>
-            <Text style={styles.label}>Stop Loss</Text>
+            <Text style={styles.label}>Stop Loss *</Text>
             <TextInput
               style={styles.input}
               placeholder="0.0000"
@@ -225,7 +231,7 @@ export default function AddSignalScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Take Profit</Text>
+          <Text style={styles.label}>Take Profit *</Text>
           <TextInput
             style={styles.input}
             placeholder="0.0000"
@@ -237,7 +243,7 @@ export default function AddSignalScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Notes (Optional)</Text>
+          <Text style={styles.label}>Notes</Text>
           <TextInput
             style={styles.textArea}
             placeholder="Add any additional notes or analysis..."
@@ -254,13 +260,6 @@ export default function AddSignalScreen() {
             text="Add Signal"
             onPress={handleSubmit}
             loading={loading}
-            disabled={loading}
-          />
-          
-          <Button
-            text="Cancel"
-            onPress={handleBack}
-            variant="outline"
             disabled={loading}
           />
         </View>

@@ -70,16 +70,16 @@ export default function RootLayout() {
               }}
             >
               <Stack.Screen name="index" />
-              <Stack.Screen name="test" />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="auth/login" />
               <Stack.Screen name="auth/register" />
               <Stack.Screen name="auth/forgot-password" />
-              <Stack.Screen name="dashboard/index" />
-              <Stack.Screen name="profile/index" />
-              <Stack.Screen name="news/index" />
               <Stack.Screen name="admin/index" />
               <Stack.Screen name="admin/signals/index" />
               <Stack.Screen name="admin/signals/add" />
+              <Stack.Screen name="admin/news/index" />
+              <Stack.Screen name="admin/news/add" />
+              <Stack.Screen name="admin/users/index" />
             </Stack>
           </SafeAreaView>
         </AuthProvider>
