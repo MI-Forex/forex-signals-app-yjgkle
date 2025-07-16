@@ -32,10 +32,9 @@ config.resolver = {
 // Enhanced transformer configuration
 config.transformer = {
   ...config.transformer,
-  // Ensure proper handling of async modules
-  asyncRequireModulePath: require.resolve('metro-runtime/src/modules/asyncRequire'),
-  // Add support for additional file extensions
-  babelTransformerPath: require.resolve('metro-react-native-babel-transformer'),
+  // Use the default transformer from Expo instead of explicitly requiring metro-react-native-babel-transformer
+  // This ensures compatibility with Expo's build system
+  babelTransformerPath: require.resolve('@expo/metro-runtime/build/transformer'),
   // Enable hermesParser for better performance
   hermesParser: true,
 };
