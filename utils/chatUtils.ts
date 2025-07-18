@@ -43,27 +43,31 @@ export const ensureChatExists = async (userId: string): Promise<string> => {
   const chatRef = doc(db, 'chats', chatId);
   
   try {
+    console.log('ChatUtils: Ensuring chat exists for user:', userId, 'chatId:', chatId);
+    
     // Check if chat already exists
     const chatDoc = await getDoc(chatRef);
     
     if (!chatDoc.exists()) {
       // Create new chat document
-      await setDoc(chatRef, {
+      const chatData = {
         userId: userId,
         adminId: 'admin',
         createdAt: serverTimestamp(),
         lastMessage: '',
         lastMessageTime: serverTimestamp(),
         participants: [userId, 'admin']
-      });
-      console.log('New chat created for user:', userId);
+      };
+      
+      await setDoc(chatRef, chatData);
+      console.log('ChatUtils: New chat created for user:', userId);
     } else {
-      console.log('Chat already exists for user:', userId);
+      console.log('ChatUtils: Chat already exists for user:', userId);
     }
     
     return chatId;
   } catch (error) {
-    console.error('Error ensuring chat exists:', error);
+    console.error('ChatUtils: Error ensuring chat exists:', error);
     throw error;
   }
 };
@@ -76,7 +80,18 @@ export const sendChatMessage = async (
   senderName: string
 ): Promise<void> => {
   try {
-    console.log('Sending message:', { chatId, sender, text: text.substring(0, 50) });
+    console.log('ChatUtils: Sending message:', { 
+      chatId, 
+      userId, 
+      sender, 
+      senderName,
+      text: text.substring(0, 50) + '...' 
+    });
+    
+    // Validate inputs
+    if (!chatId || !userId || !text.trim() || !sender || !senderName) {
+      throw new Error('Missing required message data');
+    }
     
     // Add message to Firebase
     const messageData = {
@@ -90,26 +105,31 @@ export const sendChatMessage = async (
       createdAt: serverTimestamp()
     };
 
+    console.log('ChatUtils: Adding message to Firebase:', messageData);
     const messageRef = await addDoc(collection(db, 'messages'), messageData);
-    console.log('Message added with ID:', messageRef.id);
+    console.log('ChatUtils: Message added with ID:', messageRef.id);
 
     // Update chat document with last message info
     const chatRef = doc(db, 'chats', chatId);
-    await updateDoc(chatRef, {
+    const chatUpdateData = {
       lastMessage: text.trim(),
       lastMessageTime: serverTimestamp(),
       lastSender: sender
-    });
-
-    console.log('Chat updated with last message info');
+    };
+    
+    console.log('ChatUtils: Updating chat document:', chatUpdateData);
+    await updateDoc(chatRef, chatUpdateData);
+    console.log('ChatUtils: Chat updated with last message info');
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error('ChatUtils: Error sending message:', error);
     throw error;
   }
 };
 
 export const markMessagesAsRead = async (chatId: string, sender: 'user' | 'admin'): Promise<void> => {
   try {
+    console.log('ChatUtils: Marking messages as read for chatId:', chatId, 'sender:', sender);
+    
     const messagesQuery = query(
       collection(db, 'messages'),
       where('chatId', '==', chatId),
@@ -118,14 +138,16 @@ export const markMessagesAsRead = async (chatId: string, sender: 'user' | 'admin
     );
     
     const unreadSnapshot = await getDocs(messagesQuery);
+    console.log('ChatUtils: Found unread messages:', unreadSnapshot.size);
+    
     const updatePromises = unreadSnapshot.docs.map(messageDoc => 
       updateDoc(doc(db, 'messages', messageDoc.id), { read: true })
     );
     
     await Promise.all(updatePromises);
-    console.log('Marked messages as read:', unreadSnapshot.size);
+    console.log('ChatUtils: Marked messages as read:', unreadSnapshot.size);
   } catch (error) {
-    console.error('Error marking messages as read:', error);
+    console.error('ChatUtils: Error marking messages as read:', error);
     throw error;
   }
 };
@@ -142,7 +164,7 @@ export const getUnreadCount = async (chatId: string, sender: 'user' | 'admin'): 
     const unreadSnapshot = await getDocs(unreadQuery);
     return unreadSnapshot.size;
   } catch (error) {
-    console.error('Error getting unread count:', error);
+    console.error('ChatUtils: Error getting unread count:', error);
     return 0;
   }
 };

@@ -51,7 +51,7 @@ export default function AdminChatsScreen() {
     }
   }, [userData]);
 
-  const loadChatUsers = async () => {
+  const loadChatUsers = () => {
     try {
       console.log('AdminChats: Starting to load chat users...');
       setError('');
@@ -66,8 +66,8 @@ export default function AdminChatsScreen() {
         console.log('AdminChats: Received chats snapshot, size:', snapshot.size);
         const chatUserMap = new Map<string, ChatUser>();
 
-        for (const chatDoc of snapshot.docs) {
-          try {
+        try {
+          for (const chatDoc of snapshot.docs) {
             const chatData = chatDoc.data();
             const userId = chatData.userId;
             
@@ -113,16 +113,19 @@ export default function AdminChatsScreen() {
 
             chatUserMap.set(userId, chatUser);
             console.log('AdminChats: Added chat user:', chatUser.displayName);
-          } catch (userError) {
-            console.error('AdminChats: Error processing user chat:', userError);
           }
-        }
 
-        const chatUsersArray = Array.from(chatUserMap.values());
-        console.log('AdminChats: Total chat users loaded:', chatUsersArray.length);
-        setChatUsers(chatUsersArray);
-        setLoading(false);
-        setRefreshing(false);
+          const chatUsersArray = Array.from(chatUserMap.values());
+          console.log('AdminChats: Total chat users loaded:', chatUsersArray.length);
+          setChatUsers(chatUsersArray);
+          setLoading(false);
+          setRefreshing(false);
+        } catch (processingError) {
+          console.error('AdminChats: Error processing chats:', processingError);
+          setError('Error processing chat data: ' + processingError.message);
+          setLoading(false);
+          setRefreshing(false);
+        }
       }, (error) => {
         console.error('AdminChats: Error in chats listener:', error);
         setError('Failed to load chats: ' + error.message);
@@ -136,6 +139,7 @@ export default function AdminChatsScreen() {
       setError('Failed to load chat users: ' + error.message);
       setLoading(false);
       setRefreshing(false);
+      return () => {}; // Return empty function
     }
   };
 

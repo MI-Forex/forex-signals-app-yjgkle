@@ -40,6 +40,8 @@ export default function AdminChatScreen() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [chatId, setChatId] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   const scrollViewRef = useRef<ScrollView>(null);
   const { userData } = useAuth();
 
@@ -56,16 +58,24 @@ export default function AdminChatScreen() {
 
   useEffect(() => {
     // Scroll to bottom when new messages are added
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    if (messages.length > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
   }, [messages]);
 
   const loadChatMessages = async () => {
     try {
-      console.log('Loading chat messages for user:', userId);
+      console.log('AdminChatScreen: Loading chat messages for user:', userId);
+      setLoading(true);
+      setError('');
       
-      if (!userId || !userData?.uid) return;
+      if (!userId || !userData?.uid) {
+        setError('Missing user or admin data');
+        setLoading(false);
+        return;
+      }
 
       // Create chat ID and ensure chat exists
       const currentChatId = createChatId(userId as string);
@@ -81,6 +91,7 @@ export default function AdminChatScreen() {
       );
 
       const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+        console.log('AdminChatScreen: Received message snapshot, size:', snapshot.size);
         const loadedMessages: Message[] = [];
         
         snapshot.forEach((doc) => {
@@ -97,25 +108,36 @@ export default function AdminChatScreen() {
           });
         });
 
-        console.log('Loaded messages:', loadedMessages.length);
+        console.log('AdminChatScreen: Loaded messages:', loadedMessages.length);
         setMessages(loadedMessages);
+        setLoading(false);
+      }, (error) => {
+        console.error('AdminChatScreen: Error in message listener:', error);
+        setError('Failed to load messages: ' + error.message);
+        setLoading(false);
       });
 
       return unsubscribe;
-    } catch (error) {
-      console.error('Error loading chat messages:', error);
-      Alert.alert('Error', 'Failed to load chat messages');
+    } catch (error: any) {
+      console.error('AdminChatScreen: Error loading chat messages:', error);
+      setError('Failed to initialize chat: ' + error.message);
+      setLoading(false);
     }
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !chatId || !userData?.uid || !userId) return;
+    if (!newMessage.trim() || !chatId || !userData?.uid || !userId) {
+      console.log('AdminChatScreen: Cannot send message - missing data');
+      return;
+    }
 
     setSending(true);
     const messageText = newMessage.trim();
     setNewMessage(''); // Clear input immediately for better UX
 
     try {
+      console.log('AdminChatScreen: Sending message:', messageText.substring(0, 50));
+      
       await sendChatMessage(
         chatId,
         userId as string,
@@ -124,13 +146,20 @@ export default function AdminChatScreen() {
         userData.displayName || 'Admin'
       );
 
-      console.log('Admin message sent successfully');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+      console.log('AdminChatScreen: Admin message sent successfully');
+    } catch (error: any) {
+      console.error('AdminChatScreen: Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message: ' + error.message);
       setNewMessage(messageText); // Restore message on error
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleKeyPress = (event: any) => {
+    if (event.nativeEvent.key === 'Enter' && !event.nativeEvent.shiftKey) {
+      event.preventDefault();
+      sendMessage();
     }
   };
 
@@ -186,35 +215,55 @@ export default function AdminChatScreen() {
         style={styles.messagesContainer}
         contentContainerStyle={styles.messagesContent}
       >
-        {messages.map((message, index) => {
-          const showDateHeader = index === 0 || 
-            formatDate(message.timestamp) !== formatDate(messages[index - 1].timestamp);
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading messages...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Error: {error}</Text>
+            <Button 
+              text="Retry" 
+              onPress={loadChatMessages} 
+              style={styles.retryButton}
+            />
+          </View>
+        ) : messages.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No messages yet</Text>
+            <Text style={styles.emptySubtext}>Start the conversation with {userName}</Text>
+          </View>
+        ) : (
+          messages.map((message, index) => {
+            const showDateHeader = index === 0 || 
+              formatDate(message.timestamp) !== formatDate(messages[index - 1].timestamp);
 
-          return (
-            <View key={message.id}>
-              {showDateHeader && (
-                <View style={styles.dateHeader}>
-                  <Text style={styles.dateHeaderText}>
-                    {formatDate(message.timestamp)}
-                  </Text>
+            return (
+              <View key={message.id}>
+                {showDateHeader && (
+                  <View style={styles.dateHeader}>
+                    <Text style={styles.dateHeaderText}>
+                      {formatDate(message.timestamp)}
+                    </Text>
+                  </View>
+                )}
+                
+                <View
+                  style={[
+                    styles.messageContainer,
+                    message.sender === 'admin' ? styles.adminMessage : styles.userMessage
+                  ]}
+                >
+                  <View style={styles.messageHeader}>
+                    <Text style={styles.senderName}>{message.senderName}</Text>
+                    <Text style={styles.timestamp}>{formatTime(message.timestamp)}</Text>
+                  </View>
+                  <Text style={styles.messageText}>{message.text}</Text>
                 </View>
-              )}
-              
-              <View
-                style={[
-                  styles.messageContainer,
-                  message.sender === 'admin' ? styles.adminMessage : styles.userMessage
-                ]}
-              >
-                <View style={styles.messageHeader}>
-                  <Text style={styles.senderName}>{message.senderName}</Text>
-                  <Text style={styles.timestamp}>{formatTime(message.timestamp)}</Text>
-                </View>
-                <Text style={styles.messageText}>{message.text}</Text>
               </View>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
       </ScrollView>
 
       <View style={styles.inputContainer}>
@@ -222,15 +271,21 @@ export default function AdminChatScreen() {
           style={styles.textInput}
           value={newMessage}
           onChangeText={setNewMessage}
+          onSubmitEditing={sendMessage}
+          onKeyPress={handleKeyPress}
           placeholder="Type your response..."
+          placeholderTextColor={colors.textMuted}
           multiline
           maxLength={500}
+          editable={!sending}
+          returnKeyType="send"
+          blurOnSubmit={false}
         />
         <Button
           text="Send"
           onPress={sendMessage}
           loading={sending}
-          disabled={!newMessage.trim() || sending}
+          disabled={!newMessage.trim() || sending || !!error}
           style={styles.sendButton}
         />
       </View>
@@ -238,6 +293,9 @@ export default function AdminChatScreen() {
       <View style={styles.footer}>
         <Text style={styles.footerText}>
           Responding as Admin to {userName}
+        </Text>
+        <Text style={styles.footerSubtext}>
+          Messages are delivered in real-time via Firebase
         </Text>
       </View>
     </KeyboardAvoidingView>
@@ -283,6 +341,50 @@ const styles = StyleSheet.create({
   },
   messagesContent: {
     paddingBottom: spacing.lg,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.textMuted,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  retryButton: {
+    paddingHorizontal: spacing.lg,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   dateHeader: {
     alignItems: 'center',
@@ -364,5 +466,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  footerSubtext: {
+    fontSize: 10,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 2,
   },
 });

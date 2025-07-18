@@ -59,14 +59,21 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
           unsubscribe();
         }
       };
+    } else if (!visible) {
+      // Reset state when modal is closed
+      setMessages([]);
+      setError('');
+      setLoading(true);
     }
   }, [visible, userData?.uid]);
 
   useEffect(() => {
     // Scroll to bottom when new messages are added
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    if (messages.length > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
   }, [messages]);
 
   const loadChatMessages = async () => {
@@ -162,6 +169,13 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
     }
   };
 
+  const handleKeyPress = (event: any) => {
+    if (event.nativeEvent.key === 'Enter' && !event.nativeEvent.shiftKey) {
+      event.preventDefault();
+      sendMessage();
+    }
+  };
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
@@ -233,11 +247,15 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
             style={styles.textInput}
             value={newMessage}
             onChangeText={setNewMessage}
+            onSubmitEditing={sendMessage}
+            onKeyPress={handleKeyPress}
             placeholder="Type your message..."
             placeholderTextColor={colors.textMuted}
             multiline
             maxLength={500}
             editable={!sending}
+            returnKeyType="send"
+            blurOnSubmit={false}
           />
           <Button
             text="Send"
