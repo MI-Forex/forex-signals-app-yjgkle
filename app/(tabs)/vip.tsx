@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import Button from '../../components/Button';
 import ChatModal from '../../components/ChatModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase/config';
+
+interface VIPSettings {
+  monthlyPrice: number;
+  features: string[];
+}
 
 const styles = StyleSheet.create({
   header: {
@@ -79,11 +86,47 @@ const styles = StyleSheet.create({
   upgradeButton: {
     marginTop: spacing.md,
   },
+  loadingText: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    fontSize: 16,
+  },
 });
 
 export default function VIPScreen() {
   const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [vipSettings, setVipSettings] = useState<VIPSettings>({
+    monthlyPrice: 99,
+    features: [
+      'Exclusive high-accuracy signals',
+      'Priority customer support',
+      'Advanced market analysis',
+      'Real-time notifications',
+      'Weekly market reports',
+      '1-on-1 trading consultation',
+      'Direct chat with admin'
+    ]
+  });
+  const [loading, setLoading] = useState(true);
   const { userData } = useAuth();
+
+  useEffect(() => {
+    loadVIPSettings();
+  }, []);
+
+  const loadVIPSettings = async () => {
+    try {
+      const settingsDoc = await getDoc(doc(db, 'settings', 'vip'));
+      if (settingsDoc.exists()) {
+        const settings = settingsDoc.data() as VIPSettings;
+        setVipSettings(settings);
+      }
+    } catch (error) {
+      console.error('Error loading VIP settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUpgradeToVIP = () => {
     setChatModalVisible(true);
@@ -92,6 +135,19 @@ export default function VIPScreen() {
   const handleManageVIPSettings = () => {
     router.push('/admin/vip');
   };
+
+  if (loading) {
+    return (
+      <View style={commonStyles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>VIP Membership</Text>
+        </View>
+        <View style={[commonStyles.centerContent, { flex: 1 }]}>
+          <Text style={styles.loadingText}>Loading VIP information...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={commonStyles.container}>
@@ -108,29 +164,13 @@ export default function VIPScreen() {
         <View style={styles.vipCard}>
           <Text style={styles.vipTitle}>🌟 VIP Premium Signals</Text>
           
-          <View style={styles.feature}>
-            <Text style={styles.featureText}>✓ Exclusive high-accuracy signals</Text>
-          </View>
-          <View style={styles.feature}>
-            <Text style={styles.featureText}>✓ Priority customer support</Text>
-          </View>
-          <View style={styles.feature}>
-            <Text style={styles.featureText}>✓ Advanced market analysis</Text>
-          </View>
-          <View style={styles.feature}>
-            <Text style={styles.featureText}>✓ Real-time notifications</Text>
-          </View>
-          <View style={styles.feature}>
-            <Text style={styles.featureText}>✓ Weekly market reports</Text>
-          </View>
-          <View style={styles.feature}>
-            <Text style={styles.featureText}>✓ 1-on-1 trading consultation</Text>
-          </View>
-          <View style={styles.feature}>
-            <Text style={styles.featureText}>✓ Direct chat with admin</Text>
-          </View>
+          {vipSettings.features.map((feature, index) => (
+            <View key={index} style={styles.feature}>
+              <Text style={styles.featureText}>✓ {feature}</Text>
+            </View>
+          ))}
 
-          <Text style={styles.price}>$99/month</Text>
+          <Text style={styles.price}>${vipSettings.monthlyPrice}/month</Text>
 
           <Button
             text="Upgrade to VIP"
@@ -140,7 +180,7 @@ export default function VIPScreen() {
           />
         </View>
 
-        {userData?.role === 'admin' && (
+        {userData?.isAdmin && (
           <View style={[styles.vipCard, styles.adminCard]}>
             <Text style={[styles.vipTitle, styles.adminTitle]}>👑 Admin Panel</Text>
             <Text style={styles.description}>

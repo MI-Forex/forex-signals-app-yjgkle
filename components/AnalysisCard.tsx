@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Modal, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Modal, Dimensions, ScrollView } from 'react-native';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
+import ImageViewer from 'react-native-image-zoom-viewer';
 
 interface Analysis {
   id: string;
@@ -78,33 +79,21 @@ const styles = StyleSheet.create({
   imageModal: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  zoomedImageContainer: {
-    width: screenWidth,
-    height: screenHeight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  zoomedImage: {
-    width: screenWidth - 40,
-    height: screenHeight - 200,
-    resizeMode: 'contain',
-  },
-  closeZoomButton: {
+  closeButton: {
     position: 'absolute',
-    top: 60,
+    top: 50,
     right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    zIndex: 1000,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 20,
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  closeZoomText: {
-    color: colors.white,
+  closeButtonText: {
+    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: 'bold',
   },
@@ -134,6 +123,8 @@ export default function AnalysisCard({ analysis }: AnalysisCardProps) {
 
   const shouldShowReadMore = analysis.content.length > 150;
   const displayContent = expanded ? analysis.content : analysis.content.substring(0, 150) + (shouldShowReadMore ? '...' : '');
+
+  const images = analysis.imageUrl ? [{ url: analysis.imageUrl }] : [];
 
   return (
     <>
@@ -174,17 +165,25 @@ export default function AnalysisCard({ analysis }: AnalysisCardProps) {
         onRequestClose={closeImageZoom}
       >
         <View style={styles.imageModal}>
-          <TouchableOpacity style={styles.closeZoomButton} onPress={closeImageZoom}>
-            <Text style={styles.closeZoomText}>×</Text>
+          <TouchableOpacity style={styles.closeButton} onPress={closeImageZoom}>
+            <Text style={styles.closeButtonText}>×</Text>
           </TouchableOpacity>
-          <View style={styles.zoomedImageContainer}>
-            {analysis.imageUrl && (
-              <Image 
-                source={{ uri: analysis.imageUrl }} 
-                style={styles.zoomedImage}
-              />
-            )}
-          </View>
+          
+          {images.length > 0 && (
+            <ImageViewer
+              imageUrls={images}
+              enableSwipeDown
+              onSwipeDown={closeImageZoom}
+              renderIndicator={() => null}
+              backgroundColor="rgba(0, 0, 0, 0.9)"
+              enableImageZoom
+              saveToLocalByLongPress={false}
+              menuContext={{
+                saveToLocal: '',
+                cancel: ''
+              }}
+            />
+          )}
         </View>
       </Modal>
     </>

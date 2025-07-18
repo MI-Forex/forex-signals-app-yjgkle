@@ -110,8 +110,10 @@ export default function EditSignalScreen() {
         notes: formData.notes.trim(),
         status: formData.status,
         updatedAt: new Date(),
-        updatedBy: userData?.uid
+        updatedBy: userData?.uid || 'unknown' // Ensure updatedBy is never undefined
       };
+
+      console.log('Updating signal with data:', signalData);
 
       if (typeof id === 'string') {
         await updateDoc(doc(db, 'signals', id), signalData);

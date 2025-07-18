@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, StyleSheet } from 'react-native';
 import { useAuth } from '../../../contexts/AuthContext';
 import { router } from 'expo-router';
-import { doc, getDoc, setDoc, collection, query, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, getDocs, updateDoc, where, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 import Button from '../../../components/Button';
 import { commonStyles, colors, spacing, borderRadius } from '../../../styles/commonStyles';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Platform } from 'react-native';
 
 interface VIPSettings {
   monthlyPrice: number;
@@ -17,6 +19,18 @@ interface User {
   email: string;
   displayName?: string;
   isVIP?: boolean;
+  createdAt?: Date;
+}
+
+interface Signal {
+  id: string;
+  pair: string;
+  type: string;
+  entryPoint: number;
+  stopLoss: number;
+  takeProfit: number;
+  status: string;
+  createdAt: Date;
 }
 
 export default function AdminVIPScreen() {
@@ -35,6 +49,9 @@ export default function AdminVIPScreen() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [exportDate, setExportDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [exportType, setExportType] = useState<'users' | 'signals' | null>(null);
   const { userData } = useAuth();
 
   useEffect(() => {
@@ -59,7 +76,8 @@ export default function AdminVIPScreen() {
       const usersSnapshot = await getDocs(usersQuery);
       const usersData = usersSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date()
       })) as User[];
       setUsers(usersData);
     } catch (error) {
@@ -99,9 +117,87 @@ export default function AdminVIPScreen() {
     }
   };
 
-  const exportData = () => {
-    // This would typically generate and download CSV data
-    Alert.alert('Export Data', 'CSV export functionality would be implemented here with date filtering options.');
+  const exportUsersData = async () => {
+    try {
+      const startOfDay = new Date(exportDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(exportDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const usersQuery = query(
+        collection(db, 'users'),
+        where('createdAt', '>=', Timestamp.fromDate(startOfDay)),
+        where('createdAt', '<=', Timestamp.fromDate(endOfDay)),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const usersSnapshot = await getDocs(usersQuery);
+      const usersData = usersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
+      }));
+
+      // In a real implementation, this would generate and download a CSV file
+      console.log('Users data for export:', usersData);
+      Alert.alert('Export Users', `Found ${usersData.length} users for ${exportDate.toLocaleDateString()}. CSV export functionality would be implemented here.`);
+    } catch (error) {
+      console.error('Error exporting users data:', error);
+      Alert.alert('Error', 'Failed to export users data');
+    }
+  };
+
+  const exportSignalsData = async () => {
+    try {
+      const startOfDay = new Date(exportDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(exportDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const signalsQuery = query(
+        collection(db, 'signals'),
+        where('createdAt', '>=', Timestamp.fromDate(startOfDay)),
+        where('createdAt', '<=', Timestamp.fromDate(endOfDay)),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const signalsSnapshot = await getDocs(signalsQuery);
+      const signalsData = signalsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
+      }));
+
+      // In a real implementation, this would generate and download a CSV file
+      console.log('Signals data for export:', signalsData);
+      Alert.alert('Export Signals', `Found ${signalsData.length} signals for ${exportDate.toLocaleDateString()}. CSV export functionality would be implemented here.`);
+    } catch (error) {
+      console.error('Error exporting signals data:', error);
+      Alert.alert('Error', 'Failed to export signals data');
+    }
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setExportDate(selectedDate);
+    }
+  };
+
+  const handleExport = (type: 'users' | 'signals') => {
+    setExportType(type);
+    setShowDatePicker(true);
+  };
+
+  const confirmExport = () => {
+    if (exportType === 'users') {
+      exportUsersData();
+    } else if (exportType === 'signals') {
+      exportSignalsData();
+    }
+    setExportType(null);
   };
 
   if (!userData?.isAdmin) {
@@ -180,14 +276,48 @@ export default function AdminVIPScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data Export</Text>
-          <Button
-            text="Export Users & Signals Data (CSV)"
-            onPress={exportData}
-            variant="outline"
-            style={styles.exportButton}
-          />
+          <Text style={styles.exportDescription}>
+            Export data for a specific date. Select the type of data and date to export.
+          </Text>
+          
+          <View style={styles.exportContainer}>
+            <Button
+              text="Export Users Data (CSV)"
+              onPress={() => handleExport('users')}
+              variant="outline"
+              style={styles.exportButton}
+            />
+            <Button
+              text="Export Signals Data (CSV)"
+              onPress={() => handleExport('signals')}
+              variant="outline"
+              style={styles.exportButton}
+            />
+          </View>
+
+          {exportType && (
+            <View style={styles.dateSelectionContainer}>
+              <Text style={styles.dateLabel}>
+                Selected Date: {exportDate.toLocaleDateString()}
+              </Text>
+              <Button
+                text={`Confirm Export ${exportType === 'users' ? 'Users' : 'Signals'}`}
+                onPress={confirmExport}
+                style={styles.confirmButton}
+              />
+            </View>
+          )}
         </View>
       </ScrollView>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={exportDate}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
     </View>
   );
 }
@@ -206,6 +336,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.text,
+    flex: 1,
   },
   backButton: {
     paddingHorizontal: spacing.md,
@@ -283,7 +414,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
+  exportDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+    lineHeight: 20,
+  },
+  exportContainer: {
+    gap: spacing.sm,
+  },
   exportButton: {
+    marginBottom: spacing.sm,
+  },
+  dateSelectionContainer: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dateLabel: {
+    fontSize: 16,
+    color: colors.text,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  confirmButton: {
     marginTop: spacing.sm,
   },
 });

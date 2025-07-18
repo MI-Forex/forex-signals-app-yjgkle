@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, Alert, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import SignalCard from '../../components/SignalCard';
+import Button from '../../components/Button';
+import FilterModal from '../../components/FilterModal';
 import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import SignalCard from '../../components/SignalCard';
-import FilterModal from '../../components/FilterModal';
-import Button from '../../components/Button';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import { router } from 'expo-router';
 
@@ -37,19 +37,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.text,
   },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
   filterButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    minWidth: 80,
-  },
-  manageButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    minWidth: 80,
   },
 });
 
@@ -61,7 +51,6 @@ export default function SignalsScreen() {
   const [filters, setFilters] = useState({
     pair: '',
     type: '',
-    status: '',
     dateFrom: undefined as Date | undefined,
     dateTo: undefined as Date | undefined
   });
@@ -85,15 +74,17 @@ export default function SignalsScreen() {
     if (filters.pair) {
       constraints.push(where('pair', '==', filters.pair));
     }
+    
     if (filters.type) {
       constraints.push(where('type', '==', filters.type));
     }
-    if (filters.status) {
-      constraints.push(where('status', '==', filters.status));
-    }
+
     if (filters.dateFrom) {
-      constraints.push(where('createdAt', '>=', Timestamp.fromDate(filters.dateFrom)));
+      const startOfDay = new Date(filters.dateFrom);
+      startOfDay.setHours(0, 0, 0, 0);
+      constraints.push(where('createdAt', '>=', Timestamp.fromDate(startOfDay)));
     }
+
     if (filters.dateTo) {
       const endOfDay = new Date(filters.dateTo);
       endOfDay.setHours(23, 59, 59, 999);
@@ -116,7 +107,7 @@ export default function SignalsScreen() {
         createdAt: doc.data().createdAt?.toDate() || new Date()
       })) as Signal[];
       
-      console.log('Received signals:', signalsData.length);
+      console.log('Signals updated:', signalsData.length);
       setSignals(signalsData);
       setLoading(false);
       setRefreshing(false);
@@ -124,7 +115,7 @@ export default function SignalsScreen() {
       console.error('Error fetching signals:', error);
       setLoading(false);
       setRefreshing(false);
-      Alert.alert('Error', 'Failed to load signals. Please try again.');
+      Alert.alert('Error', 'Failed to load signals');
     });
 
     return unsubscribe;
@@ -156,19 +147,19 @@ export default function SignalsScreen() {
     <View style={commonStyles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Forex Signals</Text>
-        <View style={styles.headerButtons}>
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
           <Button
             text="Filter"
             onPress={() => setFilterModalVisible(true)}
             variant="outline"
             style={styles.filterButton}
           />
-          {userData?.role === 'admin' && (
+          {userData?.isAdmin && (
             <Button
               text="Manage"
               onPress={handleManageSignals}
               variant="primary"
-              style={styles.manageButton}
+              style={styles.filterButton}
             />
           )}
         </View>
@@ -179,11 +170,10 @@ export default function SignalsScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
-        contentContainerStyle={{ paddingBottom: spacing.lg }}
       >
         {signals.length === 0 ? (
           <View style={[commonStyles.centerContent, { minHeight: 200 }]}>
-            <Text style={commonStyles.textMuted}>No signals available</Text>
+            <Text style={commonStyles.textMuted}>No signals found</Text>
           </View>
         ) : (
           signals.map((signal) => (

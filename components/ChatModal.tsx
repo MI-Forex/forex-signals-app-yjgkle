@@ -8,17 +8,19 @@ import {
   ScrollView, 
   StyleSheet, 
   KeyboardAvoidingView, 
-  Platform 
+  Platform,
+  Alert 
 } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
 import Button from './Button';
-import { useAuth } from '../contexts/AuthContext';
 
 interface Message {
   id: string;
   text: string;
   sender: 'user' | 'admin';
   timestamp: Date;
+  senderName?: string;
 }
 
 interface ChatModalProps {
@@ -30,12 +32,21 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Hello! I&apos;m here to help you with your VIP upgrade. How can I assist you today?',
+      text: 'Hello! I\'m interested in upgrading to VIP membership. Can you help me with the process?',
+      sender: 'user',
+      timestamp: new Date(),
+      senderName: 'You'
+    },
+    {
+      id: '2',
+      text: 'Hello! I\'d be happy to help you with VIP membership. Our VIP package includes exclusive high-accuracy signals, priority support, and direct access to our trading experts. Would you like to know more about the features?',
       sender: 'admin',
       timestamp: new Date(),
+      senderName: 'Admin'
     }
   ]);
-  const [inputText, setInputText] = useState('');
+  const [newMessage, setNewMessage] = useState('');
+  const [sending, setSending] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const { userData } = useAuth();
 
@@ -48,33 +59,48 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
     }
   }, [visible]);
 
-  const sendMessage = () => {
-    if (inputText.trim()) {
-      const newMessage: Message = {
+  useEffect(() => {
+    // Scroll to bottom when new messages are added
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  }, [messages]);
+
+  const sendMessage = async () => {
+    if (!newMessage.trim()) return;
+
+    setSending(true);
+    try {
+      const message: Message = {
         id: Date.now().toString(),
-        text: inputText.trim(),
-        sender: 'user',
+        text: newMessage.trim(),
+        sender: userData?.isAdmin ? 'admin' : 'user',
         timestamp: new Date(),
+        senderName: userData?.isAdmin ? 'Admin' : userData?.displayName || 'You'
       };
 
-      setMessages(prev => [...prev, newMessage]);
-      setInputText('');
+      setMessages(prev => [...prev, message]);
+      setNewMessage('');
 
-      // Simulate admin response
-      setTimeout(() => {
-        const adminResponse: Message = {
-          id: (Date.now() + 1).toString(),
-          text: 'Thank you for your message! I&apos;ll get back to you shortly with the VIP upgrade details.',
-          sender: 'admin',
-          timestamp: new Date(),
-        };
-        setMessages(prev => [...prev, adminResponse]);
-      }, 1000);
+      // In a real implementation with Supabase, you would send the message to the database here
+      console.log('Message sent:', message);
 
-      // Scroll to bottom after sending
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      // Simulate admin response for demo purposes
+      if (!userData?.isAdmin) {
+        setTimeout(() => {
+          const adminResponse: Message = {
+            id: (Date.now() + 1).toString(),
+            text: 'Thank you for your message! I\'ll get back to you shortly with more information about our VIP membership.',
+            sender: 'admin',
+            timestamp: new Date(),
+            senderName: 'Admin'
+          };
+          setMessages(prev => [...prev, adminResponse]);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -86,6 +112,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
     <Modal
       visible={visible}
       animationType="slide"
+      presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView 
@@ -93,7 +120,9 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Chat with Admin</Text>
+          <Text style={styles.headerTitle}>
+            {userData?.isAdmin ? 'User Support Chat' : 'Chat with Admin'}
+          </Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Text style={styles.closeButtonText}>✕</Text>
           </TouchableOpacity>
@@ -105,25 +134,18 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
           contentContainerStyle={styles.messagesContent}
         >
           {messages.map((message) => (
-            <View 
-              key={message.id} 
+            <View
+              key={message.id}
               style={[
                 styles.messageContainer,
                 message.sender === 'user' ? styles.userMessage : styles.adminMessage
               ]}
             >
-              <Text style={[
-                styles.messageText,
-                message.sender === 'user' ? styles.userMessageText : styles.adminMessageText
-              ]}>
-                {message.text}
-              </Text>
-              <Text style={[
-                styles.messageTime,
-                message.sender === 'user' ? styles.userMessageTime : styles.adminMessageTime
-              ]}>
-                {formatTime(message.timestamp)}
-              </Text>
+              <View style={styles.messageHeader}>
+                <Text style={styles.senderName}>{message.senderName}</Text>
+                <Text style={styles.timestamp}>{formatTime(message.timestamp)}</Text>
+              </View>
+              <Text style={styles.messageText}>{message.text}</Text>
             </View>
           ))}
         </ScrollView>
@@ -131,20 +153,28 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.textInput}
-            value={inputText}
-            onChangeText={setInputText}
+            value={newMessage}
+            onChangeText={setNewMessage}
             placeholder="Type your message..."
-            placeholderTextColor={colors.textMuted}
             multiline
             maxLength={500}
           />
-          <TouchableOpacity 
-            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+          <Button
+            text="Send"
             onPress={sendMessage}
-            disabled={!inputText.trim()}
-          >
-            <Text style={styles.sendButtonText}>Send</Text>
-          </TouchableOpacity>
+            loading={sending}
+            disabled={!newMessage.trim() || sending}
+            style={styles.sendButton}
+          />
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            {userData?.isAdmin 
+              ? 'Responding as Admin' 
+              : 'Chat with our admin for VIP membership assistance'
+            }
+          </Text>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -164,30 +194,32 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingTop: spacing.xl,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: colors.text,
   },
   closeButton: {
-    padding: spacing.sm,
+    padding: spacing.xs,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.background,
   },
   closeButtonText: {
-    fontSize: 20,
+    fontSize: 18,
     color: colors.textMuted,
+    fontWeight: 'bold',
   },
   messagesContainer: {
     flex: 1,
     padding: spacing.md,
   },
   messagesContent: {
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.lg,
   },
   messageContainer: {
-    maxWidth: '80%',
     marginBottom: spacing.md,
+    maxWidth: '80%',
     padding: spacing.md,
     borderRadius: borderRadius.lg,
   },
@@ -201,25 +233,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  messageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  senderName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  timestamp: {
+    fontSize: 10,
+    color: colors.textMuted,
+  },
   messageText: {
     fontSize: 16,
-    lineHeight: 22,
-  },
-  userMessageText: {
-    color: colors.white,
-  },
-  adminMessageText: {
     color: colors.text,
-  },
-  messageTime: {
-    fontSize: 12,
-    marginTop: spacing.xs,
-  },
-  userMessageTime: {
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  adminMessageTime: {
-    color: colors.textMuted,
+    lineHeight: 22,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -227,32 +259,31 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    alignItems: 'flex-end',
+    gap: spacing.sm,
   },
   textInput: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
     fontSize: 16,
     color: colors.text,
-    maxHeight: 100,
     borderWidth: 1,
     borderColor: colors.border,
+    maxHeight: 100,
   },
   sendButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    marginLeft: spacing.sm,
   },
-  sendButtonDisabled: {
-    backgroundColor: colors.textMuted,
+  footer: {
+    padding: spacing.sm,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
   },
-  sendButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '600',
+  footerText: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: 'center',
   },
 });

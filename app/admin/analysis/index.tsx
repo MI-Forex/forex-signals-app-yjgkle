@@ -23,22 +23,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: spacing.md,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  titleContainer: {
+    marginBottom: spacing.md,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
+    textAlign: 'center',
   },
   headerButtons: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     gap: spacing.sm,
+  },
+  headerButton: {
+    flex: 1,
+    paddingVertical: spacing.sm,
   },
 });
 
@@ -95,7 +101,7 @@ export default function AdminAnalysisScreen() {
   };
 
   const handleEditAnalysis = (analysisId: string) => {
-    router.push(`/admin/analysis/edit?id=${analysisId}`);
+    router.push(`/admin/analysis/edit/${analysisId}`);
   };
 
   const handleDeleteAnalysis = (analysisId: string) => {
@@ -132,19 +138,21 @@ export default function AdminAnalysisScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Manage Analysis</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>Manage Analysis</Text>
+        </View>
         <View style={styles.headerButtons}>
           <Button
             text="Back"
             onPress={handleBack}
             variant="outline"
-            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+            style={styles.headerButton}
           />
           <Button
             text="Add Analysis"
             onPress={handleAddAnalysis}
             variant="primary"
-            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+            style={styles.headerButton}
           />
         </View>
       </View>

@@ -8,8 +8,8 @@ import { commonStyles, colors, spacing, borderRadius } from '../styles/commonSty
 interface FilterModalProps {
   visible: boolean;
   onClose: () => void;
-  onApply: (filters: { pair: string; type: string; status: string; dateFrom?: Date; dateTo?: Date }) => void;
-  currentFilters: { pair: string; type: string; status: string; dateFrom?: Date; dateTo?: Date };
+  onApply: (filters: { pair: string; type: string; dateFrom?: Date; dateTo?: Date }) => void;
+  currentFilters: { pair: string; type: string; dateFrom?: Date; dateTo?: Date };
 }
 
 const CURRENCY_PAIRS = [
@@ -18,7 +18,6 @@ const CURRENCY_PAIRS = [
 ];
 
 const SIGNAL_TYPES = ['', 'BUY', 'SELL'];
-const SIGNAL_STATUSES = ['', 'active', 'closed', 'hit_tp', 'hit_sl'];
 
 export default function FilterModal({ visible, onClose, onApply, currentFilters }: FilterModalProps) {
   const [filters, setFilters] = useState(currentFilters);
@@ -27,12 +26,12 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
 
   const handleApply = () => {
     onApply(filters);
+    onClose();
   };
 
   const handleReset = () => {
-    const resetFilters = { pair: '', type: '', status: '', dateFrom: undefined, dateTo: undefined };
+    const resetFilters = { pair: '', type: '', dateFrom: undefined, dateTo: undefined };
     setFilters(resetFilters);
-    onApply(resetFilters);
   };
 
   const formatDate = (date?: Date) => {
@@ -113,27 +112,6 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
           </View>
 
           <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>Status</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={filters.status}
-                onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
-                style={styles.picker}
-                dropdownIconColor={colors.text}
-              >
-                {SIGNAL_STATUSES.map(status => (
-                  <Picker.Item 
-                    key={status} 
-                    label={status || 'All Statuses'} 
-                    value={status}
-                    color={colors.text}
-                  />
-                ))}
-              </Picker>
-            </View>
-          </View>
-
-          <View style={styles.filterSection}>
             <Text style={styles.filterLabel}>Date Range</Text>
             <View style={styles.dateContainer}>
               <TouchableOpacity 
@@ -192,7 +170,7 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.md,
@@ -204,12 +182,23 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     maxHeight: '80%',
+    shadowColor: colors.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   modalTitle: {
     fontSize: 20,
@@ -218,10 +207,13 @@ const styles = StyleSheet.create({
   },
   closeButtonContainer: {
     padding: spacing.xs,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.background,
   },
   closeButton: {
-    fontSize: 24,
+    fontSize: 20,
     color: colors.textMuted,
+    fontWeight: 'bold',
   },
   filterSection: {
     marginBottom: spacing.lg,
@@ -264,9 +256,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   resetButton: {
     flex: 1,
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.border,
   },
   applyButton: {
     flex: 1,
