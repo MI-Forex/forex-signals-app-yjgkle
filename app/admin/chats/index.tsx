@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, RefreshControl } from 'react-native';
 import { useAuth } from '../../../contexts/AuthContext';
 import { router } from 'expo-router';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where, getDocs, limit } from 'firebase/firestore';
+import { markMessagesAsRead } from '../../../utils/chatUtils';
 import { db } from '../../../firebase/config';
 import Button from '../../../components/Button';
 import { commonStyles, colors, spacing, borderRadius } from '../../../styles/commonStyles';
@@ -36,49 +37,81 @@ export default function AdminChatsScreen() {
 
   useEffect(() => {
     if (userData?.isAdmin) {
-      loadChatUsers();
+      const unsubscribe = loadChatUsers();
+      return () => {
+        if (typeof unsubscribe === 'function') {
+          unsubscribe();
+        }
+      };
     }
   }, [userData]);
 
   const loadChatUsers = async () => {
     try {
-      // In a real implementation with Supabase, this would load actual chat data
-      // For now, we'll simulate chat users
-      const simulatedChatUsers: ChatUser[] = [
-        {
-          id: 'user1',
-          email: 'john.doe@example.com',
-          displayName: 'John Doe',
-          lastMessage: 'Hi, I\'m interested in VIP membership. Can you help me?',
-          lastMessageTime: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-          unreadCount: 2,
-          isVIP: false
-        },
-        {
-          id: 'user2',
-          email: 'jane.smith@example.com',
-          displayName: 'Jane Smith',
-          lastMessage: 'Thank you for the VIP upgrade! The signals are amazing.',
-          lastMessageTime: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-          unreadCount: 0,
-          isVIP: true
-        },
-        {
-          id: 'user3',
-          email: 'mike.wilson@example.com',
-          displayName: 'Mike Wilson',
-          lastMessage: 'When will the next market analysis be available?',
-          lastMessageTime: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-          unreadCount: 1,
-          isVIP: true
-        }
-      ];
+      console.log('Loading chat users...');
+      
+      // Get all chat conversations
+      const chatsQuery = query(
+        collection(db, 'chats'),
+        orderBy('lastMessageTime', 'desc')
+      );
 
-      setChatUsers(simulatedChatUsers);
+      const unsubscribe = onSnapshot(chatsQuery, async (snapshot) => {
+        const chatUserMap = new Map<string, ChatUser>();
+
+        for (const chatDoc of snapshot.docs) {
+          const chatData = chatDoc.data();
+          const userId = chatData.userId;
+          
+          if (!userId || userId === userData?.uid) continue;
+
+          // Get user data
+          const userQuery = query(
+            collection(db, 'users'),
+            where('uid', '==', userId),
+            limit(1)
+          );
+          
+          const userSnapshot = await getDocs(userQuery);
+          if (userSnapshot.empty) continue;
+
+          const userData = userSnapshot.docs[0].data();
+          
+          // Get unread count for this user (messages from user that admin hasn't read)
+          const unreadQuery = query(
+            collection(db, 'messages'),
+            where('chatId', '==', chatDoc.id),
+            where('sender', '==', 'user'),
+            where('read', '==', false)
+          );
+          
+          const unreadSnapshot = await getDocs(unreadQuery);
+          const unreadCount = unreadSnapshot.size;
+
+          const chatUser: ChatUser = {
+            id: userId,
+            email: userData.email || '',
+            displayName: userData.displayName || 'Unknown User',
+            lastMessage: chatData.lastMessage || 'No messages yet',
+            lastMessageTime: chatData.lastMessageTime?.toDate() || new Date(),
+            unreadCount,
+            isVIP: userData.isVIP || false
+          };
+
+          chatUserMap.set(userId, chatUser);
+        }
+
+        const chatUsersArray = Array.from(chatUserMap.values());
+        console.log('Loaded chat users:', chatUsersArray.length);
+        setChatUsers(chatUsersArray);
+        setLoading(false);
+        setRefreshing(false);
+      });
+
+      return unsubscribe;
     } catch (error) {
       console.error('Error loading chat users:', error);
       Alert.alert('Error', 'Failed to load chat users');
-    } finally {
       setLoading(false);
       setRefreshing(false);
     }
@@ -89,19 +122,33 @@ export default function AdminChatsScreen() {
     loadChatUsers();
   };
 
-  const openChat = (userId: string, userName: string) => {
-    // Mark messages as read
-    setChatUsers(prev => 
-      prev.map(user => 
-        user.id === userId ? { ...user, unreadCount: 0 } : user
-      )
-    );
+  const openChat = async (userId: string, userName: string) => {
+    try {
+      // Mark messages as read in Firebase
+      const chatId = `${userId}_admin`;
+      await markMessagesAsRead(chatId, 'user');
+      console.log('Marked messages as read for user:', userId);
 
-    // Navigate to individual chat screen
-    router.push({
-      pathname: '/admin/chats/[userId]',
-      params: { userId, userName }
-    });
+      // Update local state
+      setChatUsers(prev => 
+        prev.map(user => 
+          user.id === userId ? { ...user, unreadCount: 0 } : user
+        )
+      );
+
+      // Navigate to individual chat screen
+      router.push({
+        pathname: '/admin/chats/[userId]',
+        params: { userId, userName }
+      });
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      // Still navigate even if marking as read fails
+      router.push({
+        pathname: '/admin/chats/[userId]',
+        params: { userId, userName }
+      });
+    }
   };
 
   const getTotalUnreadCount = () => {
@@ -236,9 +283,12 @@ export default function AdminChatsScreen() {
         )}
 
         <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>Chat Management</Text>
+          <Text style={styles.infoTitle}>Firebase Chat Management</Text>
           <Text style={styles.infoText}>
             • Users can initiate chats from the VIP section
+          </Text>
+          <Text style={styles.infoText}>
+            • Real-time message synchronization via Firebase
           </Text>
           <Text style={styles.infoText}>
             • Unread messages are highlighted with badges
@@ -249,16 +299,21 @@ export default function AdminChatsScreen() {
           <Text style={styles.infoText}>
             • Tap on any conversation to open the chat
           </Text>
+          <Text style={styles.infoText}>
+            • Automatic read status tracking
+          </Text>
           
-          <View style={styles.supabaseNote}>
-            <Text style={styles.supabaseNoteTitle}>📝 Implementation Note</Text>
-            <Text style={styles.supabaseNoteText}>
-              For full real-time chat functionality, please enable Supabase by pressing the Supabase button and connecting to your project. This will enable:
+          <View style={styles.firebaseNote}>
+            <Text style={styles.firebaseNoteTitle}>🔥 Firebase Implementation</Text>
+            <Text style={styles.firebaseNoteText}>
+              Complete Firebase Firestore chat system with:
             </Text>
-            <Text style={styles.supabaseNoteText}>• Real-time message synchronization</Text>
-            <Text style={styles.supabaseNoteText}>• Persistent chat history</Text>
-            <Text style={styles.supabaseNoteText}>• Push notifications for new messages</Text>
-            <Text style={styles.supabaseNoteText}>• Advanced chat features</Text>
+            <Text style={styles.firebaseNoteText}>• Real-time message synchronization</Text>
+            <Text style={styles.firebaseNoteText}>• Persistent chat history storage</Text>
+            <Text style={styles.firebaseNoteText}>• Automatic read status tracking</Text>
+            <Text style={styles.firebaseNoteText}>• Multi-user chat support</Text>
+            <Text style={styles.firebaseNoteText}>• Admin notification system</Text>
+            <Text style={styles.firebaseNoteText}>• Scalable chat architecture</Text>
           </View>
         </View>
       </ScrollView>
@@ -447,7 +502,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     lineHeight: 18,
   },
-  supabaseNote: {
+  firebaseNote: {
     backgroundColor: colors.background,
     borderRadius: borderRadius.md,
     padding: spacing.md,
@@ -455,13 +510,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  supabaseNoteTitle: {
+  firebaseNoteTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.sm,
   },
-  supabaseNoteText: {
+  firebaseNoteText: {
     fontSize: 12,
     color: colors.textSecondary,
     lineHeight: 16,

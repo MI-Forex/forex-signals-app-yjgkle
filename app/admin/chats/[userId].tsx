@@ -13,6 +13,15 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { router, useLocalSearchParams } from 'expo-router';
 import Button from '../../../components/Button';
 import { commonStyles, colors, spacing, borderRadius } from '../../../styles/commonStyles';
+import { 
+  collection, 
+  query, 
+  orderBy, 
+  onSnapshot, 
+  where
+} from 'firebase/firestore';
+import { db } from '../../../firebase/config';
+import { ensureChatExists, sendChatMessage, createChatId } from '../../../utils/chatUtils';
 
 interface Message {
   id: string;
@@ -20,6 +29,9 @@ interface Message {
   sender: 'user' | 'admin';
   senderName: string;
   timestamp: Date;
+  chatId: string;
+  userId: string;
+  read: boolean;
 }
 
 export default function AdminChatScreen() {
@@ -27,82 +39,96 @@ export default function AdminChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [chatId, setChatId] = useState<string>('');
   const scrollViewRef = useRef<ScrollView>(null);
   const { userData } = useAuth();
 
   useEffect(() => {
-    loadChatMessages();
-  }, [userId]);
+    if (userId && userData?.uid) {
+      const unsubscribe = loadChatMessages();
+      return () => {
+        if (typeof unsubscribe === 'function') {
+          unsubscribe();
+        }
+      };
+    }
+  }, [userId, userData?.uid]);
 
   useEffect(() => {
     // Scroll to bottom when new messages are added
-    scrollViewRef.current?.scrollToEnd({ animated: true });
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   }, [messages]);
 
-  const loadChatMessages = () => {
-    // Simulate loading chat messages
-    const simulatedMessages: Message[] = [
-      {
-        id: '1',
-        text: 'Hi, I\'m interested in VIP membership. Can you help me?',
-        sender: 'user',
-        senderName: userName as string || 'User',
-        timestamp: new Date(Date.now() - 60 * 60 * 1000) // 1 hour ago
-      },
-      {
-        id: '2',
-        text: 'Hello! I\'d be happy to help you with VIP membership. Our VIP package includes exclusive high-accuracy signals, priority support, and direct access to our trading experts.',
-        sender: 'admin',
-        senderName: 'Admin',
-        timestamp: new Date(Date.now() - 55 * 60 * 1000) // 55 minutes ago
-      },
-      {
-        id: '3',
-        text: 'That sounds great! What\'s the monthly cost and how do I sign up?',
-        sender: 'user',
-        senderName: userName as string || 'User',
-        timestamp: new Date(Date.now() - 50 * 60 * 1000) // 50 minutes ago
-      },
-      {
-        id: '4',
-        text: 'The VIP membership is $99/month. I can upgrade your account right now if you\'d like. You\'ll get immediate access to all VIP features.',
-        sender: 'admin',
-        senderName: 'Admin',
-        timestamp: new Date(Date.now() - 45 * 60 * 1000) // 45 minutes ago
-      },
-      {
-        id: '5',
-        text: 'Perfect! Please upgrade my account. I\'m excited to get started with the VIP signals.',
-        sender: 'user',
-        senderName: userName as string || 'User',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000) // 30 minutes ago
-      }
-    ];
+  const loadChatMessages = async () => {
+    try {
+      console.log('Loading chat messages for user:', userId);
+      
+      if (!userId || !userData?.uid) return;
 
-    setMessages(simulatedMessages);
+      // Create chat ID and ensure chat exists
+      const currentChatId = createChatId(userId as string);
+      setChatId(currentChatId);
+      
+      await ensureChatExists(userId as string);
+
+      // Listen for messages in real-time
+      const messagesQuery = query(
+        collection(db, 'messages'),
+        where('chatId', '==', currentChatId),
+        orderBy('timestamp', 'asc')
+      );
+
+      const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+        const loadedMessages: Message[] = [];
+        
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          loadedMessages.push({
+            id: doc.id,
+            text: data.text,
+            sender: data.sender,
+            senderName: data.senderName,
+            timestamp: data.timestamp?.toDate() || new Date(),
+            chatId: data.chatId,
+            userId: data.userId,
+            read: data.read || false
+          });
+        });
+
+        console.log('Loaded messages:', loadedMessages.length);
+        setMessages(loadedMessages);
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error loading chat messages:', error);
+      Alert.alert('Error', 'Failed to load chat messages');
+    }
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !chatId || !userData?.uid || !userId) return;
 
     setSending(true);
+    const messageText = newMessage.trim();
+    setNewMessage(''); // Clear input immediately for better UX
+
     try {
-      const message: Message = {
-        id: Date.now().toString(),
-        text: newMessage.trim(),
-        sender: 'admin',
-        senderName: 'Admin',
-        timestamp: new Date()
-      };
+      await sendChatMessage(
+        chatId,
+        userId as string,
+        messageText,
+        'admin',
+        userData.displayName || 'Admin'
+      );
 
-      setMessages(prev => [...prev, message]);
-      setNewMessage('');
-
-      // In a real implementation with Supabase, you would send the message to the database here
-      console.log('Admin message sent:', message);
+      console.log('Admin message sent successfully');
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
+      setNewMessage(messageText); // Restore message on error
     } finally {
       setSending(false);
     }
