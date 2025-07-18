@@ -56,6 +56,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
+    minHeight: 48,
   },
   phoneContainer: {
     flexDirection: 'row',
@@ -70,6 +71,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     minWidth: 80,
     alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   phoneInput: {
     flex: 1,
@@ -80,6 +83,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
+    minHeight: 48,
   },
   buttonContainer: {
     marginTop: spacing.lg,
@@ -201,7 +205,7 @@ export default function RegisterScreen() {
       >
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/images/f9d6c6d4-79e6-487b-9dff-8e0d8a79f68b.png')}
+            source={require('../../assets/images/4f116fb2-e2f4-417d-b859-3fa3b6715fe5.png')}
             style={styles.logo}
             resizeMode="contain"
           />

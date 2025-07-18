@@ -1,8 +1,10 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert, Linking } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import Button from '../../components/Button';
+import ChatModal from '../../components/ChatModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { router } from 'expo-router';
 
 const styles = StyleSheet.create({
   header: {
@@ -26,6 +28,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     borderWidth: 2,
     borderColor: colors.primary,
+    shadowColor: colors.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 8,
   },
   vipTitle: {
     fontSize: 20,
@@ -38,18 +48,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   featureText: {
     fontSize: 16,
     color: colors.text,
     marginLeft: spacing.sm,
+    flex: 1,
   },
   price: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: colors.primary,
     textAlign: 'center',
-    marginVertical: spacing.md,
+    marginVertical: spacing.lg,
   },
   description: {
     fontSize: 16,
@@ -58,34 +70,27 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     lineHeight: 24,
   },
+  adminCard: {
+    borderColor: colors.success,
+  },
+  adminTitle: {
+    color: colors.success,
+  },
+  upgradeButton: {
+    marginTop: spacing.md,
+  },
 });
 
 export default function VIPScreen() {
+  const [chatModalVisible, setChatModalVisible] = useState(false);
   const { userData } = useAuth();
 
   const handleUpgradeToVIP = () => {
-    // Open WhatsApp or Telegram to chat with admin
-    const message = encodeURIComponent('Hi, I would like to upgrade to VIP membership. Please provide me with the payment details.');
-    const whatsappUrl = `https://wa.me/1234567890?text=${message}`;
-    
-    Alert.alert(
-      'Contact Admin',
-      'You will be redirected to chat with our admin for VIP upgrade.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Chat Now',
-          onPress: () => {
-            Linking.openURL(whatsappUrl).catch(() => {
-              Alert.alert('Error', 'Unable to open WhatsApp. Please contact admin directly.');
-            });
-          },
-        },
-      ]
-    );
+    setChatModalVisible(true);
+  };
+
+  const handleManageVIPSettings = () => {
+    router.push('/admin/vip');
   };
 
   return (
@@ -131,25 +136,29 @@ export default function VIPScreen() {
             text="Upgrade to VIP"
             onPress={handleUpgradeToVIP}
             variant="primary"
+            style={styles.upgradeButton}
           />
         </View>
 
         {userData?.role === 'admin' && (
-          <View style={[styles.vipCard, { borderColor: colors.success }]}>
-            <Text style={[styles.vipTitle, { color: colors.success }]}>👑 Admin Panel</Text>
+          <View style={[styles.vipCard, styles.adminCard]}>
+            <Text style={[styles.vipTitle, styles.adminTitle]}>👑 Admin Panel</Text>
             <Text style={styles.description}>
-              As an admin, you can manage VIP memberships and pricing from the admin panel.
+              Manage VIP memberships, pricing, and user access from the admin panel.
             </Text>
             <Button
               text="Manage VIP Settings"
-              onPress={() => {
-                Alert.alert('Admin Feature', 'VIP management features will be available in the admin panel.');
-              }}
+              onPress={handleManageVIPSettings}
               variant="success"
             />
           </View>
         )}
       </ScrollView>
+
+      <ChatModal
+        visible={chatModalVisible}
+        onClose={() => setChatModalVisible(false)}
+      />
     </View>
   );
 }

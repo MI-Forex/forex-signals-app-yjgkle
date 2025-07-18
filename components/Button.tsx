@@ -47,6 +47,7 @@ export default function Button({
       style={[
         getButtonStyle(), 
         disabled && buttonStyles.disabled,
+        styles.button,
         style
       ]} 
       onPress={onPress} 
@@ -65,9 +66,13 @@ export default function Button({
 }
 
 const styles = StyleSheet.create({
+  button: {
+    marginVertical: spacing.xs,
+  },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+    paddingHorizontal: spacing.sm,
   },
 });

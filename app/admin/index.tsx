@@ -1,9 +1,37 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { commonStyles, spacing } from '../../styles/commonStyles';
+import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import Button from '../../components/Button';
+
+const styles = StyleSheet.create({
+  header: {
+    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  content: {
+    padding: spacing.lg,
+  },
+  buttonContainer: {
+    gap: spacing.md,
+  },
+  backButton: {
+    marginTop: spacing.xl,
+  },
+});
 
 export default function AdminScreen() {
   const { userData } = useAuth();
@@ -28,6 +56,10 @@ export default function AdminScreen() {
     router.push('/admin/users');
   };
 
+  const handleManageVIP = () => {
+    router.push('/admin/vip');
+  };
+
   if (!userData?.isAdmin) {
     return (
       <View style={commonStyles.centerContent}>
@@ -39,15 +71,15 @@ export default function AdminScreen() {
 
   return (
     <View style={commonStyles.container}>
-      <View style={{ padding: spacing.lg }}>
-        <Text style={commonStyles.title}>Admin Panel</Text>
-        <Text style={commonStyles.textSecondary}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Admin Panel</Text>
+        <Text style={styles.subtitle}>
           Welcome, {userData.displayName}. Manage your forex signals platform.
         </Text>
       </View>
 
-      <ScrollView style={commonStyles.content}>
-        <View style={{ padding: spacing.lg, gap: spacing.md }}>
+      <ScrollView style={styles.content}>
+        <View style={styles.buttonContainer}>
           <Button
             text="Manage Signals"
             onPress={handleManageSignals}
@@ -73,10 +105,16 @@ export default function AdminScreen() {
           />
           
           <Button
+            text="Manage VIP Settings"
+            onPress={handleManageVIP}
+            variant="success"
+          />
+          
+          <Button
             text="Back to App"
             onPress={handleBack}
             variant="outline"
-            style={{ marginTop: spacing.lg }}
+            style={styles.backButton}
           />
         </View>
       </ScrollView>

@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Button from './Button';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
 
 interface FilterModalProps {
   visible: boolean;
   onClose: () => void;
-  onApply: (filters: { pair: string; type: string; status: string }) => void;
-  currentFilters: { pair: string; type: string; status: string };
+  onApply: (filters: { pair: string; type: string; status: string; dateFrom?: Date; dateTo?: Date }) => void;
+  currentFilters: { pair: string; type: string; status: string; dateFrom?: Date; dateTo?: Date };
 }
 
 const CURRENCY_PAIRS = [
@@ -21,15 +22,36 @@ const SIGNAL_STATUSES = ['', 'active', 'closed', 'hit_tp', 'hit_sl'];
 
 export default function FilterModal({ visible, onClose, onApply, currentFilters }: FilterModalProps) {
   const [filters, setFilters] = useState(currentFilters);
+  const [showDateFromPicker, setShowDateFromPicker] = useState(false);
+  const [showDateToPicker, setShowDateToPicker] = useState(false);
 
   const handleApply = () => {
     onApply(filters);
   };
 
   const handleReset = () => {
-    const resetFilters = { pair: '', type: '', status: '' };
+    const resetFilters = { pair: '', type: '', status: '', dateFrom: undefined, dateTo: undefined };
     setFilters(resetFilters);
     onApply(resetFilters);
+  };
+
+  const formatDate = (date?: Date) => {
+    if (!date) return 'Select Date';
+    return date.toLocaleDateString();
+  };
+
+  const onDateFromChange = (event: any, selectedDate?: Date) => {
+    setShowDateFromPicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setFilters(prev => ({ ...prev, dateFrom: selectedDate }));
+    }
+  };
+
+  const onDateToChange = (event: any, selectedDate?: Date) => {
+    setShowDateToPicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setFilters(prev => ({ ...prev, dateTo: selectedDate }));
+    }
   };
 
   return (
@@ -41,9 +63,9 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
     >
       <View style={styles.overlay}>
         <View style={styles.modalContent}>
-          <View style={commonStyles.spaceBetween}>
+          <View style={styles.header}>
             <Text style={styles.modalTitle}>Filter Signals</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButtonContainer}>
               <Text style={styles.closeButton}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -111,21 +133,58 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
             </View>
           </View>
 
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Date Range</Text>
+            <View style={styles.dateContainer}>
+              <TouchableOpacity 
+                style={styles.dateButton}
+                onPress={() => setShowDateFromPicker(true)}
+              >
+                <Text style={styles.dateButtonText}>From: {formatDate(filters.dateFrom)}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.dateButton}
+                onPress={() => setShowDateToPicker(true)}
+              >
+                <Text style={styles.dateButtonText}>To: {formatDate(filters.dateTo)}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <View style={styles.buttonContainer}>
             <Button
               text="Reset"
               onPress={handleReset}
               variant="outline"
-              style={{ flex: 1, marginRight: spacing.sm }}
+              style={styles.resetButton}
             />
             <Button
               text="Apply"
               onPress={handleApply}
-              style={{ flex: 1 }}
+              style={styles.applyButton}
             />
           </View>
         </View>
       </View>
+
+      {showDateFromPicker && (
+        <DateTimePicker
+          value={filters.dateFrom || new Date()}
+          mode="date"
+          display="default"
+          onChange={onDateFromChange}
+        />
+      )}
+
+      {showDateToPicker && (
+        <DateTimePicker
+          value={filters.dateTo || new Date()}
+          mode="date"
+          display="default"
+          onChange={onDateToChange}
+        />
+      )}
     </Modal>
   );
 }
@@ -133,30 +192,39 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.md,
   },
   modalContent: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     width: '100%',
     maxWidth: 400,
+    maxHeight: '80%',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.text,
   },
+  closeButtonContainer: {
+    padding: spacing.xs,
+  },
   closeButton: {
     fontSize: 24,
     color: colors.textMuted,
-    padding: spacing.xs,
   },
   filterSection: {
-    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
   },
   filterLabel: {
     fontSize: 16,
@@ -165,7 +233,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   pickerContainer: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -174,8 +242,33 @@ const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: 'transparent',
   },
+  dateContainer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  dateButton: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  dateButtonText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500',
+  },
   buttonContainer: {
     flexDirection: 'row',
-    marginTop: spacing.xl,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  resetButton: {
+    flex: 1,
+  },
+  applyButton: {
+    flex: 1,
   },
 });

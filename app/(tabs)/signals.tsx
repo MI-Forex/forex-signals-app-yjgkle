@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, Alert, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import { collection, query, orderBy, limit, onSnapshot, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import SignalCard from '../../components/SignalCard';
 import FilterModal from '../../components/FilterModal';
@@ -41,6 +41,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
   },
+  filterButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    minWidth: 80,
+  },
+  manageButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    minWidth: 80,
+  },
 });
 
 export default function SignalsScreen() {
@@ -51,7 +61,9 @@ export default function SignalsScreen() {
   const [filters, setFilters] = useState({
     pair: '',
     type: '',
-    status: ''
+    status: '',
+    dateFrom: undefined as Date | undefined,
+    dateTo: undefined as Date | undefined
   });
 
   const { user, userData } = useAuth();
@@ -68,14 +80,33 @@ export default function SignalsScreen() {
     );
 
     // Apply filters
+    const constraints = [];
+    
     if (filters.pair) {
-      q = query(q, where('pair', '==', filters.pair));
+      constraints.push(where('pair', '==', filters.pair));
     }
     if (filters.type) {
-      q = query(q, where('type', '==', filters.type));
+      constraints.push(where('type', '==', filters.type));
     }
     if (filters.status) {
-      q = query(q, where('status', '==', filters.status));
+      constraints.push(where('status', '==', filters.status));
+    }
+    if (filters.dateFrom) {
+      constraints.push(where('createdAt', '>=', Timestamp.fromDate(filters.dateFrom)));
+    }
+    if (filters.dateTo) {
+      const endOfDay = new Date(filters.dateTo);
+      endOfDay.setHours(23, 59, 59, 999);
+      constraints.push(where('createdAt', '<=', Timestamp.fromDate(endOfDay)));
+    }
+
+    if (constraints.length > 0) {
+      q = query(
+        collection(db, 'signals'),
+        ...constraints,
+        orderBy('createdAt', 'desc'),
+        limit(50)
+      );
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -130,14 +161,14 @@ export default function SignalsScreen() {
             text="Filter"
             onPress={() => setFilterModalVisible(true)}
             variant="outline"
-            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+            style={styles.filterButton}
           />
           {userData?.role === 'admin' && (
             <Button
               text="Manage"
               onPress={handleManageSignals}
               variant="primary"
-              style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+              style={styles.manageButton}
             />
           )}
         </View>
@@ -148,6 +179,7 @@ export default function SignalsScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
+        contentContainerStyle={{ paddingBottom: spacing.lg }}
       >
         {signals.length === 0 ? (
           <View style={[commonStyles.centerContent, { minHeight: 200 }]}>

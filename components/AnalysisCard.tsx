@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Modal, Dimensions } from 'react-native';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
 
 interface Analysis {
@@ -13,6 +13,8 @@ interface Analysis {
 interface AnalysisCardProps {
   analysis: Analysis;
 }
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   card: {
@@ -43,11 +45,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
   },
+  imageContainer: {
+    marginBottom: spacing.sm,
+  },
   image: {
     width: '100%',
     height: 200,
     borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
   },
   content: {
     fontSize: 14,
@@ -63,16 +67,52 @@ const styles = StyleSheet.create({
   readMoreButton: {
     alignSelf: 'flex-start',
     marginTop: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   readMoreText: {
     color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
+  // Image zoom modal styles
+  imageModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  zoomedImageContainer: {
+    width: screenWidth,
+    height: screenHeight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  zoomedImage: {
+    width: screenWidth - 40,
+    height: screenHeight - 200,
+    resizeMode: 'contain',
+  },
+  closeZoomButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeZoomText: {
+    color: colors.white,
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
 });
 
 export default function AnalysisCard({ analysis }: AnalysisCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [imageZoomVisible, setImageZoomVisible] = useState(false);
 
   const formatTime = (date: Date) => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -82,35 +122,71 @@ export default function AnalysisCard({ analysis }: AnalysisCardProps) {
     setExpanded(!expanded);
   };
 
+  const openImageZoom = () => {
+    if (analysis.imageUrl) {
+      setImageZoomVisible(true);
+    }
+  };
+
+  const closeImageZoom = () => {
+    setImageZoomVisible(false);
+  };
+
   const shouldShowReadMore = analysis.content.length > 150;
   const displayContent = expanded ? analysis.content : analysis.content.substring(0, 150) + (shouldShowReadMore ? '...' : '');
 
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{analysis.title}</Text>
-        <Text style={styles.timestamp}>{formatTime(analysis.createdAt)}</Text>
+    <>
+      <View style={styles.card}>
+        <View style={styles.header}>
+          <Text style={styles.title}>{analysis.title}</Text>
+          <Text style={styles.timestamp}>{formatTime(analysis.createdAt)}</Text>
+        </View>
+
+        {analysis.imageUrl && (
+          <TouchableOpacity style={styles.imageContainer} onPress={openImageZoom}>
+            <Image 
+              source={{ uri: analysis.imageUrl }} 
+              style={styles.image}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        )}
+
+        <Text style={expanded ? styles.expandedContent : styles.content}>
+          {displayContent}
+        </Text>
+
+        {shouldShowReadMore && (
+          <TouchableOpacity style={styles.readMoreButton} onPress={toggleExpanded}>
+            <Text style={styles.readMoreText}>
+              {expanded ? 'Read Less' : 'Read More'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {analysis.imageUrl && (
-        <Image 
-          source={{ uri: analysis.imageUrl }} 
-          style={styles.image}
-          resizeMode="cover"
-        />
-      )}
-
-      <Text style={expanded ? styles.expandedContent : styles.content}>
-        {displayContent}
-      </Text>
-
-      {shouldShowReadMore && (
-        <TouchableOpacity style={styles.readMoreButton} onPress={toggleExpanded}>
-          <Text style={styles.readMoreText}>
-            {expanded ? 'Read Less' : 'Read More'}
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
+      {/* Image Zoom Modal */}
+      <Modal
+        visible={imageZoomVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeImageZoom}
+      >
+        <View style={styles.imageModal}>
+          <TouchableOpacity style={styles.closeZoomButton} onPress={closeImageZoom}>
+            <Text style={styles.closeZoomText}>×</Text>
+          </TouchableOpacity>
+          <View style={styles.zoomedImageContainer}>
+            {analysis.imageUrl && (
+              <Image 
+                source={{ uri: analysis.imageUrl }} 
+                style={styles.zoomedImage}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
