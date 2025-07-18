@@ -8,9 +8,20 @@ import { Picker } from '@react-native-picker/picker';
 import Button from '../../../../components/Button';
 import { commonStyles, colors, spacing, borderRadius } from '../../../../styles/commonStyles';
 
+const SIGNAL_TYPES = [
+  { label: 'BUY', value: 'BUY' },
+  { label: 'SELL', value: 'SELL' },
+  { label: 'BUY LIMIT', value: 'BUY_LIMIT' },
+  { label: 'SELL LIMIT', value: 'SELL_LIMIT' },
+  { label: 'BUY STOP', value: 'BUY_STOP' },
+  { label: 'SELL STOP', value: 'SELL_STOP' },
+  { label: 'BUY STOP LIMIT', value: 'BUY_STOP_LIMIT' },
+  { label: 'SELL STOP LIMIT', value: 'SELL_STOP_LIMIT' }
+];
+
 interface SignalData {
   pair: string;
-  type: 'BUY' | 'SELL';
+  type: string;
   entryPoint: string;
   stopLoss: string;
   takeProfit: string;
@@ -40,9 +51,11 @@ export default function EditSignalScreen() {
   const loadSignal = async () => {
     try {
       if (typeof id === 'string') {
+        console.log('Loading signal with ID:', id);
         const signalDoc = await getDoc(doc(db, 'signals', id));
         if (signalDoc.exists()) {
           const data = signalDoc.data();
+          console.log('Signal data loaded:', data);
           setFormData({
             pair: data.pair || '',
             type: data.type || 'BUY',
@@ -110,13 +123,15 @@ export default function EditSignalScreen() {
         notes: formData.notes.trim(),
         status: formData.status,
         updatedAt: serverTimestamp(),
-        updatedBy: userData?.uid || 'unknown'
+        updatedBy: userData?.uid || '',
+        updatedByName: userData?.displayName || 'Admin'
       };
 
       console.log('Updating signal with data:', signalData);
 
       if (typeof id === 'string') {
         await updateDoc(doc(db, 'signals', id), signalData);
+        console.log('Signal updated successfully');
         Alert.alert('Success', 'Signal updated successfully');
         router.back();
       }
@@ -190,8 +205,13 @@ export default function EditSignalScreen() {
               onValueChange={(value) => updateFormData('type', value)}
               style={styles.picker}
             >
-              <Picker.Item label="BUY" value="BUY" />
-              <Picker.Item label="SELL" value="SELL" />
+              {SIGNAL_TYPES.map((signalType) => (
+                <Picker.Item 
+                  key={signalType.value} 
+                  label={signalType.label} 
+                  value={signalType.value} 
+                />
+              ))}
             </Picker>
           </View>
 

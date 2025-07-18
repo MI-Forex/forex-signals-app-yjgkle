@@ -46,11 +46,13 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
   const [sending, setSending] = useState(false);
   const [chatId, setChatId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   const scrollViewRef = useRef<ScrollView>(null);
   const { userData } = useAuth();
 
   useEffect(() => {
     if (visible && userData?.uid) {
+      console.log('ChatModal: Initializing chat for user:', userData.uid);
       const unsubscribe = loadChatMessages();
       return () => {
         if (typeof unsubscribe === 'function') {
@@ -69,16 +71,23 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
 
   const loadChatMessages = async () => {
     try {
-      console.log('Loading chat messages for user modal...');
+      console.log('ChatModal: Loading chat messages...');
       setLoading(true);
+      setError('');
       
-      if (!userData?.uid) return;
+      if (!userData?.uid) {
+        setError('User not authenticated');
+        setLoading(false);
+        return;
+      }
 
       // Create chat ID and ensure chat exists
       const currentChatId = createChatId(userData.uid);
       setChatId(currentChatId);
+      console.log('ChatModal: Chat ID:', currentChatId);
       
       await ensureChatExists(userData.uid);
+      console.log('ChatModal: Chat ensured');
 
       // Listen for messages in real-time
       const messagesQuery = query(
@@ -88,6 +97,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       );
 
       const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+        console.log('ChatModal: Received message snapshot, size:', snapshot.size);
         const loadedMessages: Message[] = [];
         
         snapshot.forEach((doc) => {
@@ -104,38 +114,48 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
           });
         });
 
-        console.log('Loaded messages in modal:', loadedMessages.length);
+        console.log('ChatModal: Loaded messages:', loadedMessages.length);
         setMessages(loadedMessages);
+        setLoading(false);
+      }, (error) => {
+        console.error('ChatModal: Error in message listener:', error);
+        setError('Failed to load messages: ' + error.message);
         setLoading(false);
       });
 
       return unsubscribe;
-    } catch (error) {
-      console.error('Error loading chat messages:', error);
+    } catch (error: any) {
+      console.error('ChatModal: Error loading chat messages:', error);
+      setError('Failed to initialize chat: ' + error.message);
       setLoading(false);
     }
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !chatId || !userData?.uid) return;
+    if (!newMessage.trim() || !chatId || !userData?.uid) {
+      console.log('ChatModal: Cannot send message - missing data');
+      return;
+    }
 
     setSending(true);
     const messageText = newMessage.trim();
     setNewMessage(''); // Clear input immediately for better UX
 
     try {
+      console.log('ChatModal: Sending message:', messageText.substring(0, 50));
+      
       await sendChatMessage(
         chatId,
         userData.uid,
         messageText,
         userData.isAdmin ? 'admin' : 'user',
-        userData.isAdmin ? 'Admin' : userData.displayName || 'You'
+        userData.isAdmin ? 'Admin' : (userData.displayName || 'You')
       );
 
-      console.log('Message sent successfully');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+      console.log('ChatModal: Message sent successfully');
+    } catch (error: any) {
+      console.error('ChatModal: Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message: ' + error.message);
       setNewMessage(messageText); // Restore message on error
     } finally {
       setSending(false);
@@ -175,6 +195,15 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>Loading messages...</Text>
             </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Error: {error}</Text>
+              <Button 
+                text="Retry" 
+                onPress={loadChatMessages} 
+                style={styles.retryButton}
+              />
+            </View>
           ) : messages.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>Start a conversation with the admin!</Text>
@@ -205,14 +234,16 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
             value={newMessage}
             onChangeText={setNewMessage}
             placeholder="Type your message..."
+            placeholderTextColor={colors.textMuted}
             multiline
             maxLength={500}
+            editable={!sending}
           />
           <Button
             text="Send"
             onPress={sendMessage}
             loading={sending}
-            disabled={!newMessage.trim() || sending}
+            disabled={!newMessage.trim() || sending || !!error}
             style={styles.sendButton}
           />
         </View>
@@ -337,6 +368,21 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: colors.textMuted,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  retryButton: {
+    paddingHorizontal: spacing.lg,
   },
   emptyContainer: {
     flex: 1,

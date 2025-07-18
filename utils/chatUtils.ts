@@ -8,7 +8,8 @@ import {
   setDoc, 
   updateDoc, 
   serverTimestamp,
-  addDoc
+  addDoc,
+  getDoc
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
@@ -42,15 +43,24 @@ export const ensureChatExists = async (userId: string): Promise<string> => {
   const chatRef = doc(db, 'chats', chatId);
   
   try {
-    await setDoc(chatRef, {
-      userId: userId,
-      adminId: 'admin',
-      createdAt: serverTimestamp(),
-      lastMessage: '',
-      lastMessageTime: serverTimestamp()
-    }, { merge: true });
+    // Check if chat already exists
+    const chatDoc = await getDoc(chatRef);
     
-    console.log('Chat ensured for user:', userId);
+    if (!chatDoc.exists()) {
+      // Create new chat document
+      await setDoc(chatRef, {
+        userId: userId,
+        adminId: 'admin',
+        createdAt: serverTimestamp(),
+        lastMessage: '',
+        lastMessageTime: serverTimestamp(),
+        participants: [userId, 'admin']
+      });
+      console.log('New chat created for user:', userId);
+    } else {
+      console.log('Chat already exists for user:', userId);
+    }
+    
     return chatId;
   } catch (error) {
     console.error('Error ensuring chat exists:', error);
@@ -66,6 +76,8 @@ export const sendChatMessage = async (
   senderName: string
 ): Promise<void> => {
   try {
+    console.log('Sending message:', { chatId, sender, text: text.substring(0, 50) });
+    
     // Add message to Firebase
     const messageData = {
       text: text.trim(),
@@ -74,19 +86,22 @@ export const sendChatMessage = async (
       timestamp: serverTimestamp(),
       chatId,
       userId,
-      read: false
+      read: false,
+      createdAt: serverTimestamp()
     };
 
-    await addDoc(collection(db, 'messages'), messageData);
+    const messageRef = await addDoc(collection(db, 'messages'), messageData);
+    console.log('Message added with ID:', messageRef.id);
 
     // Update chat document with last message info
     const chatRef = doc(db, 'chats', chatId);
     await updateDoc(chatRef, {
       lastMessage: text.trim(),
-      lastMessageTime: serverTimestamp()
+      lastMessageTime: serverTimestamp(),
+      lastSender: sender
     });
 
-    console.log('Message sent successfully:', { chatId, sender, text: text.substring(0, 50) });
+    console.log('Chat updated with last message info');
   } catch (error) {
     console.error('Error sending message:', error);
     throw error;

@@ -33,22 +33,28 @@ export default function AdminChatsScreen() {
   const [chatUsers, setChatUsers] = useState<ChatUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string>('');
   const { userData } = useAuth();
 
   useEffect(() => {
     if (userData?.isAdmin) {
+      console.log('AdminChats: Loading chats for admin user');
       const unsubscribe = loadChatUsers();
       return () => {
         if (typeof unsubscribe === 'function') {
           unsubscribe();
         }
       };
+    } else {
+      setError('Admin access required');
+      setLoading(false);
     }
   }, [userData]);
 
   const loadChatUsers = async () => {
     try {
-      console.log('Loading chat users...');
+      console.log('AdminChats: Starting to load chat users...');
+      setError('');
       
       // Get all chat conversations
       const chatsQuery = query(
@@ -57,61 +63,77 @@ export default function AdminChatsScreen() {
       );
 
       const unsubscribe = onSnapshot(chatsQuery, async (snapshot) => {
+        console.log('AdminChats: Received chats snapshot, size:', snapshot.size);
         const chatUserMap = new Map<string, ChatUser>();
 
         for (const chatDoc of snapshot.docs) {
-          const chatData = chatDoc.data();
-          const userId = chatData.userId;
-          
-          if (!userId || userId === userData?.uid) continue;
+          try {
+            const chatData = chatDoc.data();
+            const userId = chatData.userId;
+            
+            if (!userId || userId === userData?.uid) continue;
 
-          // Get user data
-          const userQuery = query(
-            collection(db, 'users'),
-            where('uid', '==', userId),
-            limit(1)
-          );
-          
-          const userSnapshot = await getDocs(userQuery);
-          if (userSnapshot.empty) continue;
+            console.log('AdminChats: Processing chat for user:', userId);
 
-          const userData = userSnapshot.docs[0].data();
-          
-          // Get unread count for this user (messages from user that admin hasn't read)
-          const unreadQuery = query(
-            collection(db, 'messages'),
-            where('chatId', '==', chatDoc.id),
-            where('sender', '==', 'user'),
-            where('read', '==', false)
-          );
-          
-          const unreadSnapshot = await getDocs(unreadQuery);
-          const unreadCount = unreadSnapshot.size;
+            // Get user data
+            const userQuery = query(
+              collection(db, 'users'),
+              where('uid', '==', userId),
+              limit(1)
+            );
+            
+            const userSnapshot = await getDocs(userQuery);
+            if (userSnapshot.empty) {
+              console.log('AdminChats: User not found:', userId);
+              continue;
+            }
 
-          const chatUser: ChatUser = {
-            id: userId,
-            email: userData.email || '',
-            displayName: userData.displayName || 'Unknown User',
-            lastMessage: chatData.lastMessage || 'No messages yet',
-            lastMessageTime: chatData.lastMessageTime?.toDate() || new Date(),
-            unreadCount,
-            isVIP: userData.isVIP || false
-          };
+            const userDocData = userSnapshot.docs[0].data();
+            
+            // Get unread count for this user (messages from user that admin hasn't read)
+            const unreadQuery = query(
+              collection(db, 'messages'),
+              where('chatId', '==', chatDoc.id),
+              where('sender', '==', 'user'),
+              where('read', '==', false)
+            );
+            
+            const unreadSnapshot = await getDocs(unreadQuery);
+            const unreadCount = unreadSnapshot.size;
 
-          chatUserMap.set(userId, chatUser);
+            const chatUser: ChatUser = {
+              id: userId,
+              email: userDocData.email || '',
+              displayName: userDocData.displayName || 'Unknown User',
+              lastMessage: chatData.lastMessage || 'No messages yet',
+              lastMessageTime: chatData.lastMessageTime?.toDate() || new Date(),
+              unreadCount,
+              isVIP: userDocData.isVIP || false
+            };
+
+            chatUserMap.set(userId, chatUser);
+            console.log('AdminChats: Added chat user:', chatUser.displayName);
+          } catch (userError) {
+            console.error('AdminChats: Error processing user chat:', userError);
+          }
         }
 
         const chatUsersArray = Array.from(chatUserMap.values());
-        console.log('Loaded chat users:', chatUsersArray.length);
+        console.log('AdminChats: Total chat users loaded:', chatUsersArray.length);
         setChatUsers(chatUsersArray);
+        setLoading(false);
+        setRefreshing(false);
+      }, (error) => {
+        console.error('AdminChats: Error in chats listener:', error);
+        setError('Failed to load chats: ' + error.message);
         setLoading(false);
         setRefreshing(false);
       });
 
       return unsubscribe;
-    } catch (error) {
-      console.error('Error loading chat users:', error);
-      Alert.alert('Error', 'Failed to load chat users');
+    } catch (error: any) {
+      console.error('AdminChats: Error loading chat users:', error);
+      setError('Failed to load chat users: ' + error.message);
       setLoading(false);
       setRefreshing(false);
     }
@@ -119,15 +141,18 @@ export default function AdminChatsScreen() {
 
   const handleRefresh = () => {
     setRefreshing(true);
+    setError('');
     loadChatUsers();
   };
 
   const openChat = async (userId: string, userName: string) => {
     try {
+      console.log('AdminChats: Opening chat for user:', userId);
+      
       // Mark messages as read in Firebase
       const chatId = `${userId}_admin`;
       await markMessagesAsRead(chatId, 'user');
-      console.log('Marked messages as read for user:', userId);
+      console.log('AdminChats: Marked messages as read for user:', userId);
 
       // Update local state
       setChatUsers(prev => 
@@ -142,7 +167,7 @@ export default function AdminChatsScreen() {
         params: { userId, userName }
       });
     } catch (error) {
-      console.error('Error marking messages as read:', error);
+      console.error('AdminChats: Error opening chat:', error);
       // Still navigate even if marking as read fails
       router.push({
         pathname: '/admin/chats/[userId]',
@@ -183,6 +208,16 @@ export default function AdminChatsScreen() {
     return (
       <View style={commonStyles.loading}>
         <Text style={commonStyles.text}>Loading chats...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={commonStyles.centerContent}>
+        <Text style={[commonStyles.text, { color: colors.error }]}>Error: {error}</Text>
+        <Button text="Retry" onPress={handleRefresh} style={{ marginTop: spacing.md }} />
+        <Button text="Go Back" onPress={() => router.back()} variant="outline" style={{ marginTop: spacing.sm }} />
       </View>
     );
   }
@@ -314,6 +349,7 @@ export default function AdminChatsScreen() {
             <Text style={styles.firebaseNoteText}>• Multi-user chat support</Text>
             <Text style={styles.firebaseNoteText}>• Admin notification system</Text>
             <Text style={styles.firebaseNoteText}>• Scalable chat architecture</Text>
+            <Text style={styles.firebaseNoteText}>• Error handling and retry logic</Text>
           </View>
         </View>
       </ScrollView>

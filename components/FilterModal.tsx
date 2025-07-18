@@ -17,7 +17,17 @@ const CURRENCY_PAIRS = [
   'EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'CHF/JPY', 'EUR/CHF', 'AUD/JPY', 'GBP/CHF'
 ];
 
-const SIGNAL_TYPES = ['', 'BUY', 'SELL'];
+const SIGNAL_TYPES = [
+  { label: 'All Types', value: '' },
+  { label: 'BUY', value: 'BUY' },
+  { label: 'SELL', value: 'SELL' },
+  { label: 'BUY LIMIT', value: 'BUY_LIMIT' },
+  { label: 'SELL LIMIT', value: 'SELL_LIMIT' },
+  { label: 'BUY STOP', value: 'BUY_STOP' },
+  { label: 'SELL STOP', value: 'SELL_STOP' },
+  { label: 'BUY STOP LIMIT', value: 'BUY_STOP_LIMIT' },
+  { label: 'SELL STOP LIMIT', value: 'SELL_STOP_LIMIT' }
+];
 
 export default function FilterModal({ visible, onClose, onApply, currentFilters }: FilterModalProps) {
   const [filters, setFilters] = useState(currentFilters);
@@ -101,9 +111,9 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
               >
                 {SIGNAL_TYPES.map(type => (
                   <Picker.Item 
-                    key={type} 
-                    label={type || 'All Types'} 
-                    value={type}
+                    key={type.value} 
+                    label={type.label} 
+                    value={type.value}
                     color={colors.text}
                   />
                 ))}

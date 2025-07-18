@@ -8,6 +8,17 @@ import { router } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
+const SIGNAL_TYPES = [
+  { label: 'BUY', value: 'BUY' },
+  { label: 'SELL', value: 'SELL' },
+  { label: 'BUY LIMIT', value: 'BUY_LIMIT' },
+  { label: 'SELL LIMIT', value: 'SELL_LIMIT' },
+  { label: 'BUY STOP', value: 'BUY_STOP' },
+  { label: 'SELL STOP', value: 'SELL_STOP' },
+  { label: 'BUY STOP LIMIT', value: 'BUY_STOP_LIMIT' },
+  { label: 'SELL STOP LIMIT', value: 'SELL_STOP_LIMIT' }
+];
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -127,7 +138,7 @@ export default function AddSignalScreen() {
     try {
       const signalData = {
         pair: formData.pair.toUpperCase(),
-        type: formData.type as 'BUY' | 'SELL',
+        type: formData.type,
         entryPoint: Number(formData.entryPoint),
         stopLoss: Number(formData.stopLoss),
         takeProfit: Number(formData.takeProfit),
@@ -135,8 +146,12 @@ export default function AddSignalScreen() {
         status: 'active',
         createdAt: serverTimestamp(),
         createdBy: userData?.uid || '',
+        createdByName: userData?.displayName || 'Admin',
+        updatedAt: serverTimestamp(),
+        updatedBy: userData?.uid || ''
       };
 
+      console.log('Adding signal with data:', signalData);
       await addDoc(collection(db, 'signals'), signalData);
       
       Alert.alert('Success', 'Signal added successfully', [
@@ -198,8 +213,13 @@ export default function AddSignalScreen() {
               onValueChange={(value) => updateFormData('type', value)}
               style={styles.picker}
             >
-              <Picker.Item label="BUY" value="BUY" />
-              <Picker.Item label="SELL" value="SELL" />
+              {SIGNAL_TYPES.map((signalType) => (
+                <Picker.Item 
+                  key={signalType.value} 
+                  label={signalType.label} 
+                  value={signalType.value} 
+                />
+              ))}
             </Picker>
           </View>
         </View>
