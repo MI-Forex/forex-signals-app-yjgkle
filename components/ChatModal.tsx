@@ -47,12 +47,14 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
   const [chatId, setChatId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [retryCount, setRetryCount] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const { userData } = useAuth();
 
   useEffect(() => {
     if (visible && userData?.uid) {
       console.log('ChatModal: Initializing chat for user:', userData.uid);
+      setRetryCount(0);
       const unsubscribe = loadChatMessages();
       return () => {
         if (typeof unsubscribe === 'function') {
@@ -64,6 +66,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       setMessages([]);
       setError('');
       setLoading(true);
+      setRetryCount(0);
     }
   }, [visible, userData?.uid]);
 
@@ -78,14 +81,12 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
 
   const loadChatMessages = async () => {
     try {
-      console.log('ChatModal: Loading chat messages...');
+      console.log('ChatModal: Loading chat messages... (attempt:', retryCount + 1, ')');
       setLoading(true);
       setError('');
       
       if (!userData?.uid) {
-        setError('User not authenticated');
-        setLoading(false);
-        return;
+        throw new Error('User not authenticated');
       }
 
       // Create chat ID and ensure chat exists
@@ -124,16 +125,26 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
         console.log('ChatModal: Loaded messages:', loadedMessages.length);
         setMessages(loadedMessages);
         setLoading(false);
+        setError('');
       }, (error) => {
         console.error('ChatModal: Error in message listener:', error);
-        setError('Failed to load messages: ' + error.message);
+        setError(`Failed to load messages: ${error.message}`);
         setLoading(false);
+        
+        // Auto-retry on permission errors
+        if (error.code === 'permission-denied' && retryCount < 3) {
+          console.log('ChatModal: Permission denied, retrying in 2 seconds...');
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+            loadChatMessages();
+          }, 2000);
+        }
       });
 
       return unsubscribe;
     } catch (error: any) {
       console.error('ChatModal: Error loading chat messages:', error);
-      setError('Failed to initialize chat: ' + error.message);
+      setError(`Failed to initialize chat: ${error.message}`);
       setLoading(false);
     }
   };
@@ -162,7 +173,17 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       console.log('ChatModal: Message sent successfully');
     } catch (error: any) {
       console.error('ChatModal: Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message: ' + error.message);
+      Alert.alert(
+        'Error Sending Message', 
+        `Failed to send message: ${error.message}\n\nPlease check your internet connection and try again.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: () => {
+            setNewMessage(messageText);
+            setTimeout(() => sendMessage(), 500);
+          }}
+        ]
+      );
       setNewMessage(messageText); // Restore message on error
     } finally {
       setSending(false);
@@ -208,13 +229,22 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
           {loading ? (
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>Loading messages...</Text>
+              {retryCount > 0 && (
+                <Text style={styles.retryText}>Retry attempt {retryCount}/3</Text>
+              )}
             </View>
           ) : error ? (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>Error: {error}</Text>
+              <Text style={styles.errorSubtext}>
+                This might be a temporary connection issue. Please try again.
+              </Text>
               <Button 
                 text="Retry" 
-                onPress={loadChatMessages} 
+                onPress={() => {
+                  setRetryCount(0);
+                  loadChatMessages();
+                }} 
                 style={styles.retryButton}
               />
             </View>
@@ -253,15 +283,15 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
             placeholderTextColor={colors.textMuted}
             multiline
             maxLength={500}
-            editable={!sending}
+            editable={!sending && !loading}
             returnKeyType="send"
             blurOnSubmit={false}
           />
           <Button
-            text="Send"
+            text={sending ? "Sending..." : "Send"}
             onPress={sendMessage}
             loading={sending}
-            disabled={!newMessage.trim() || sending || !!error}
+            disabled={!newMessage.trim() || sending || loading || !!error}
             style={styles.sendButton}
           />
         </View>
@@ -276,6 +306,11 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
           <Text style={styles.footerSubtext}>
             Messages are delivered in real-time via Firebase
           </Text>
+          {error && (
+            <Text style={styles.footerError}>
+              Connection issue detected - messages may be delayed
+            </Text>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -387,6 +422,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textMuted,
   },
+  retryText: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -397,7 +437,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.error,
     textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
     marginBottom: spacing.md,
+    lineHeight: 20,
   },
   retryButton: {
     paddingHorizontal: spacing.lg,
@@ -436,5 +483,11 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: 2,
+  },
+  footerError: {
+    fontSize: 10,
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: 4,
   },
 });

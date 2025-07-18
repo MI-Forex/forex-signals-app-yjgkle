@@ -56,7 +56,9 @@ export const ensureChatExists = async (userId: string): Promise<string> => {
         createdAt: serverTimestamp(),
         lastMessage: '',
         lastMessageTime: serverTimestamp(),
-        participants: [userId, 'admin']
+        participants: [userId, 'admin'],
+        unreadCount: 0,
+        lastSender: ''
       };
       
       await setDoc(chatRef, chatData);
@@ -68,7 +70,7 @@ export const ensureChatExists = async (userId: string): Promise<string> => {
     return chatId;
   } catch (error) {
     console.error('ChatUtils: Error ensuring chat exists:', error);
-    throw error;
+    throw new Error(`Failed to create chat: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
@@ -85,12 +87,17 @@ export const sendChatMessage = async (
       userId, 
       sender, 
       senderName,
-      text: text.substring(0, 50) + '...' 
+      textLength: text.length 
     });
     
     // Validate inputs
     if (!chatId || !userId || !text.trim() || !sender || !senderName) {
       throw new Error('Missing required message data');
+    }
+
+    // Validate chatId format
+    if (!chatId.includes('_admin')) {
+      throw new Error('Invalid chat ID format');
     }
     
     // Add message to Firebase
@@ -105,7 +112,7 @@ export const sendChatMessage = async (
       createdAt: serverTimestamp()
     };
 
-    console.log('ChatUtils: Adding message to Firebase:', messageData);
+    console.log('ChatUtils: Adding message to Firebase...');
     const messageRef = await addDoc(collection(db, 'messages'), messageData);
     console.log('ChatUtils: Message added with ID:', messageRef.id);
 
@@ -114,15 +121,17 @@ export const sendChatMessage = async (
     const chatUpdateData = {
       lastMessage: text.trim(),
       lastMessageTime: serverTimestamp(),
-      lastSender: sender
+      lastSender: sender,
+      // Increment unread count if message is from user
+      ...(sender === 'user' && { unreadCount: 1 })
     };
     
-    console.log('ChatUtils: Updating chat document:', chatUpdateData);
+    console.log('ChatUtils: Updating chat document...');
     await updateDoc(chatRef, chatUpdateData);
-    console.log('ChatUtils: Chat updated with last message info');
+    console.log('ChatUtils: Chat updated successfully');
   } catch (error) {
     console.error('ChatUtils: Error sending message:', error);
-    throw error;
+    throw new Error(`Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
@@ -146,9 +155,15 @@ export const markMessagesAsRead = async (chatId: string, sender: 'user' | 'admin
     
     await Promise.all(updatePromises);
     console.log('ChatUtils: Marked messages as read:', unreadSnapshot.size);
+
+    // Reset unread count in chat document if marking admin messages as read
+    if (sender === 'admin') {
+      const chatRef = doc(db, 'chats', chatId);
+      await updateDoc(chatRef, { unreadCount: 0 });
+    }
   } catch (error) {
     console.error('ChatUtils: Error marking messages as read:', error);
-    throw error;
+    throw new Error(`Failed to mark messages as read: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
@@ -166,5 +181,53 @@ export const getUnreadCount = async (chatId: string, sender: 'user' | 'admin'): 
   } catch (error) {
     console.error('ChatUtils: Error getting unread count:', error);
     return 0;
+  }
+};
+
+export const getAllUserChats = async (): Promise<ChatUser[]> => {
+  try {
+    console.log('ChatUtils: Getting all user chats...');
+    
+    const chatsQuery = query(
+      collection(db, 'chats'),
+      orderBy('lastMessageTime', 'desc')
+    );
+    
+    const chatsSnapshot = await getDocs(chatsQuery);
+    const chatUsers: ChatUser[] = [];
+    
+    for (const chatDoc of chatsSnapshot.docs) {
+      const chatData = chatDoc.data();
+      const userId = chatData.userId;
+      
+      if (!userId) continue;
+      
+      // Get user data
+      const userRef = doc(db, 'users', userId);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        
+        // Get unread count
+        const unreadCount = await getUnreadCount(chatDoc.id, 'user');
+        
+        chatUsers.push({
+          id: userId,
+          email: userData.email || '',
+          displayName: userData.displayName || 'Unknown User',
+          lastMessage: chatData.lastMessage || '',
+          lastMessageTime: chatData.lastMessageTime?.toDate() || new Date(),
+          unreadCount,
+          isVIP: userData.isVIP || false
+        });
+      }
+    }
+    
+    console.log('ChatUtils: Found chat users:', chatUsers.length);
+    return chatUsers;
+  } catch (error) {
+    console.error('ChatUtils: Error getting user chats:', error);
+    return [];
   }
 };
