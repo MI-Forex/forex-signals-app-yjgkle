@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Image } from 'react-native';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { router, useLocalSearchParams } from 'expo-router';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db, storage } from '../../../../firebase/config';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -108,10 +108,12 @@ export default function EditAnalysisScreen() {
       const analysisData = {
         title: formData.title.trim(),
         content: formData.content.trim(),
-        imageUrl: formData.imageUrl,
-        updatedAt: new Date(),
-        updatedBy: userData?.uid
+        imageUrl: formData.imageUrl || null,
+        updatedAt: serverTimestamp(),
+        updatedBy: userData?.uid || 'unknown'
       };
+
+      console.log('Updating analysis with data:', analysisData);
 
       if (typeof id === 'string') {
         await updateDoc(doc(db, 'analysis', id), analysisData);

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { router, useLocalSearchParams } from 'expo-router';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../../firebase/config';
 import { Picker } from '@react-native-picker/picker';
 import Button from '../../../../components/Button';
@@ -109,8 +109,8 @@ export default function EditSignalScreen() {
         takeProfit: parseFloat(formData.takeProfit),
         notes: formData.notes.trim(),
         status: formData.status,
-        updatedAt: new Date(),
-        updatedBy: userData?.uid || 'unknown' // Ensure updatedBy is never undefined
+        updatedAt: serverTimestamp(),
+        updatedBy: userData?.uid || 'unknown'
       };
 
       console.log('Updating signal with data:', signalData);
