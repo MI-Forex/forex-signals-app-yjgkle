@@ -51,14 +51,14 @@ export default function AnalysisCard({ analysis }: AnalysisCardProps) {
   };
 
   const getDisplayContent = () => {
-    if (expanded || analysis.content.length <= 150) {
+    if (expanded || analysis.content.length <= 200) {
       return analysis.content;
     }
-    return analysis.content.substring(0, 150) + '...';
+    return analysis.content.substring(0, 200) + '...';
   };
 
   const shouldShowReadMore = () => {
-    return analysis.content.length > 150;
+    return analysis.content.length > 200;
   };
 
   // Get optimized image URLs for different use cases
@@ -201,6 +201,10 @@ const styles = StyleSheet.create({
   readMoreButton: {
     alignSelf: 'flex-start',
     paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.primary + '15',
+    borderRadius: borderRadius.sm,
+    marginTop: spacing.xs,
   },
   readMoreText: {
     fontSize: 14,

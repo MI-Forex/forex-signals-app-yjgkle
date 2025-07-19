@@ -77,12 +77,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     lineHeight: 24,
   },
-  adminCard: {
-    borderColor: colors.success,
-  },
-  adminTitle: {
-    color: colors.success,
-  },
   upgradeButton: {
     marginTop: spacing.md,
   },
@@ -132,10 +126,6 @@ export default function VIPScreen() {
     setChatModalVisible(true);
   };
 
-  const handleManageVIPSettings = () => {
-    router.push('/admin/vip');
-  };
-
   if (loading) {
     return (
       <View style={commonStyles.container}>
@@ -179,20 +169,6 @@ export default function VIPScreen() {
             style={styles.upgradeButton}
           />
         </View>
-
-        {userData?.isAdmin && (
-          <View style={[styles.vipCard, styles.adminCard]}>
-            <Text style={[styles.vipTitle, styles.adminTitle]}>👑 Admin Panel</Text>
-            <Text style={styles.description}>
-              Manage VIP memberships, pricing, and user access from the admin panel.
-            </Text>
-            <Button
-              text="Manage VIP Settings"
-              onPress={handleManageVIPSettings}
-              variant="success"
-            />
-          </View>
-        )}
       </ScrollView>
 
       <ChatModal

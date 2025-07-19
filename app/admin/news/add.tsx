@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
-import { commonStyles, colors, spacing, borderRadius } from '../../../styles/commonStyles';
+import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';
 import Button from '../../../components/Button';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../firebase/config';
@@ -16,10 +16,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: spacing.lg,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    ...shadows.sm,
   },
   title: {
     fontSize: 24,
@@ -29,6 +30,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
   },
   inputContainer: {
     marginBottom: spacing.lg,
@@ -41,16 +43,21 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.sm,
+  },
+  inputFocused: {
+    borderColor: colors.primary,
+    borderWidth: 2,
   },
   textArea: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     fontSize: 16,
     color: colors.text,
@@ -58,6 +65,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     minHeight: 120,
     textAlignVertical: 'top',
+    ...shadows.sm,
   },
   contentArea: {
     minHeight: 200,
@@ -76,6 +84,7 @@ export default function AddNewsScreen() {
     imageUrl: '',
   });
   const [loading, setLoading] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const { userData } = useAuth();
 
   const validateForm = () => {
@@ -129,10 +138,19 @@ export default function AddNewsScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleInputFocus = (inputName: string) => {
+    setFocusedInput(inputName);
+  };
+
+  const handleInputBlur = () => {
+    setFocusedInput(null);
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <View style={styles.header}>
         <Text style={styles.title}>Add News Article</Text>
@@ -140,22 +158,28 @@ export default function AddNewsScreen() {
           text="Cancel"
           onPress={handleBack}
           variant="outline"
-          style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+          size="small"
         />
       </View>
 
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Title *</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              focusedInput === 'title' && styles.inputFocused
+            ]}
             placeholder="Enter news title"
             placeholderTextColor={colors.textSecondary}
             value={formData.title}
             onChangeText={(value) => updateFormData('title', value)}
+            onFocus={() => handleInputFocus('title')}
+            onBlur={handleInputBlur}
             autoCapitalize="words"
           />
         </View>
@@ -163,11 +187,16 @@ export default function AddNewsScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Summary *</Text>
           <TextInput
-            style={styles.textArea}
+            style={[
+              styles.textArea,
+              focusedInput === 'summary' && styles.inputFocused
+            ]}
             placeholder="Enter a brief summary of the news..."
             placeholderTextColor={colors.textSecondary}
             value={formData.summary}
             onChangeText={(value) => updateFormData('summary', value)}
+            onFocus={() => handleInputFocus('summary')}
+            onBlur={handleInputBlur}
             multiline
             numberOfLines={4}
           />
@@ -176,11 +205,17 @@ export default function AddNewsScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Full Content *</Text>
           <TextInput
-            style={[styles.textArea, styles.contentArea]}
+            style={[
+              styles.textArea, 
+              styles.contentArea,
+              focusedInput === 'content' && styles.inputFocused
+            ]}
             placeholder="Enter the full news content..."
             placeholderTextColor={colors.textSecondary}
             value={formData.content}
             onChangeText={(value) => updateFormData('content', value)}
+            onFocus={() => handleInputFocus('content')}
+            onBlur={handleInputBlur}
             multiline
             numberOfLines={8}
           />
@@ -189,11 +224,16 @@ export default function AddNewsScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Image URL (Optional)</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              focusedInput === 'imageUrl' && styles.inputFocused
+            ]}
             placeholder="https://example.com/image.jpg"
             placeholderTextColor={colors.textSecondary}
             value={formData.imageUrl}
             onChangeText={(value) => updateFormData('imageUrl', value)}
+            onFocus={() => handleInputFocus('imageUrl')}
+            onBlur={handleInputBlur}
             keyboardType="url"
             autoCapitalize="none"
             autoCorrect={false}
@@ -206,6 +246,7 @@ export default function AddNewsScreen() {
             onPress={handleSubmit}
             loading={loading}
             disabled={loading}
+            size="large"
           />
         </View>
       </ScrollView>

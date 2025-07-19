@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
-import { commonStyles, colors, spacing, borderRadius } from '../../../styles/commonStyles';
+import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';
 import Button from '../../../components/Button';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../firebase/config';
@@ -33,10 +33,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: spacing.lg,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    ...shadows.sm,
   },
   title: {
     fontSize: 24,
@@ -46,6 +47,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     padding: spacing.lg,
+    paddingBottom: spacing.xxxl, // Extra padding for keyboard
   },
   inputContainer: {
     marginBottom: spacing.lg,
@@ -58,30 +60,37 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.sm,
+  },
+  inputFocused: {
+    borderColor: colors.primary,
+    borderWidth: 2,
   },
   textArea: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
-    minHeight: 100,
+    minHeight: 120,
     textAlignVertical: 'top',
+    ...shadows.sm,
   },
   pickerContainer: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
+    ...shadows.sm,
   },
   picker: {
     color: colors.text,
@@ -108,9 +117,10 @@ export default function AddSignalScreen() {
     stopLoss: '',
     takeProfit: '',
     notes: '',
-    targetUsers: 'normal', // New field for targeting
+    targetUsers: 'normal',
   });
   const [loading, setLoading] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const { userData } = useAuth();
 
   const validateForm = () => {
@@ -154,8 +164,8 @@ export default function AddSignalScreen() {
         takeProfit: Number(formData.takeProfit),
         notes: formData.notes,
         status: 'active',
-        isVip: formData.targetUsers === 'vip', // New field to indicate VIP signals
-        targetUsers: formData.targetUsers, // Store the target user type
+        isVip: formData.targetUsers === 'vip',
+        targetUsers: formData.targetUsers,
         createdAt: serverTimestamp(),
         createdBy: userData?.uid || '',
         createdByName: userData?.displayName || 'Admin',
@@ -172,7 +182,6 @@ export default function AddSignalScreen() {
     } catch (error: any) {
       console.error('Error adding signal:', error);
       
-      // Generic error messages for security
       let errorMessage = 'Failed to add signal. Please try again.';
       if (error.message.includes('network')) {
         errorMessage = 'Please check internet connectivity';
@@ -194,10 +203,19 @@ export default function AddSignalScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleInputFocus = (inputName: string) => {
+    setFocusedInput(inputName);
+  };
+
+  const handleInputBlur = () => {
+    setFocusedInput(null);
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <View style={styles.header}>
         <Text style={styles.title}>Add New Signal</Text>
@@ -205,22 +223,28 @@ export default function AddSignalScreen() {
           text="Cancel"
           onPress={handleBack}
           variant="outline"
-          style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+          size="small"
         />
       </View>
 
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Currency Pair *</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              focusedInput === 'pair' && styles.inputFocused
+            ]}
             placeholder="e.g., EUR/USD, GBP/JPY, BTC/USD"
             placeholderTextColor={colors.textSecondary}
             value={formData.pair}
             onChangeText={(value) => updateFormData('pair', value)}
+            onFocus={() => handleInputFocus('pair')}
+            onBlur={handleInputBlur}
             autoCapitalize="characters"
             autoCorrect={false}
           />
@@ -268,11 +292,16 @@ export default function AddSignalScreen() {
           <View style={[styles.inputContainer, styles.flex1]}>
             <Text style={styles.label}>Entry Point *</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                focusedInput === 'entryPoint' && styles.inputFocused
+              ]}
               placeholder="0.0000"
               placeholderTextColor={colors.textSecondary}
               value={formData.entryPoint}
               onChangeText={(value) => updateFormData('entryPoint', value)}
+              onFocus={() => handleInputFocus('entryPoint')}
+              onBlur={handleInputBlur}
               keyboardType="decimal-pad"
             />
           </View>
@@ -280,11 +309,16 @@ export default function AddSignalScreen() {
           <View style={[styles.inputContainer, styles.flex1]}>
             <Text style={styles.label}>Stop Loss *</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                focusedInput === 'stopLoss' && styles.inputFocused
+              ]}
               placeholder="0.0000"
               placeholderTextColor={colors.textSecondary}
               value={formData.stopLoss}
               onChangeText={(value) => updateFormData('stopLoss', value)}
+              onFocus={() => handleInputFocus('stopLoss')}
+              onBlur={handleInputBlur}
               keyboardType="decimal-pad"
             />
           </View>
@@ -293,11 +327,16 @@ export default function AddSignalScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Take Profit *</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              focusedInput === 'takeProfit' && styles.inputFocused
+            ]}
             placeholder="0.0000"
             placeholderTextColor={colors.textSecondary}
             value={formData.takeProfit}
             onChangeText={(value) => updateFormData('takeProfit', value)}
+            onFocus={() => handleInputFocus('takeProfit')}
+            onBlur={handleInputBlur}
             keyboardType="decimal-pad"
           />
         </View>
@@ -305,11 +344,16 @@ export default function AddSignalScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Notes</Text>
           <TextInput
-            style={styles.textArea}
+            style={[
+              styles.textArea,
+              focusedInput === 'notes' && styles.inputFocused
+            ]}
             placeholder="Add any additional notes or analysis..."
             placeholderTextColor={colors.textSecondary}
             value={formData.notes}
             onChangeText={(value) => updateFormData('notes', value)}
+            onFocus={() => handleInputFocus('notes')}
+            onBlur={handleInputBlur}
             multiline
             numberOfLines={4}
           />
@@ -321,6 +365,7 @@ export default function AddSignalScreen() {
             onPress={handleSubmit}
             loading={loading}
             disabled={loading}
+            size="large"
           />
         </View>
       </ScrollView>

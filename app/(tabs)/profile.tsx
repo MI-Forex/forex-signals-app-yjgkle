@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/Button';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
+import { Ionicons } from '@expo/vector-icons';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../../firebase/config';
 
 const styles = StyleSheet.create({
   container: {
@@ -71,11 +74,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  passwordSection: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  passwordTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  passwordDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+    lineHeight: 20,
+  },
 });
 
 export default function ProfileScreen() {
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
   const { user, userData, updateUserProfile, logout } = useAuth();
 
   React.useEffect(() => {
@@ -100,6 +124,49 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleChangePassword = async () => {
+    if (!user?.email) {
+      Alert.alert('Error', 'No email found for password reset');
+      return;
+    }
+
+    Alert.alert(
+      'Change Password',
+      `A password reset link will be sent to ${user.email}. Do you want to continue?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Send Reset Link', 
+          onPress: async () => {
+            setPasswordResetLoading(true);
+            try {
+              await sendPasswordResetEmail(auth, user.email);
+              Alert.alert(
+                'Password Reset Sent',
+                'Please check your email for password reset instructions.'
+              );
+            } catch (error: any) {
+              console.error('Password reset error:', error);
+              let errorMessage = 'Failed to send password reset email. Please try again.';
+              
+              if (error.code === 'auth/network-request-failed') {
+                errorMessage = 'Please check internet connectivity';
+              } else if (error.code === 'auth/user-not-found') {
+                errorMessage = 'No account found with this email address.';
+              } else if (error.code === 'auth/invalid-email') {
+                errorMessage = 'Please enter a valid email address.';
+              }
+              
+              Alert.alert('Error', errorMessage);
+            } finally {
+              setPasswordResetLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleLogout = async () => {
@@ -179,6 +246,20 @@ export default function ProfileScreen() {
           />
         </View>
 
+        <View style={styles.passwordSection}>
+          <Text style={styles.passwordTitle}>🔐 Password Settings</Text>
+          <Text style={styles.passwordDescription}>
+            Change your account password by receiving a reset link via email.
+          </Text>
+          <Button
+            text={passwordResetLoading ? "Sending..." : "Change Password"}
+            onPress={handleChangePassword}
+            variant="outline"
+            loading={passwordResetLoading}
+            disabled={passwordResetLoading}
+          />
+        </View>
+
         <View style={styles.buttonContainer}>
           <Button
             text="Update Profile"
@@ -194,7 +275,7 @@ export default function ProfileScreen() {
               </Text>
               
               <Button
-                text="🎯 Admin Dashboard"
+                text="🎯 Admin Panel"
                 onPress={handleAdminPanel}
                 variant="success"
                 style={{ marginBottom: spacing.sm }}

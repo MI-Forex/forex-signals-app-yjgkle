@@ -28,7 +28,7 @@ export default function SignalCard({ signal }: SignalCardProps) {
       case 'hit_tp':
         return colors.success;
       case 'hit_sl':
-        return colors.error;
+        return colors.danger;
       case 'closed':
         return colors.textMuted;
       default:
@@ -55,7 +55,7 @@ export default function SignalCard({ signal }: SignalCardProps) {
     if (signal.type.includes('BUY')) {
       return colors.success;
     } else if (signal.type.includes('SELL')) {
-      return colors.error;
+      return colors.danger;
     }
     return colors.primary;
   };
@@ -73,14 +73,14 @@ export default function SignalCard({ signal }: SignalCardProps) {
 
   const getDisplayNotes = () => {
     if (!signal.notes) return '';
-    if (notesExpanded || signal.notes.length <= 100) {
+    if (notesExpanded || signal.notes.length <= 150) {
       return signal.notes;
     }
-    return signal.notes.substring(0, 100) + '...';
+    return signal.notes.substring(0, 150) + '...';
   };
 
   const shouldShowReadMore = () => {
-    return signal.notes && signal.notes.length > 100;
+    return signal.notes && signal.notes.length > 150;
   };
 
   const toggleNotesExpanded = () => {
@@ -108,7 +108,7 @@ export default function SignalCard({ signal }: SignalCardProps) {
         </View>
         <View style={styles.priceItem}>
           <Text style={styles.priceLabel}>Stop Loss</Text>
-          <Text style={[styles.priceValue, { color: colors.error }]}>
+          <Text style={[styles.priceValue, { color: colors.danger }]}>
             {signal.stopLoss.toFixed(5)}
           </Text>
         </View>
@@ -245,6 +245,9 @@ const styles = StyleSheet.create({
   readMoreButton: {
     alignSelf: 'flex-start',
     paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.primary + '15',
+    borderRadius: borderRadius.sm,
     marginTop: spacing.xs,
   },
   readMoreText: {

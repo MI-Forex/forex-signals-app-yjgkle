@@ -14,7 +14,7 @@ import { router } from 'expo-router';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
 import Button from '../../../components/Button';
-import { commonStyles, colors, spacing, borderRadius } from '../../../styles/commonStyles';
+import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../firebase/config';
 import { uploadImageToCloudinary } from '../../../utils/cloudinaryUtils';
@@ -27,6 +27,7 @@ export default function AddAnalysisScreen() {
   });
   const [loading, setLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const { userData } = useAuth();
 
   const validateForm = () => {
@@ -123,22 +124,32 @@ export default function AddAnalysisScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleInputFocus = (inputName: string) => {
+    setFocusedInput(inputName);
+  };
+
+  const handleInputBlur = () => {
+    setFocusedInput(null);
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
           <Button
             text="← Back"
             onPress={handleBack}
             variant="outline"
-            style={styles.backButton}
+            size="small"
           />
           <Text style={styles.title}>Add Analysis</Text>
         </View>
@@ -147,9 +158,14 @@ export default function AddAnalysisScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Title *</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                focusedInput === 'title' && styles.inputFocused
+              ]}
               value={formData.title}
               onChangeText={(value) => updateFormData('title', value)}
+              onFocus={() => handleInputFocus('title')}
+              onBlur={handleInputBlur}
               placeholder="Enter analysis title"
               placeholderTextColor={colors.textMuted}
               maxLength={100}
@@ -159,9 +175,15 @@ export default function AddAnalysisScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Content *</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[
+                styles.input, 
+                styles.textArea,
+                focusedInput === 'content' && styles.inputFocused
+              ]}
               value={formData.content}
               onChangeText={(value) => updateFormData('content', value)}
+              onFocus={() => handleInputFocus('content')}
+              onBlur={handleInputBlur}
               placeholder="Enter analysis content"
               placeholderTextColor={colors.textMuted}
               multiline
@@ -196,6 +218,7 @@ export default function AddAnalysisScreen() {
                   text="Remove Image"
                   onPress={() => updateFormData('imageUrl', '')}
                   variant="danger"
+                  size="small"
                   style={styles.removeImageButton}
                 />
               </View>
@@ -208,7 +231,7 @@ export default function AddAnalysisScreen() {
               onPress={handleSubmit}
               loading={loading}
               disabled={loading || imageUploading}
-              style={styles.submitButton}
+              size="large"
             />
           </View>
         </View>
@@ -226,24 +249,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.lg,
-  },
-  backButton: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    marginRight: spacing.md,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
     flex: 1,
+    marginLeft: spacing.md,
   },
   form: {
     gap: spacing.lg,
@@ -258,16 +281,22 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.sm,
+  },
+  inputFocused: {
+    borderColor: colors.primary,
+    borderWidth: 2,
   },
   textArea: {
     minHeight: 120,
     maxHeight: 200,
+    textAlignVertical: 'top',
   },
   characterCount: {
     fontSize: 12,
@@ -285,7 +314,7 @@ const styles = StyleSheet.create({
   previewImage: {
     width: '100%',
     height: 200,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     backgroundColor: colors.surface,
   },
   removeImageButton: {
@@ -294,8 +323,5 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginTop: spacing.lg,
-  },
-  submitButton: {
-    paddingVertical: spacing.md,
   },
 });
