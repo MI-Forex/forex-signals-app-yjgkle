@@ -18,6 +18,7 @@ interface User {
   id: string;
   email: string;
   displayName?: string;
+  phoneNumber?: string;
   isVIP?: boolean;
   createdAt?: Date;
 }
@@ -47,6 +48,8 @@ export default function AdminVIPScreen() {
     ]
   });
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dateFrom, setDateFrom] = useState(new Date());
@@ -60,6 +63,11 @@ export default function AdminVIPScreen() {
     loadVIPSettings();
     loadUsers();
   }, []);
+
+  // Update filtered users when users or search query changes
+  useEffect(() => {
+    handleSearch(searchQuery);
+  }, [users]);
 
   const loadVIPSettings = async () => {
     try {
@@ -82,10 +90,25 @@ export default function AdminVIPScreen() {
         createdAt: doc.data().createdAt?.toDate() || new Date()
       })) as User[];
       setUsers(usersData);
+      setFilteredUsers(usersData);
     } catch (error) {
       console.error('Error loading users:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim() === '') {
+      setFilteredUsers(users);
+    } else {
+      const filtered = users.filter(user => 
+        user.email.toLowerCase().includes(query.toLowerCase()) ||
+        (user.displayName && user.displayName.toLowerCase().includes(query.toLowerCase())) ||
+        (user.phoneNumber && user.phoneNumber.includes(query))
+      );
+      setFilteredUsers(filtered);
     }
   };
 
@@ -207,9 +230,9 @@ export default function AdminVIPScreen() {
       }));
 
       // Generate CSV content
-      const csvHeader = 'ID,Pair,Type,Entry Point,Stop Loss,Take Profit,Status,Notes,Created At\n';
+      const csvHeader = 'ID,Pair,Type,Entry Point,Stop Loss,Take Profit,Status,Target Users,Notes,Created At\n';
       const csvContent = signalsData.map(signal => 
-        `${signal.id},"${signal.pair}","${signal.type}","${signal.entryPoint}","${signal.stopLoss}","${signal.takeProfit}","${signal.status}","${signal.notes || ''}","${signal.createdAt?.toISOString() || ''}"`
+        `${signal.id},"${signal.pair}","${signal.type}","${signal.entryPoint}","${signal.stopLoss}","${signal.takeProfit}","${signal.status}","${signal.targetUsers || (signal.isVip ? 'vip' : 'normal')}","${signal.notes || ''}","${signal.createdAt?.toISOString() || ''}"`
       ).join('\n');
       
       const fullCsv = csvHeader + csvContent;
@@ -303,11 +326,35 @@ export default function AdminVIPScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>User Management</Text>
-          {users.map((user) => (
+          
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search users by name, email, or phone..."
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={handleSearch}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          {searchQuery.trim() !== '' && (
+            <View style={styles.searchResults}>
+              <Text style={styles.searchResultsText}>
+                Found {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} matching "{searchQuery}"
+              </Text>
+            </View>
+          )}
+
+          {filteredUsers.map((user) => (
             <View key={user.id} style={styles.userCard}>
               <View style={styles.userInfo}>
                 <Text style={styles.userName}>{user.displayName || 'Unknown'}</Text>
                 <Text style={styles.userEmail}>{user.email}</Text>
+                {user.phoneNumber && (
+                  <Text style={styles.userPhone}>{user.phoneNumber}</Text>
+                )}
                 <Text style={[styles.vipStatus, user.isVIP && styles.vipActive]}>
                   {user.isVIP ? 'VIP Member' : 'Regular User'}
                 </Text>
@@ -453,6 +500,29 @@ const styles = StyleSheet.create({
   saveButton: {
     marginTop: spacing.md,
   },
+  searchContainer: {
+    marginBottom: spacing.md,
+  },
+  searchInput: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchResults: {
+    backgroundColor: colors.background,
+    padding: spacing.sm,
+    borderRadius: borderRadius.sm,
+    marginBottom: spacing.md,
+  },
+  searchResultsText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   userCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -474,6 +544,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+  },
+  userPhone: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   vipStatus: {
     fontSize: 12,

@@ -134,7 +134,18 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
         setError('');
       }, (error) => {
         console.error('ChatModal: Error in message listener:', error);
-        setError(`Failed to load messages: ${error.message}`);
+        let errorMessage = 'Failed to load messages';
+        
+        // Generic error messages for security
+        if (error.code === 'permission-denied') {
+          errorMessage = 'Please check your credentials';
+        } else if (error.code === 'unavailable') {
+          errorMessage = 'Please check internet connectivity';
+        } else {
+          errorMessage = 'Connection error occurred';
+        }
+        
+        setError(errorMessage);
         setLoading(false);
         
         // Auto-retry on permission errors
@@ -150,7 +161,16 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       return unsubscribe;
     } catch (error: any) {
       console.error('ChatModal: Error loading chat messages:', error);
-      setError(`Failed to initialize chat: ${error.message}`);
+      let errorMessage = 'Failed to initialize chat';
+      
+      // Generic error messages for security
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -190,9 +210,18 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       
     } catch (error: any) {
       console.error('ChatModal: Error sending message:', error);
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to send message';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
       Alert.alert(
         'Error Sending Message', 
-        `Failed to send message: ${error.message}\n\nPlease check your internet connection and try again.`,
+        `${errorMessage}. Please try again.`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Retry', onPress: () => {
@@ -358,9 +387,6 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
               ? 'Responding as Admin' 
               : 'Chat with our admin for VIP membership assistance'
             }
-          </Text>
-          <Text style={styles.footerSubtext}>
-            Messages are delivered in real-time via Firebase
           </Text>
           {error && (
             <Text style={styles.footerError}>
@@ -567,12 +593,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     textAlign: 'center',
-  },
-  footerSubtext: {
-    fontSize: 10,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: 2,
   },
   footerError: {
     fontSize: 10,

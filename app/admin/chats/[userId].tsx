@@ -113,14 +113,32 @@ export default function AdminChatScreen() {
         setLoading(false);
       }, (error) => {
         console.error('AdminChatScreen: Error in message listener:', error);
-        setError('Failed to load messages: ' + error.message);
+        
+        // Generic error messages for security
+        let errorMessage = 'Failed to load messages';
+        if (error.code === 'permission-denied') {
+          errorMessage = 'Please check your credentials';
+        } else if (error.code === 'unavailable') {
+          errorMessage = 'Please check internet connectivity';
+        }
+        
+        setError(errorMessage);
         setLoading(false);
       });
 
       return unsubscribe;
     } catch (error: any) {
       console.error('AdminChatScreen: Error loading chat messages:', error);
-      setError('Failed to initialize chat: ' + error.message);
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to initialize chat';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -149,7 +167,16 @@ export default function AdminChatScreen() {
       console.log('AdminChatScreen: Admin message sent successfully');
     } catch (error: any) {
       console.error('AdminChatScreen: Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message: ' + error.message);
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to send message';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      Alert.alert('Error', errorMessage);
       setNewMessage(messageText); // Restore message on error
     } finally {
       setSending(false);
@@ -293,9 +320,6 @@ export default function AdminChatScreen() {
       <View style={styles.footer}>
         <Text style={styles.footerText}>
           Responding as Admin to {userName}
-        </Text>
-        <Text style={styles.footerSubtext}>
-          Messages are delivered in real-time via Firebase
         </Text>
       </View>
     </KeyboardAvoidingView>
@@ -466,11 +490,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     textAlign: 'center',
-  },
-  footerSubtext: {
-    fontSize: 10,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: 2,
   },
 });

@@ -10,14 +10,14 @@ import {
   StyleSheet, 
   Image 
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import Button from '../../../../components/Button';
-import { db } from '../../../../firebase/config';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { commonStyles, colors, spacing, borderRadius } from '../../../../styles/commonStyles';
 import { useAuth } from '../../../../contexts/AuthContext';
+import Button from '../../../../components/Button';
 import { uploadImageToCloudinary } from '../../../../utils/cloudinaryUtils';
+import { db } from '../../../../firebase/config';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
 
 interface AnalysisData {
   title: string;
@@ -25,286 +25,37 @@ interface AnalysisData {
   imageUrl?: string;
 }
 
-export default function EditAnalysisScreen() {
-  const { id } = useLocalSearchParams();
-  const [formData, setFormData] = useState<AnalysisData>({
-    title: '',
-    content: '',
-    imageUrl: ''
-  });
-  const [loading, setLoading] = useState(false);
-  const [imageUploading, setImageUploading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const { userData } = useAuth();
-
-  useEffect(() => {
-    if (id) {
-      loadAnalysis();
-    }
-  }, [id]);
-
-  const loadAnalysis = async () => {
-    try {
-      console.log('EditAnalysis: Loading analysis with ID:', id);
-      setInitialLoading(true);
-      
-      const docRef = doc(db, 'analysis', id as string);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setFormData({
-          title: data.title || '',
-          content: data.content || '',
-          imageUrl: data.imageUrl || ''
-        });
-        console.log('EditAnalysis: Analysis loaded successfully');
-      } else {
-        Alert.alert('Error', 'Analysis not found');
-        router.back();
-      }
-    } catch (error) {
-      console.error('EditAnalysis: Error loading analysis:', error);
-      Alert.alert('Error', 'Failed to load analysis');
-      router.back();
-    } finally {
-      setInitialLoading(false);
-    }
-  };
-
-  const validateForm = () => {
-    if (!formData.title.trim()) {
-      Alert.alert('Validation Error', 'Please enter a title');
-      return false;
-    }
-    if (!formData.content.trim()) {
-      Alert.alert('Validation Error', 'Please enter content');
-      return false;
-    }
-    return true;
-  };
-
-  const pickImage = async () => {
-    try {
-      console.log('EditAnalysis: Requesting image picker permissions...');
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (permissionResult.granted === false) {
-        Alert.alert('Permission Required', 'Permission to access camera roll is required!');
-        return;
-      }
-
-      console.log('EditAnalysis: Opening image picker...');
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [16, 9],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        console.log('EditAnalysis: Image selected, uploading to Cloudinary...');
-        setImageUploading(true);
-        
-        const imageUrl = await uploadImageToCloudinary(
-          result.assets[0].uri,
-          'analysis'
-        );
-        
-        if (imageUrl) {
-          setFormData(prev => ({ ...prev, imageUrl }));
-          console.log('EditAnalysis: Image uploaded successfully:', imageUrl);
-        }
-      }
-    } catch (error) {
-      console.error('EditAnalysis: Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
-    } finally {
-      setImageUploading(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    setLoading(true);
-    try {
-      console.log('EditAnalysis: Updating analysis...');
-      
-      const updateData = {
-        title: formData.title.trim(),
-        content: formData.content.trim(),
-        imageUrl: formData.imageUrl || null,
-        updatedAt: serverTimestamp(),
-        updatedBy: userData?.uid || '',
-        updatedByName: userData?.displayName || userData?.email || 'Admin',
-      };
-
-      const docRef = doc(db, 'analysis', id as string);
-      await updateDoc(docRef, updateData);
-      
-      console.log('EditAnalysis: Analysis updated successfully');
-      Alert.alert(
-        'Success', 
-        'Analysis updated successfully!',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
-    } catch (error) {
-      console.error('EditAnalysis: Error updating analysis:', error);
-      Alert.alert('Error', 'Failed to update analysis. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBack = () => {
-    router.back();
-  };
-
-  const updateFormData = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  if (initialLoading) {
-    return (
-      <View style={[commonStyles.centerContent, { backgroundColor: colors.background }]}>
-        <Text style={commonStyles.text}>Loading analysis...</Text>
-      </View>
-    );
-  }
-
-  return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.header}>
-          <Button
-            text="← Back"
-            onPress={handleBack}
-            variant="outline"
-            style={styles.backButton}
-          />
-          <Text style={styles.title}>Edit Analysis</Text>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Title *</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.title}
-              onChangeText={(value) => updateFormData('title', value)}
-              placeholder="Enter analysis title"
-              placeholderTextColor={colors.textMuted}
-              maxLength={100}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Content *</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={formData.content}
-              onChangeText={(value) => updateFormData('content', value)}
-              placeholder="Enter analysis content"
-              placeholderTextColor={colors.textMuted}
-              multiline
-              numberOfLines={8}
-              textAlignVertical="top"
-              maxLength={2000}
-            />
-            <Text style={styles.characterCount}>
-              {formData.content.length}/2000 characters
-            </Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Analysis Image (Optional)</Text>
-            <Button
-              text={imageUploading ? "Uploading..." : "Pick Image"}
-              onPress={pickImage}
-              variant="outline"
-              loading={imageUploading}
-              disabled={imageUploading}
-              style={styles.imageButton}
-            />
-            
-            {formData.imageUrl ? (
-              <View style={styles.imagePreview}>
-                <Image 
-                  source={{ uri: formData.imageUrl }} 
-                  style={styles.previewImage}
-                  resizeMode="cover"
-                />
-                <Button
-                  text="Remove Image"
-                  onPress={() => updateFormData('imageUrl', '')}
-                  variant="danger"
-                  style={styles.removeImageButton}
-                />
-              </View>
-            ) : null}
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <Button
-              text={loading ? "Updating..." : "Update Analysis"}
-              onPress={handleSubmit}
-              loading={loading}
-              disabled={loading || imageUploading}
-              style={styles.submitButton}
-            />
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
-  },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  backButton: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    marginRight: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
-    flex: 1,
   },
-  form: {
-    gap: spacing.lg,
+  scrollContainer: {
+    flexGrow: 1,
+    padding: spacing.lg,
   },
-  inputGroup: {
-    gap: spacing.sm,
+  inputContainer: {
+    marginBottom: spacing.lg,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
+    marginBottom: spacing.sm,
   },
   input: {
     backgroundColor: colors.surface,
@@ -316,36 +67,260 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   textArea: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
     minHeight: 120,
-    maxHeight: 200,
+    textAlignVertical: 'top',
   },
-  characterCount: {
-    fontSize: 12,
-    color: colors.textMuted,
-    textAlign: 'right',
-  },
-  imageButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.lg,
+  imageContainer: {
+    marginBottom: spacing.md,
   },
   imagePreview: {
-    marginTop: spacing.md,
-    gap: spacing.sm,
-  },
-  previewImage: {
     width: '100%',
     height: 200,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
+    marginBottom: spacing.md,
   },
-  removeImageButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
+  imageButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
   buttonContainer: {
-    marginTop: spacing.lg,
-  },
-  submitButton: {
-    paddingVertical: spacing.md,
+    marginTop: spacing.xl,
+    gap: spacing.md,
   },
 });
+
+export default function EditAnalysisScreen() {
+  const { id } = useLocalSearchParams();
+  const [formData, setFormData] = useState<AnalysisData>({
+    title: '',
+    content: '',
+    imageUrl: '',
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const { userData } = useAuth();
+
+  useEffect(() => {
+    if (id) {
+      loadAnalysis();
+    }
+  }, [id]);
+
+  const loadAnalysis = async () => {
+    try {
+      console.log('Loading analysis with ID:', id);
+      const analysisDoc = await getDoc(doc(db, 'analysis', id as string));
+      
+      if (analysisDoc.exists()) {
+        const data = analysisDoc.data();
+        setFormData({
+          title: data.title || '',
+          content: data.content || '',
+          imageUrl: data.imageUrl || '',
+        });
+        console.log('Analysis loaded successfully');
+      } else {
+        Alert.alert('Error', 'Analysis not found');
+        router.back();
+      }
+    } catch (error) {
+      console.error('Error loading analysis:', error);
+      Alert.alert('Error', 'Failed to load analysis');
+      router.back();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const validateForm = () => {
+    if (!formData.title.trim()) {
+      Alert.alert('Error', 'Please enter a title');
+      return false;
+    }
+    if (!formData.content.trim()) {
+      Alert.alert('Error', 'Please enter content');
+      return false;
+    }
+    return true;
+  };
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setUploadingImage(true);
+        const imageUrl = await uploadImageToCloudinary(result.assets[0].uri);
+        setFormData(prev => ({ ...prev, imageUrl }));
+        console.log('Image uploaded successfully:', imageUrl);
+      }
+    } catch (error: any) {
+      console.error('Error picking/uploading image:', error);
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to upload image. Please try again.';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      }
+      
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    setSaving(true);
+    try {
+      const updateData = {
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        imageUrl: formData.imageUrl || '',
+        updatedAt: serverTimestamp(),
+        updatedBy: userData?.uid || '',
+        updatedByName: userData?.displayName || 'Admin'
+      };
+
+      console.log('Updating analysis with data:', updateData);
+      await updateDoc(doc(db, 'analysis', id as string), updateData);
+      
+      Alert.alert('Success', 'Analysis updated successfully', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
+      console.error('Error updating analysis:', error);
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to update analysis. Please try again.';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBack = () => {
+    router.back();
+  };
+
+  const updateFormData = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  if (loading) {
+    return (
+      <View style={commonStyles.loading}>
+        <Text style={commonStyles.text}>Loading analysis...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={styles.header}>
+        <Text style={styles.title}>Edit Analysis</Text>
+        <Button
+          text="Cancel"
+          onPress={handleBack}
+          variant="outline"
+          style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+        />
+      </View>
+
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Title *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter analysis title"
+            placeholderTextColor={colors.textSecondary}
+            value={formData.title}
+            onChangeText={(value) => updateFormData('title', value)}
+            autoCapitalize="words"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Content *</Text>
+          <TextInput
+            style={styles.textArea}
+            placeholder="Enter detailed analysis content..."
+            placeholderTextColor={colors.textSecondary}
+            value={formData.content}
+            onChangeText={(value) => updateFormData('content', value)}
+            multiline
+            numberOfLines={6}
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Analysis Image (Optional)</Text>
+          <View style={styles.imageContainer}>
+            {formData.imageUrl ? (
+              <Image 
+                source={{ uri: formData.imageUrl }} 
+                style={styles.imagePreview}
+                resizeMode="cover"
+              />
+            ) : null}
+            
+            <View style={styles.imageButtons}>
+              <Button
+                text={formData.imageUrl ? "Change Image" : "Add Image"}
+                onPress={pickImage}
+                loading={uploadingImage}
+                disabled={uploadingImage}
+                variant="outline"
+                style={{ flex: 1 }}
+              />
+              
+              {formData.imageUrl && (
+                <Button
+                  text="Remove"
+                  onPress={() => updateFormData('imageUrl', '')}
+                  variant="danger"
+                  style={{ flex: 1 }}
+                />
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <Button
+            text="Update Analysis"
+            onPress={handleSubmit}
+            loading={saving}
+            disabled={saving}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}

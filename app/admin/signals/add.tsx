@@ -19,6 +19,11 @@ const SIGNAL_TYPES = [
   { label: 'SELL STOP LIMIT', value: 'SELL_STOP_LIMIT' }
 ];
 
+const USER_TYPES = [
+  { label: 'Normal Users', value: 'normal' },
+  { label: 'VIP Users', value: 'vip' }
+];
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -103,6 +108,7 @@ export default function AddSignalScreen() {
     stopLoss: '',
     takeProfit: '',
     notes: '',
+    targetUsers: 'normal', // New field for targeting
   });
   const [loading, setLoading] = useState(false);
   const { userData } = useAuth();
@@ -128,6 +134,10 @@ export default function AddSignalScreen() {
       Alert.alert('Error', 'Please enter a valid take profit');
       return false;
     }
+    if (!formData.targetUsers) {
+      Alert.alert('Error', 'Please select target user type');
+      return false;
+    }
     return true;
   };
 
@@ -144,6 +154,8 @@ export default function AddSignalScreen() {
         takeProfit: Number(formData.takeProfit),
         notes: formData.notes,
         status: 'active',
+        isVip: formData.targetUsers === 'vip', // New field to indicate VIP signals
+        targetUsers: formData.targetUsers, // Store the target user type
         createdAt: serverTimestamp(),
         createdBy: userData?.uid || '',
         createdByName: userData?.displayName || 'Admin',
@@ -159,7 +171,16 @@ export default function AddSignalScreen() {
       ]);
     } catch (error: any) {
       console.error('Error adding signal:', error);
-      Alert.alert('Error', 'Failed to add signal. Please try again.');
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to add signal. Please try again.';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -218,6 +239,25 @@ export default function AddSignalScreen() {
                   key={signalType.value} 
                   label={signalType.label} 
                   value={signalType.value} 
+                />
+              ))}
+            </Picker>
+          </View>
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Target Users *</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.targetUsers}
+              onValueChange={(value) => updateFormData('targetUsers', value)}
+              style={styles.picker}
+            >
+              {USER_TYPES.map((userType) => (
+                <Picker.Item 
+                  key={userType.value} 
+                  label={userType.label} 
+                  value={userType.value} 
                 />
               ))}
             </Picker>

@@ -117,13 +117,31 @@ export default function AdminChatsScreen() {
           setError('');
         } catch (error: any) {
           console.error('AdminChats: Error processing chats:', error);
-          setError('Failed to load chat data: ' + error.message);
+          
+          // Generic error messages for security
+          let errorMessage = 'Failed to load chat data';
+          if (error.code === 'permission-denied') {
+            errorMessage = 'Please check your credentials';
+          } else if (error.code === 'unavailable') {
+            errorMessage = 'Please check internet connectivity';
+          }
+          
+          setError(errorMessage);
           setLoading(false);
           setRefreshing(false);
         }
       }, (error) => {
         console.error('AdminChats: Error in chats listener:', error);
-        setError('Failed to load chats: ' + error.message);
+        
+        // Generic error messages for security
+        let errorMessage = 'Failed to load chats';
+        if (error.code === 'permission-denied') {
+          errorMessage = 'Please check your credentials';
+        } else if (error.code === 'unavailable') {
+          errorMessage = 'Please check internet connectivity';
+        }
+        
+        setError(errorMessage);
         setLoading(false);
         setRefreshing(false);
       });
@@ -131,7 +149,16 @@ export default function AdminChatsScreen() {
       return unsubscribe;
     } catch (error: any) {
       console.error('AdminChats: Error setting up chat listener:', error);
-      setError('Failed to initialize chats: ' + error.message);
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to initialize chats';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      setError(errorMessage);
       setLoading(false);
       setRefreshing(false);
     }
@@ -157,7 +184,7 @@ export default function AdminChatsScreen() {
       });
     } catch (error: any) {
       console.error('AdminChats: Error opening chat:', error);
-      Alert.alert('Error', 'Failed to open chat: ' + error.message);
+      Alert.alert('Error', 'Failed to open chat. Please try again.');
     }
   };
 
@@ -321,9 +348,6 @@ export default function AdminChatsScreen() {
       <View style={styles.footer}>
         <Text style={styles.footerText}>
           Total Users: {chatUsers.length} | Unread: {getTotalUnreadCount()}
-        </Text>
-        <Text style={styles.footerSubtext}>
-          Real-time chat updates via Firebase
         </Text>
       </View>
     </View>
@@ -508,11 +532,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     textAlign: 'center',
-  },
-  footerSubtext: {
-    fontSize: 10,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: 2,
   },
 });
