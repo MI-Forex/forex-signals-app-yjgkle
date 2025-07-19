@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import Button from '../../components/Button';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import CountryPicker from 'react-native-country-picker-modal';
 import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
+import { Ionicons } from '@expo/vector-icons';
 
 const styles = StyleSheet.create({
   container: {
@@ -57,6 +58,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     minHeight: 48,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 48,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+  },
+  eyeButton: {
+    padding: spacing.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   phoneContainer: {
     flexDirection: 'row',
@@ -114,6 +135,8 @@ export default function RegisterScreen() {
     displayName: '',
     phoneNumber: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [countryCode, setCountryCode] = useState('US');
   const [callingCode, setCallingCode] = useState('1');
   const [loading, setLoading] = useState(false);
@@ -194,6 +217,14 @@ export default function RegisterScreen() {
     setCallingCode(country.callingCode[0]);
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
@@ -266,30 +297,56 @@ export default function RegisterScreen() {
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Password *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your password"
-            placeholderTextColor={colors.textSecondary}
-            value={formData.password}
-            onChangeText={(value) => updateFormData('password', value)}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Enter your password"
+              placeholderTextColor={colors.textSecondary}
+              value={formData.password}
+              onChangeText={(value) => updateFormData('password', value)}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={togglePasswordVisibility}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={20}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Confirm Password *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm your password"
-            placeholderTextColor={colors.textSecondary}
-            value={formData.confirmPassword}
-            onChangeText={(value) => updateFormData('confirmPassword', value)}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Confirm your password"
+              placeholderTextColor={colors.textSecondary}
+              value={formData.confirmPassword}
+              onChangeText={(value) => updateFormData('confirmPassword', value)}
+              secureTextEntry={!showConfirmPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={toggleConfirmPasswordVisibility}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={showConfirmPassword ? 'eye-off' : 'eye'}
+                size={20}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.buttonContainer}>

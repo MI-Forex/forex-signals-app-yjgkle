@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import Button from '../../components/Button';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 
 const styles = StyleSheet.create({
   container: {
@@ -56,6 +57,26 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     minHeight: 48,
   },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 48,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+  },
+  eyeButton: {
+    padding: spacing.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   buttonContainer: {
     marginTop: spacing.lg,
     gap: spacing.md,
@@ -84,6 +105,7 @@ const styles = StyleSheet.create({
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
 
@@ -127,6 +149,10 @@ export default function LoginScreen() {
     router.push('/auth/register');
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
@@ -162,16 +188,29 @@ export default function LoginScreen() {
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Password *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your password"
-            placeholderTextColor={colors.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Enter your password"
+              placeholderTextColor={colors.textSecondary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={togglePasswordVisibility}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={20}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.buttonContainer}>

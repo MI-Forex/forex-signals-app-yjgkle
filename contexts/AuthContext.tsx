@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
+import { router } from 'expo-router';
 
 interface UserData {
   uid: string;
@@ -74,8 +75,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Error fetching user data:', error);
         }
       } else {
-        console.log('No user, clearing user data');
+        console.log('No user, clearing user data and redirecting to login');
         setUserData(null);
+        // Force redirect to login when user is null (logged out)
+        if (!loading) {
+          router.replace('/auth/login');
+        }
       }
       
       console.log('Setting loading to false');
@@ -86,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('AuthProvider: Cleaning up auth state listener');
       unsubscribe();
     };
-  }, []);
+  }, [loading]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -129,6 +134,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('Logging out user');
       await signOut(auth);
+      // Clear local state immediately
+      setUser(null);
+      setUserData(null);
+      // Force redirect to login and clear navigation stack
+      router.replace('/auth/login');
     } catch (error: any) {
       console.error('Logout error:', error);
       throw new Error(error.message);

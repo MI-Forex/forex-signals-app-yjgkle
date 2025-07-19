@@ -1,4 +1,3 @@
-import { cloudinaryConfig } from '../firebase/config';
 import { Alert } from 'react-native';
 
 export interface CloudinaryUploadResult {
@@ -11,12 +10,22 @@ export interface CloudinaryUploadResult {
   created_at: string;
 }
 
+// Cloudinary configuration using the provided credentials
+const CLOUDINARY_CONFIG = {
+  cloudName: 'dnoc2vnqb',
+  apiKey: '358947224699173',
+  apiSecret: 'kzv7yRhX2vueOP_lw-uvyztM7zo',
+  uploadPreset: 'cncapp', // Using the provided upload preset
+  uploadUrl: 'https://api.cloudinary.com/v1_1/dnoc2vnqb/image/upload'
+};
+
 export const uploadImageToCloudinary = async (
   imageUri: string,
   folder: string = 'analysis'
 ): Promise<string | null> => {
   try {
     console.log('Cloudinary: Starting image upload to folder:', folder);
+    console.log('Cloudinary: Using upload preset:', CLOUDINARY_CONFIG.uploadPreset);
     
     // Create form data
     const formData = new FormData();
@@ -28,27 +37,27 @@ export const uploadImageToCloudinary = async (
       name: `analysis_${Date.now()}.jpg`,
     } as any);
     
-    // Add upload parameters
-    formData.append('upload_preset', 'forex_analysis'); // You need to create this preset in Cloudinary
+    // Add upload parameters for unsigned upload
+    formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
     formData.append('folder', folder);
-    formData.append('cloud_name', cloudinaryConfig.cloudName);
+    
+    console.log('Cloudinary: Uploading to URL:', CLOUDINARY_CONFIG.uploadUrl);
     
     // Upload to Cloudinary
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`,
-      {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
+    const response = await fetch(CLOUDINARY_CONFIG.uploadUrl, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log('Cloudinary: Response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Cloudinary: Upload failed with status:', response.status, errorText);
-      throw new Error(`Upload failed: ${response.status} ${errorText}`);
+      throw new Error(`Upload failed: ${response.status} - ${errorText}`);
     }
 
     const result: CloudinaryUploadResult = await response.json();
@@ -59,7 +68,7 @@ export const uploadImageToCloudinary = async (
     console.error('Cloudinary: Upload error:', error);
     Alert.alert(
       'Upload Error',
-      'Failed to upload image to Cloudinary. Please check your internet connection and try again.'
+      `Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check your internet connection and try again.`
     );
     return null;
   }
@@ -87,7 +96,7 @@ export const getOptimizedImageUrl = (
   height?: number,
   quality: number = 80
 ): string => {
-  if (!originalUrl.includes('cloudinary.com')) {
+  if (!originalUrl || !originalUrl.includes('cloudinary.com')) {
     return originalUrl;
   }
 

@@ -321,7 +321,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
               placeholderTextColor={colors.textMuted}
               multiline
               maxLength={500}
-              editable={!sending && !loading}
+              editable={!sending && !loading && !error}
               returnKeyType="send"
               blurOnSubmit={false}
               onSubmitEditing={handleSendPress}
