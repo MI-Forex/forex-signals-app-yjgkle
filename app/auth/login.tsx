@@ -104,6 +104,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: spacing.xs,
   },
+  loadingContainer: {
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.primary,
+    marginTop: spacing.sm,
+    fontWeight: '600',
+  },
 });
 
 export default function LoginScreen() {
@@ -130,11 +140,12 @@ export default function LoginScreen() {
 
     console.log('Starting login process for:', email.trim());
     setLoading(true);
+    
     try {
       console.log('Calling signIn function...');
       await signIn(email.trim(), password);
-      console.log('Login successful, waiting for navigation...');
-      // Navigation is handled by AuthContext
+      console.log('Login successful, navigation will be handled by AuthContext');
+      // Don't set loading to false here - let AuthContext handle navigation
     } catch (error: any) {
       console.error('Login error:', error);
       console.error('Error details:', {
@@ -143,8 +154,7 @@ export default function LoginScreen() {
         stack: error.stack
       });
       Alert.alert('Login Failed', error.message);
-    } finally {
-      setLoading(false);
+      setLoading(false); // Only set loading to false on error
     }
   };
 
@@ -190,6 +200,7 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            editable={!loading}
           />
         </View>
 
@@ -205,15 +216,17 @@ export default function LoginScreen() {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!loading}
             />
             <TouchableOpacity 
               style={styles.eyeIcon}
               onPress={togglePasswordVisibility}
+              disabled={loading}
             >
               <Ionicons 
                 name={showPassword ? 'eye-off' : 'eye'} 
                 size={24} 
-                color={colors.textMuted} 
+                color={loading ? colors.textMuted : colors.textSecondary} 
               />
             </TouchableOpacity>
           </View>
@@ -221,22 +234,28 @@ export default function LoginScreen() {
 
         <View style={styles.buttonContainer}>
           <Button
-            text="Sign In"
+            text={loading ? "Signing In..." : "Sign In"}
             onPress={handleLogin}
             loading={loading}
             disabled={loading}
           />
+          
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Logging you in...</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.linkContainer}>
-          <TouchableOpacity onPress={handleForgotPassword}>
-            <Text style={styles.linkText}>Forgot Password?</Text>
+          <TouchableOpacity onPress={handleForgotPassword} disabled={loading}>
+            <Text style={[styles.linkText, loading && { opacity: 0.5 }]}>Forgot Password?</Text>
           </TouchableOpacity>
           
           <View style={styles.signUpContainer}>
-            <Text style={styles.signUpText}>Don't have an account?</Text>
-            <TouchableOpacity onPress={handleSignUp}>
-              <Text style={styles.signUpLink}>Sign Up</Text>
+            <Text style={[styles.signUpText, loading && { opacity: 0.5 }]}>Don't have an account?</Text>
+            <TouchableOpacity onPress={handleSignUp} disabled={loading}>
+              <Text style={[styles.signUpLink, loading && { opacity: 0.5 }]}>Sign Up</Text>
             </TouchableOpacity>
           </View>
         </View>

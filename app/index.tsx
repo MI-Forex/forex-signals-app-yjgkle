@@ -6,42 +6,42 @@ import { commonStyles, colors } from '../styles/commonStyles';
 
 export default function IndexScreen() {
   const { user, loading } = useAuth();
-  const [debugInfo, setDebugInfo] = useState('Initializing...');
-
-  console.log('IndexScreen render - user:', user?.email, 'loading:', loading);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
-    console.log('IndexScreen useEffect - user:', user?.email, 'loading:', loading);
-    
-    setDebugInfo(`Loading: ${loading}, User: ${user?.email || 'None'}`);
+    console.log('IndexScreen: Auth state changed', { user: !!user, loading });
     
     if (!loading) {
+      setInitialLoad(false);
+      
       if (user) {
-        console.log('User authenticated, redirecting to tabs');
-        setDebugInfo('Redirecting to app...');
-        setTimeout(() => {
-          router.replace('/(tabs)/signals');
-        }, 100);
+        console.log('IndexScreen: User authenticated, AuthContext will handle navigation');
+        // AuthContext will handle navigation based on user role
       } else {
-        console.log('User not authenticated, redirecting to login');
-        setDebugInfo('Redirecting to login...');
-        setTimeout(() => {
-          router.replace('/auth/login');
-        }, 100);
+        console.log('IndexScreen: No user, navigating to login');
+        router.replace('/auth/login');
       }
     }
   }, [user, loading]);
 
-  console.log('IndexScreen rendering loading screen');
+  // Show loading screen while auth is initializing
+  if (loading || initialLoad) {
+    return (
+      <View style={[commonStyles.container, commonStyles.centered]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[commonStyles.text, { marginTop: 16, color: colors.textMuted }]}>
+          Loading...
+        </Text>
+      </View>
+    );
+  }
 
+  // This should rarely be shown as navigation happens in useEffect
   return (
-    <View style={commonStyles.loading}>
+    <View style={[commonStyles.container, commonStyles.centered]}>
       <ActivityIndicator size="large" color={colors.primary} />
-      <Text style={[commonStyles.text, { marginTop: 16, textAlign: 'center' }]}>
-        Loading Forex Signals...
-      </Text>
-      <Text style={[commonStyles.textMuted, { marginTop: 8, textAlign: 'center' }]}>
-        {debugInfo}
+      <Text style={[commonStyles.text, { marginTop: 16, color: colors.textMuted }]}>
+        Initializing...
       </Text>
     </View>
   );

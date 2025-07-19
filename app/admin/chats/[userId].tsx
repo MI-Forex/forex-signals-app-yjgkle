@@ -9,10 +9,10 @@ import {
   StyleSheet,
   Alert 
 } from 'react-native';
-import { useAuth } from '../../../contexts/AuthContext';
-import Button from '../../../components/Button';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useAuth } from '../../../contexts/AuthContext';
 import { commonStyles, colors, spacing, borderRadius } from '../../../styles/commonStyles';
+import Button from '../../../components/Button';
 import { 
   ensureChatExists, 
   sendChatMessage, 
@@ -28,20 +28,16 @@ export default function AdminChatScreen() {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [chatId, setChatId] = useState<string>('');
   const scrollViewRef = useRef<ScrollView>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  const { userData } = useAuth();
   const { userId, userName } = useLocalSearchParams();
+  const { userData } = useAuth();
 
   useEffect(() => {
-    if (!userData?.isAdmin) {
-      router.replace('/admin');
-      return;
-    }
-
-    if (userId && typeof userId === 'string') {
+    if (userData?.isAdmin && userId) {
       loadChatMessages();
+    } else {
+      router.replace('/admin');
     }
 
     return () => {
@@ -63,7 +59,7 @@ export default function AdminChatScreen() {
 
   const loadChatMessages = async () => {
     try {
-      console.log('AdminChat: Loading Supabase messages for user:', userId);
+      console.log('AdminChat: Loading messages for user:', userId);
       setLoading(true);
       setError('');
       
@@ -71,20 +67,19 @@ export default function AdminChatScreen() {
         throw new Error('Invalid user ID');
       }
 
-      const currentChatId = createChatId(userId);
-      setChatId(currentChatId);
-      console.log('AdminChat: Chat ID:', currentChatId);
+      const chatId = createChatId(userId);
+      console.log('AdminChat: Chat ID:', chatId);
 
       // Load initial messages
-      const initialMessages = await getChatMessages(currentChatId);
+      const initialMessages = await getChatMessages(chatId);
       setMessages(initialMessages);
-      console.log('AdminChat: Loaded initial messages:', initialMessages.length);
+      console.log('AdminChat: Loaded messages:', initialMessages.length);
 
       // Subscribe to real-time updates
       const unsubscribe = subscribeToMessages(
-        currentChatId,
+        chatId,
         (updatedMessages) => {
-          console.log('AdminChat: Received real-time message update:', updatedMessages.length);
+          console.log('AdminChat: Received real-time update:', updatedMessages.length);
           setMessages(updatedMessages);
         },
         (error) => {
@@ -105,25 +100,27 @@ export default function AdminChatScreen() {
   const sendMessage = async () => {
     const messageText = newMessage.trim();
     
-    if (!messageText || !chatId || !userId) {
+    if (!messageText || !userId || !userData?.uid) {
       Alert.alert('Error', 'Unable to send message. Please check your connection and try again.');
       return;
     }
 
-    console.log('AdminChat: Sending Supabase message:', messageText.substring(0, 50));
+    console.log('AdminChat: Sending message:', messageText.substring(0, 50));
     setSending(true);
-    setNewMessage('');
+    setNewMessage(''); // Clear input immediately
 
     try {
+      const chatId = createChatId(userId as string);
+      
       await sendChatMessage(
         chatId,
-        userId as string,
+        userData.uid,
         messageText,
         'admin',
         'Admin'
       );
 
-      console.log('AdminChat: Supabase message sent successfully');
+      console.log('AdminChat: Message sent successfully');
     } catch (error: any) {
       console.error('AdminChat: Error sending message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
@@ -150,9 +147,8 @@ export default function AdminChatScreen() {
 
   if (!userData?.isAdmin) {
     return (
-      <View style={commonStyles.centerContent}>
-        <Text style={commonStyles.text}>Access denied. Admin privileges required.</Text>
-        <Button text="Go Back" onPress={() => router.back()} />
+      <View style={[commonStyles.container, commonStyles.centered]}>
+        <Text style={commonStyles.text}>Access denied</Text>
       </View>
     );
   }
@@ -163,7 +159,7 @@ export default function AdminChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>
+        <Text style={styles.headerTitle}>
           Chat with {userName || 'User'}
         </Text>
         <Button
@@ -191,7 +187,7 @@ export default function AdminChatScreen() {
         ) : messages.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No messages yet</Text>
-            <Text style={styles.emptySubtext}>Start the conversation with this user.</Text>
+            <Text style={styles.emptySubtext}>Start the conversation with this user</Text>
           </View>
         ) : (
           messages.map((message, index) => {
@@ -268,7 +264,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  title: {
+  headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
@@ -276,7 +272,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   messagesContainer: {
     flex: 1,

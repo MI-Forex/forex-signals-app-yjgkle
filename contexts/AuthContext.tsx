@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     console.log('AuthContext: Setting up auth state listener');
@@ -82,13 +83,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(user);
             setUserData(userData);
             
-            // Navigate based on user role
-            if (userData.isAdmin) {
-              console.log('AuthContext: Admin user detected, navigating to admin panel');
-              router.replace('/admin');
-            } else {
-              console.log('AuthContext: Regular user detected, navigating to tabs');
-              router.replace('/(tabs)/signals');
+            // Only navigate if this is the initial load or after sign in
+            if (initializing || loading) {
+              console.log('AuthContext: Navigating user after authentication');
+              if (userData.isAdmin) {
+                console.log('AuthContext: Admin user detected, navigating to admin panel');
+                router.replace('/admin');
+              } else {
+                console.log('AuthContext: Regular user detected, navigating to tabs');
+                router.replace('/(tabs)/signals');
+              }
             }
           } else {
             console.log('AuthContext: User document not found, creating...');
@@ -111,7 +115,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
             setUser(user);
             setUserData(newUserData);
-            router.replace('/(tabs)/signals');
+            
+            if (initializing || loading) {
+              router.replace('/(tabs)/signals');
+            }
           }
         } catch (error) {
           console.error('AuthContext: Error loading user data:', error);
@@ -125,10 +132,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('AuthContext: No user, clearing state');
         setUser(null);
         setUserData(null);
-        router.replace('/auth/login');
+        if (initializing || !loading) {
+          router.replace('/auth/login');
+        }
       }
       
       setLoading(false);
+      setInitializing(false);
     });
 
     return unsubscribe;
@@ -143,6 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('AuthContext: Sign in successful for:', userCredential.user.uid);
       
       // The onAuthStateChanged listener will handle navigation
+      // Don't set loading to false here - let the auth state change handle it
     } catch (error: any) {
       console.error('AuthContext: Sign in error:', error);
       setLoading(false);
