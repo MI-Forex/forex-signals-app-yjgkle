@@ -32,8 +32,19 @@ export default function NewsCard({ article }: NewsCardProps) {
     setExpanded(!expanded);
   };
 
+  const getDisplaySummary = () => {
+    if (expanded || article.summary.length <= 150) {
+      return article.summary;
+    }
+    return article.summary.substring(0, 150) + '...';
+  };
+
+  const shouldShowReadMore = () => {
+    return article.summary.length > 150 || article.content.length > 0;
+  };
+
   return (
-    <View style={[commonStyles.card, styles.newsCard]}>
+    <View style={styles.newsCard}>
       {article.imageUrl && (
         <Image 
           source={{ uri: article.imageUrl }} 
@@ -45,24 +56,26 @@ export default function NewsCard({ article }: NewsCardProps) {
       <View style={styles.newsContent}>
         <Text style={styles.newsTitle}>{article.title}</Text>
         
-        <Text style={[commonStyles.textMuted, { fontSize: 12, marginBottom: spacing.sm }]}>
+        <Text style={styles.timestamp}>
           {formatTime(article.createdAt)}
         </Text>
         
-        <Text style={commonStyles.text}>{article.summary}</Text>
+        <Text style={styles.summaryText}>{getDisplaySummary()}</Text>
         
-        {expanded && (
+        {expanded && article.content && (
           <View style={styles.fullContent}>
-            <View style={commonStyles.divider} />
-            <Text style={commonStyles.text}>{article.content}</Text>
+            <View style={styles.contentDivider} />
+            <Text style={styles.contentText}>{article.content}</Text>
           </View>
         )}
         
-        <TouchableOpacity onPress={toggleExpanded} style={styles.readMoreButton}>
-          <Text style={styles.readMoreText}>
-            {expanded ? 'Read Less' : 'Read More'}
-          </Text>
-        </TouchableOpacity>
+        {shouldShowReadMore() && (
+          <TouchableOpacity onPress={toggleExpanded} style={styles.readMoreButton}>
+            <Text style={styles.readMoreText}>
+              {expanded ? 'Read Less' : 'Read More'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -70,12 +83,25 @@ export default function NewsCard({ article }: NewsCardProps) {
 
 const styles = StyleSheet.create({
   newsCard: {
-    padding: 0,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.text,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
     overflow: 'hidden',
   },
   newsImage: {
     width: '100%',
     height: 200,
+    backgroundColor: colors.background,
   },
   newsContent: {
     padding: spacing.md,
@@ -87,15 +113,37 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     lineHeight: 24,
   },
+  timestamp: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginBottom: spacing.md,
+  },
+  summaryText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
   fullContent: {
     marginTop: spacing.md,
   },
+  contentDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  contentText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.text,
+  },
   readMoreButton: {
-    marginTop: spacing.md,
     alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+    marginTop: spacing.sm,
   },
   readMoreText: {
-    color: colors.accent,
+    color: colors.primary,
     fontWeight: '600',
     fontSize: 14,
   },

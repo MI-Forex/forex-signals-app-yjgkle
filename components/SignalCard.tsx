@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
 
 interface Signal {
@@ -19,6 +19,8 @@ interface SignalCardProps {
 }
 
 export default function SignalCard({ signal }: SignalCardProps) {
+  const [notesExpanded, setNotesExpanded] = useState(false);
+
   const getStatusColor = () => {
     switch (signal.status) {
       case 'active':
@@ -69,6 +71,22 @@ export default function SignalCard({ signal }: SignalCardProps) {
     });
   };
 
+  const getDisplayNotes = () => {
+    if (!signal.notes) return '';
+    if (notesExpanded || signal.notes.length <= 100) {
+      return signal.notes;
+    }
+    return signal.notes.substring(0, 100) + '...';
+  };
+
+  const shouldShowReadMore = () => {
+    return signal.notes && signal.notes.length > 100;
+  };
+
+  const toggleNotesExpanded = () => {
+    setNotesExpanded(!notesExpanded);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -105,7 +123,15 @@ export default function SignalCard({ signal }: SignalCardProps) {
       {signal.notes && (
         <View style={styles.notesContainer}>
           <Text style={styles.notesLabel}>Notes:</Text>
-          <Text style={styles.notesText}>{signal.notes}</Text>
+          <Text style={styles.notesText}>{getDisplayNotes()}</Text>
+          
+          {shouldShowReadMore() && (
+            <TouchableOpacity onPress={toggleNotesExpanded} style={styles.readMoreButton}>
+              <Text style={styles.readMoreText}>
+                {notesExpanded ? 'Read Less' : 'Read More'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -215,5 +241,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  readMoreButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  readMoreText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '600',
   },
 });

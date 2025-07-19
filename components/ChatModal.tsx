@@ -305,7 +305,8 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
               ref={textInputRef}
               style={[
                 styles.textInput,
-                inputFocused && styles.textInputFocused
+                inputFocused && styles.textInputFocused,
+                (!sending && !loading && !error) ? {} : styles.textInputDisabled
               ]}
               value={newMessage}
               onChangeText={handleTextChange}
@@ -317,7 +318,11 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
                 console.log('ChatModal: Input blurred');
                 setInputFocused(false);
               }}
-              placeholder="Type your message..."
+              placeholder={
+                loading ? "Loading chat..." :
+                error ? "Chat unavailable" :
+                "Type your message..."
+              }
               placeholderTextColor={colors.textMuted}
               multiline
               maxLength={500}
@@ -326,6 +331,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
               blurOnSubmit={false}
               onSubmitEditing={handleSendPress}
               textAlignVertical="top"
+              autoFocus={false}
             />
             <TouchableOpacity
               style={[
@@ -470,6 +476,10 @@ const styles = StyleSheet.create({
   textInputFocused: {
     borderColor: colors.primary,
     borderWidth: 2,
+  },
+  textInputDisabled: {
+    backgroundColor: colors.background,
+    opacity: 0.6,
   },
   sendButton: {
     backgroundColor: colors.primary,

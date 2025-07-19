@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Alert, RefreshControl, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Alert, RefreshControl, StyleSheet, TextInput } from 'react-native';
 import { useAuth } from '../../../contexts/AuthContext';
 import { router } from 'expo-router';
 import { db } from '../../../firebase/config';
@@ -21,6 +21,8 @@ interface UserData {
 
 export default function AdminUsersScreen() {
   const [users, setUsers] = useState<UserData[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { userData } = useAuth();
@@ -35,6 +37,7 @@ export default function AdminUsersScreen() {
           createdAt: doc.data().createdAt?.toDate() || new Date()
         })) as UserData[];
         setUsers(usersData);
+        setFilteredUsers(usersData);
         setLoading(false);
         setRefreshing(false);
       });
@@ -46,6 +49,25 @@ export default function AdminUsersScreen() {
   const handleRefresh = () => {
     setRefreshing(true);
   };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim() === '') {
+      setFilteredUsers(users);
+    } else {
+      const filtered = users.filter(user => 
+        user.email.toLowerCase().includes(query.toLowerCase()) ||
+        (user.displayName && user.displayName.toLowerCase().includes(query.toLowerCase())) ||
+        (user.phoneNumber && user.phoneNumber.includes(query))
+      );
+      setFilteredUsers(filtered);
+    }
+  };
+
+  // Update filtered users when users array changes
+  useEffect(() => {
+    handleSearch(searchQuery);
+  }, [users]);
 
   const handleBack = () => {
     router.back();
@@ -133,6 +155,18 @@ export default function AdminUsersScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search users by name, email, or phone..."
+            placeholderTextColor={colors.textMuted}
+            value={searchQuery}
+            onChangeText={handleSearch}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{users.length}</Text>
@@ -152,8 +186,16 @@ export default function AdminUsersScreen() {
           </View>
         </View>
 
+        {searchQuery.trim() !== '' && (
+          <View style={styles.searchResults}>
+            <Text style={styles.searchResultsText}>
+              Found {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} matching "{searchQuery}"
+            </Text>
+          </View>
+        )}
+
         <View style={styles.usersList}>
-          {users.map((user) => (
+          {filteredUsers.map((user) => (
             <View key={user.id} style={styles.userCard}>
               <View style={styles.userInfo}>
                 <View style={styles.userHeader}>
@@ -280,6 +322,29 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.md,
+  },
+  searchContainer: {
+    marginBottom: spacing.md,
+  },
+  searchInput: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchResults: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  searchResultsText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   statsContainer: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, RefreshControl, TextInput } from 'react-native';
 import { useAuth } from '../../../contexts/AuthContext';
 import { router } from 'expo-router';
 import Button from '../../../components/Button';
@@ -31,6 +31,8 @@ interface ChatUser {
 
 export default function AdminChatsScreen() {
   const [chatUsers, setChatUsers] = useState<ChatUser[]>([]);
+  const [filteredChatUsers, setFilteredChatUsers] = useState<ChatUser[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string>('');
@@ -109,6 +111,7 @@ export default function AdminChatsScreen() {
           
           console.log('AdminChats: Loaded chat users:', users.length);
           setChatUsers(users);
+          setFilteredChatUsers(users);
           setLoading(false);
           setRefreshing(false);
           setError('');
@@ -158,6 +161,25 @@ export default function AdminChatsScreen() {
     }
   };
 
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim() === '') {
+      setFilteredChatUsers(chatUsers);
+    } else {
+      const filtered = chatUsers.filter(user => 
+        user.email.toLowerCase().includes(query.toLowerCase()) ||
+        user.displayName.toLowerCase().includes(query.toLowerCase()) ||
+        user.lastMessage.toLowerCase().includes(query.toLowerCase())
+      );
+      setFilteredChatUsers(filtered);
+    }
+  };
+
+  // Update filtered users when chatUsers array changes
+  useEffect(() => {
+    handleSearch(searchQuery);
+  }, [chatUsers]);
+
   const getTotalUnreadCount = () => {
     return chatUsers.reduce((total, user) => total + user.unreadCount, 0);
   };
@@ -205,6 +227,26 @@ export default function AdminChatsScreen() {
         </View>
       </View>
 
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search users by name, email, or message..."
+          placeholderTextColor={colors.textMuted}
+          value={searchQuery}
+          onChangeText={handleSearch}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
+
+      {searchQuery.trim() !== '' && (
+        <View style={styles.searchResults}>
+          <Text style={styles.searchResultsText}>
+            Found {filteredChatUsers.length} chat{filteredChatUsers.length !== 1 ? 's' : ''} matching "{searchQuery}"
+          </Text>
+        </View>
+      )}
+
       <ScrollView 
         style={styles.content}
         refreshControl={
@@ -224,15 +266,20 @@ export default function AdminChatsScreen() {
               style={styles.retryButton}
             />
           </View>
-        ) : chatUsers.length === 0 ? (
+        ) : filteredChatUsers.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No user chats yet</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery.trim() !== '' ? 'No chats found' : 'No user chats yet'}
+            </Text>
             <Text style={styles.emptySubtext}>
-              Users will appear here when they start chatting with you
+              {searchQuery.trim() !== '' 
+                ? 'Try adjusting your search terms' 
+                : 'Users will appear here when they start chatting with you'
+              }
             </Text>
           </View>
         ) : (
-          chatUsers.map((user) => (
+          filteredChatUsers.map((user) => (
             <TouchableOpacity
               key={user.id}
               style={[
@@ -315,6 +362,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  searchContainer: {
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  searchInput: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchResults: {
+    backgroundColor: colors.background,
+    padding: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  searchResultsText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   content: {
     flex: 1,
