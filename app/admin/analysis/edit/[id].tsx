@@ -1,13 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Image } from 'react-native';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  Alert, 
+  ScrollView, 
+  KeyboardAvoidingView, 
+  Platform, 
+  StyleSheet, 
+  Image 
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db, storage } from '../../../../firebase/config';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import Button from '../../../../components/Button';
+import { db } from '../../../../firebase/config';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { commonStyles, colors, spacing, borderRadius } from '../../../../styles/commonStyles';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { uploadImageToCloudinary } from '../../../../utils/cloudinaryUtils';
 
 interface AnalysisData {
   title: string;
@@ -22,109 +32,128 @@ export default function EditAnalysisScreen() {
     content: '',
     imageUrl: ''
   });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const { userData } = useAuth();
 
   useEffect(() => {
-    loadAnalysis();
+    if (id) {
+      loadAnalysis();
+    }
   }, [id]);
 
   const loadAnalysis = async () => {
     try {
-      if (typeof id === 'string') {
-        const analysisDoc = await getDoc(doc(db, 'analysis', id));
-        if (analysisDoc.exists()) {
-          const data = analysisDoc.data();
-          setFormData({
-            title: data.title || '',
-            content: data.content || '',
-            imageUrl: data.imageUrl || ''
-          });
-        } else {
-          Alert.alert('Error', 'Analysis not found');
-          router.back();
-        }
+      console.log('EditAnalysis: Loading analysis with ID:', id);
+      setInitialLoading(true);
+      
+      const docRef = doc(db, 'analysis', id as string);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setFormData({
+          title: data.title || '',
+          content: data.content || '',
+          imageUrl: data.imageUrl || ''
+        });
+        console.log('EditAnalysis: Analysis loaded successfully');
+      } else {
+        Alert.alert('Error', 'Analysis not found');
+        router.back();
       }
     } catch (error) {
-      console.error('Error loading analysis:', error);
+      console.error('EditAnalysis: Error loading analysis:', error);
       Alert.alert('Error', 'Failed to load analysis');
       router.back();
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
     }
   };
 
   const validateForm = () => {
     if (!formData.title.trim()) {
-      Alert.alert('Error', 'Please enter analysis title');
+      Alert.alert('Validation Error', 'Please enter a title');
       return false;
     }
     if (!formData.content.trim()) {
-      Alert.alert('Error', 'Please enter analysis content');
+      Alert.alert('Validation Error', 'Please enter content');
       return false;
     }
     return true;
   };
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setImageUploading(true);
-      try {
-        const imageUrl = await uploadImage(result.assets[0].uri);
-        setFormData(prev => ({ ...prev, imageUrl }));
-      } catch (error) {
-        console.error('Error uploading image:', error);
-        Alert.alert('Error', 'Failed to upload image');
-      } finally {
-        setImageUploading(false);
+    try {
+      console.log('EditAnalysis: Requesting image picker permissions...');
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission Required', 'Permission to access camera roll is required!');
+        return;
       }
-    }
-  };
 
-  const uploadImage = async (uri: string): Promise<string> => {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    const filename = `analysis/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
-    const imageRef = ref(storage, filename);
-    
-    await uploadBytes(imageRef, blob);
-    return await getDownloadURL(imageRef);
+      console.log('EditAnalysis: Opening image picker...');
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        console.log('EditAnalysis: Image selected, uploading to Cloudinary...');
+        setImageUploading(true);
+        
+        const imageUrl = await uploadImageToCloudinary(
+          result.assets[0].uri,
+          'analysis'
+        );
+        
+        if (imageUrl) {
+          setFormData(prev => ({ ...prev, imageUrl }));
+          console.log('EditAnalysis: Image uploaded successfully:', imageUrl);
+        }
+      }
+    } catch (error) {
+      console.error('EditAnalysis: Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    setSaving(true);
+    setLoading(true);
     try {
-      const analysisData = {
+      console.log('EditAnalysis: Updating analysis...');
+      
+      const updateData = {
         title: formData.title.trim(),
         content: formData.content.trim(),
         imageUrl: formData.imageUrl || null,
         updatedAt: serverTimestamp(),
-        updatedBy: userData?.uid || 'unknown'
+        updatedBy: userData?.uid || '',
+        updatedByName: userData?.displayName || userData?.email || 'Admin',
       };
 
-      console.log('Updating analysis with data:', analysisData);
-
-      if (typeof id === 'string') {
-        await updateDoc(doc(db, 'analysis', id), analysisData);
-        Alert.alert('Success', 'Analysis updated successfully');
-        router.back();
-      }
+      const docRef = doc(db, 'analysis', id as string);
+      await updateDoc(docRef, updateData);
+      
+      console.log('EditAnalysis: Analysis updated successfully');
+      Alert.alert(
+        'Success', 
+        'Analysis updated successfully!',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
     } catch (error) {
-      console.error('Error updating analysis:', error);
+      console.error('EditAnalysis: Error updating analysis:', error);
       Alert.alert('Error', 'Failed to update analysis. Please try again.');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -136,18 +165,9 @@ export default function EditAnalysisScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  if (!userData?.isAdmin) {
+  if (initialLoading) {
     return (
-      <View style={commonStyles.centerContent}>
-        <Text style={commonStyles.text}>Access denied. Admin privileges required.</Text>
-        <Button text="Go Back" onPress={handleBack} />
-      </View>
-    );
-  }
-
-  if (loading) {
-    return (
-      <View style={commonStyles.loading}>
+      <View style={[commonStyles.centerContent, { backgroundColor: colors.background }]}>
         <Text style={commonStyles.text}>Loading analysis...</Text>
       </View>
     );
@@ -155,74 +175,92 @@ export default function EditAnalysisScreen() {
 
   return (
     <KeyboardAvoidingView 
-      style={commonStyles.container}
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>Edit Analysis</Text>
-        <Button
-          text="Cancel"
-          onPress={handleBack}
-          variant="outline"
-          style={styles.cancelButton}
-        />
-      </View>
-
       <ScrollView 
-        style={commonStyles.content}
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.header}>
+          <Button
+            text="← Back"
+            onPress={handleBack}
+            variant="outline"
+            style={styles.backButton}
+          />
+          <Text style={styles.title}>Edit Analysis</Text>
+        </View>
+
         <View style={styles.form}>
-          <Text style={commonStyles.label}>Title *</Text>
-          <TextInput
-            style={commonStyles.input}
-            value={formData.title}
-            onChangeText={(value) => updateFormData('title', value)}
-            placeholder="Enter analysis title"
-            multiline
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Title *</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.title}
+              onChangeText={(value) => updateFormData('title', value)}
+              placeholder="Enter analysis title"
+              placeholderTextColor={colors.textMuted}
+              maxLength={100}
+            />
+          </View>
 
-          <Text style={commonStyles.label}>Content *</Text>
-          <TextInput
-            style={[commonStyles.input, styles.contentInput]}
-            value={formData.content}
-            onChangeText={(value) => updateFormData('content', value)}
-            placeholder="Enter detailed analysis content..."
-            multiline
-            numberOfLines={8}
-            textAlignVertical="top"
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Content *</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={formData.content}
+              onChangeText={(value) => updateFormData('content', value)}
+              placeholder="Enter analysis content"
+              placeholderTextColor={colors.textMuted}
+              multiline
+              numberOfLines={8}
+              textAlignVertical="top"
+              maxLength={2000}
+            />
+            <Text style={styles.characterCount}>
+              {formData.content.length}/2000 characters
+            </Text>
+          </View>
 
-          <Text style={commonStyles.label}>Image (Optional)</Text>
-          {formData.imageUrl ? (
-            <View style={styles.imageContainer}>
-              <Image source={{ uri: formData.imageUrl }} style={styles.imagePreview} />
-              <Button
-                text="Change Image"
-                onPress={pickImage}
-                variant="outline"
-                loading={imageUploading}
-                style={styles.imageButton}
-              />
-            </View>
-          ) : (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Analysis Image (Optional)</Text>
             <Button
-              text="Add Image"
+              text={imageUploading ? "Uploading..." : "Pick Image"}
               onPress={pickImage}
               variant="outline"
               loading={imageUploading}
+              disabled={imageUploading}
               style={styles.imageButton}
             />
-          )}
+            
+            {formData.imageUrl ? (
+              <View style={styles.imagePreview}>
+                <Image 
+                  source={{ uri: formData.imageUrl }} 
+                  style={styles.previewImage}
+                  resizeMode="cover"
+                />
+                <Button
+                  text="Remove Image"
+                  onPress={() => updateFormData('imageUrl', '')}
+                  variant="danger"
+                  style={styles.removeImageButton}
+                />
+              </View>
+            ) : null}
+          </View>
 
-          <Button
-            text="Update Analysis"
-            onPress={handleSubmit}
-            loading={saving}
-            disabled={saving}
-            style={styles.submitButton}
-          />
+          <View style={styles.buttonContainer}>
+            <Button
+              text={loading ? "Updating..." : "Update Analysis"}
+              onPress={handleSubmit}
+              loading={loading}
+              disabled={loading || imageUploading}
+              style={styles.submitButton}
+            />
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -230,47 +268,84 @@ export default function EditAnalysisScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  cancelButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  scrollView: {
+    flex: 1,
   },
   scrollContent: {
+    padding: spacing.md,
     paddingBottom: spacing.xl,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  backButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginRight: spacing.md,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+    flex: 1,
+  },
   form: {
-    padding: spacing.lg,
+    gap: spacing.lg,
   },
-  contentInput: {
-    height: 150,
-    textAlignVertical: 'top',
+  inputGroup: {
+    gap: spacing.sm,
   },
-  imageContainer: {
-    marginBottom: spacing.md,
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  textArea: {
+    minHeight: 120,
+    maxHeight: 200,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: 'right',
+  },
+  imageButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.lg,
   },
   imagePreview: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  previewImage: {
     width: '100%',
     height: 200,
     borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
   },
-  imageButton: {
-    marginBottom: spacing.md,
+  removeImageButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.md,
+  },
+  buttonContainer: {
+    marginTop: spacing.lg,
   },
   submitButton: {
-    marginTop: spacing.xl,
+    paddingVertical: spacing.md,
   },
 });

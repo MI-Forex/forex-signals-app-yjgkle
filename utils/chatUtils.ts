@@ -9,7 +9,8 @@ import {
   updateDoc, 
   serverTimestamp,
   addDoc,
-  getDoc
+  getDoc,
+  increment
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
@@ -58,7 +59,8 @@ export const ensureChatExists = async (userId: string): Promise<string> => {
         lastMessageTime: serverTimestamp(),
         participants: [userId, 'admin'],
         unreadCount: 0,
-        lastSender: ''
+        lastSender: '',
+        isActive: true
       };
       
       await setDoc(chatRef, chatData);
@@ -100,6 +102,9 @@ export const sendChatMessage = async (
       throw new Error('Invalid chat ID format');
     }
     
+    // Ensure chat exists first
+    await ensureChatExists(userId);
+    
     // Add message to Firebase
     const messageData = {
       text: text.trim(),
@@ -122,8 +127,11 @@ export const sendChatMessage = async (
       lastMessage: text.trim(),
       lastMessageTime: serverTimestamp(),
       lastSender: sender,
+      isActive: true,
       // Increment unread count if message is from user
-      ...(sender === 'user' && { unreadCount: 1 })
+      ...(sender === 'user' && { 
+        unreadCount: increment(1)
+      })
     };
     
     console.log('ChatUtils: Updating chat document...');

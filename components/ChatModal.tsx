@@ -48,13 +48,17 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [retryCount, setRetryCount] = useState(0);
+  const [inputFocused, setInputFocused] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const textInputRef = useRef<TextInput>(null);
   const { userData } = useAuth();
 
   useEffect(() => {
     if (visible && userData?.uid) {
       console.log('ChatModal: Initializing chat for user:', userData.uid);
       setRetryCount(0);
+      setError('');
+      setLoading(true);
       const unsubscribe = loadChatMessages();
       return () => {
         if (typeof unsubscribe === 'function') {
@@ -67,6 +71,8 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       setError('');
       setLoading(true);
       setRetryCount(0);
+      setNewMessage('');
+      setInputFocused(false);
     }
   }, [visible, userData?.uid]);
 
@@ -150,27 +156,38 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !chatId || !userData?.uid) {
-      console.log('ChatModal: Cannot send message - missing data');
+    const messageText = newMessage.trim();
+    
+    if (!messageText || !chatId || !userData?.uid) {
+      console.log('ChatModal: Cannot send message - missing data', {
+        hasText: !!messageText,
+        hasChatId: !!chatId,
+        hasUserId: !!userData?.uid
+      });
+      Alert.alert('Error', 'Unable to send message. Please check your connection and try again.');
       return;
     }
 
+    console.log('ChatModal: Attempting to send message:', messageText.substring(0, 50));
     setSending(true);
-    const messageText = newMessage.trim();
     setNewMessage(''); // Clear input immediately for better UX
 
     try {
-      console.log('ChatModal: Sending message:', messageText.substring(0, 50));
-      
       await sendChatMessage(
         chatId,
         userData.uid,
         messageText,
         userData.isAdmin ? 'admin' : 'user',
-        userData.isAdmin ? 'Admin' : (userData.displayName || 'You')
+        userData.isAdmin ? 'Admin' : (userData.displayName || userData.email || 'You')
       );
 
       console.log('ChatModal: Message sent successfully');
+      
+      // Focus back on input for better UX
+      setTimeout(() => {
+        textInputRef.current?.focus();
+      }, 100);
+      
     } catch (error: any) {
       console.error('ChatModal: Error sending message:', error);
       Alert.alert(
@@ -190,11 +207,14 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
     }
   };
 
-  const handleKeyPress = (event: any) => {
-    if (event.nativeEvent.key === 'Enter' && !event.nativeEvent.shiftKey) {
-      event.preventDefault();
-      sendMessage();
-    }
+  const handleSendPress = () => {
+    console.log('ChatModal: Send button pressed');
+    sendMessage();
+  };
+
+  const handleTextChange = (text: string) => {
+    console.log('ChatModal: Text changed, length:', text.length);
+    setNewMessage(text);
   };
 
   const formatTime = (date: Date) => {
@@ -211,6 +231,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       <KeyboardAvoidingView 
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
@@ -225,6 +246,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
           ref={scrollViewRef}
           style={styles.messagesContainer}
           contentContainerStyle={styles.messagesContent}
+          keyboardShouldPersistTaps="handled"
         >
           {loading ? (
             <View style={styles.loadingContainer}>
@@ -266,34 +288,62 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
                   <Text style={styles.senderName}>{message.senderName}</Text>
                   <Text style={styles.timestamp}>{formatTime(message.timestamp)}</Text>
                 </View>
-                <Text style={styles.messageText}>{message.text}</Text>
+                <Text style={[
+                  styles.messageText,
+                  message.sender === 'user' ? styles.userMessageText : styles.adminMessageText
+                ]}>
+                  {message.text}
+                </Text>
               </View>
             ))
           )}
         </ScrollView>
 
         <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            value={newMessage}
-            onChangeText={setNewMessage}
-            onSubmitEditing={sendMessage}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-            placeholderTextColor={colors.textMuted}
-            multiline
-            maxLength={500}
-            editable={!sending && !loading}
-            returnKeyType="send"
-            blurOnSubmit={false}
-          />
-          <Button
-            text={sending ? "Sending..." : "Send"}
-            onPress={sendMessage}
-            loading={sending}
-            disabled={!newMessage.trim() || sending || loading || !!error}
-            style={styles.sendButton}
-          />
+          <View style={styles.inputWrapper}>
+            <TextInput
+              ref={textInputRef}
+              style={[
+                styles.textInput,
+                inputFocused && styles.textInputFocused
+              ]}
+              value={newMessage}
+              onChangeText={handleTextChange}
+              onFocus={() => {
+                console.log('ChatModal: Input focused');
+                setInputFocused(true);
+              }}
+              onBlur={() => {
+                console.log('ChatModal: Input blurred');
+                setInputFocused(false);
+              }}
+              placeholder="Type your message..."
+              placeholderTextColor={colors.textMuted}
+              multiline
+              maxLength={500}
+              editable={!sending && !loading}
+              returnKeyType="send"
+              blurOnSubmit={false}
+              onSubmitEditing={handleSendPress}
+              textAlignVertical="top"
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                (!newMessage.trim() || sending || loading || !!error) && styles.sendButtonDisabled
+              ]}
+              onPress={handleSendPress}
+              disabled={!newMessage.trim() || sending || loading || !!error}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.sendButtonText,
+                (!newMessage.trim() || sending || loading || !!error) && styles.sendButtonTextDisabled
+              ]}>
+                {sending ? "..." : "Send"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.footer}>
@@ -386,15 +436,23 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 16,
-    color: colors.text,
     lineHeight: 22,
   },
+  userMessageText: {
+    color: colors.white,
+  },
+  adminMessageText: {
+    color: colors.text,
+  },
   inputContainer: {
-    flexDirection: 'row',
     padding: spacing.md,
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: spacing.sm,
   },
   textInput: {
@@ -407,10 +465,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     maxHeight: 100,
+    minHeight: 44,
+  },
+  textInputFocused: {
+    borderColor: colors.primary,
+    borderWidth: 2,
   },
   sendButton: {
+    backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: colors.textMuted,
+    opacity: 0.5,
+  },
+  sendButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  sendButtonTextDisabled: {
+    color: colors.background,
   },
   loadingContainer: {
     flex: 1,

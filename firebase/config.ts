@@ -14,6 +14,14 @@ const firebaseConfig = {
   appId: "1:940152361938:android:a72b610bdcb1e2459eee0b"
 };
 
+// Cloudinary configuration
+export const cloudinaryConfig = {
+  cloudName: 'dnoc2vnqb',
+  apiKey: '358947224699173',
+  apiSecret: 'kzv7yRhX2vueOP_lw-uvyztM7zo',
+  uploadPreset: 'forex_analysis', // You'll need to create this in Cloudinary dashboard
+};
+
 console.log('Firebase: Initializing Firebase app');
 
 // Initialize Firebase
