@@ -15,25 +15,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
 import Button from './Button';
 import { 
-  collection, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  where
-} from 'firebase/firestore';
-import { db } from '../firebase/config';
-import { ensureChatExists, sendChatMessage, createChatId } from '../utils/chatUtils';
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'admin';
-  timestamp: Date;
-  senderName?: string;
-  chatId: string;
-  userId: string;
-  read: boolean;
-}
+  ensureChatExists, 
+  sendChatMessage, 
+  createChatId, 
+  subscribeToMessages,
+  getChatMessages,
+  ChatMessage
+} from '../utils/supabaseChatUtils';
 
 interface ChatModalProps {
   visible: boolean;
@@ -41,7 +29,7 @@ interface ChatModalProps {
 }
 
 export default function ChatModal({ visible, onClose }: ChatModalProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [chatId, setChatId] = useState<string>('');
@@ -51,20 +39,16 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
   const [inputFocused, setInputFocused] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
   const { userData } = useAuth();
 
   useEffect(() => {
     if (visible && userData?.uid) {
-      console.log('ChatModal: Initializing chat for user:', userData.uid);
+      console.log('ChatModal: Initializing Supabase chat for user:', userData.uid);
       setRetryCount(0);
       setError('');
       setLoading(true);
-      const unsubscribe = loadChatMessages();
-      return () => {
-        if (typeof unsubscribe === 'function') {
-          unsubscribe();
-        }
-      };
+      loadChatMessages();
     } else if (!visible) {
       // Reset state when modal is closed
       setMessages([]);
@@ -73,7 +57,20 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       setRetryCount(0);
       setNewMessage('');
       setInputFocused(false);
+      
+      // Unsubscribe from real-time updates
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
     }
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
   }, [visible, userData?.uid]);
 
   useEffect(() => {
@@ -87,7 +84,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
 
   const loadChatMessages = async () => {
     try {
-      console.log('ChatModal: Loading chat messages... (attempt:', retryCount + 1, ')');
+      console.log('ChatModal: Loading Supabase chat messages... (attempt:', retryCount + 1, ')');
       setLoading(true);
       setError('');
       
@@ -100,67 +97,36 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       setChatId(currentChatId);
       console.log('ChatModal: Chat ID:', currentChatId);
       
-      await ensureChatExists(userData.uid);
-      console.log('ChatModal: Chat ensured');
+      await ensureChatExists(
+        userData.uid, 
+        userData.email || '', 
+        userData.displayName || userData.email || 'User'
+      );
+      console.log('ChatModal: Supabase chat ensured');
 
-      // Listen for messages in real-time
-      const messagesQuery = query(
-        collection(db, 'messages'),
-        where('chatId', '==', currentChatId),
-        orderBy('timestamp', 'asc')
+      // Load initial messages
+      const initialMessages = await getChatMessages(currentChatId);
+      setMessages(initialMessages);
+      console.log('ChatModal: Loaded initial messages:', initialMessages.length);
+
+      // Subscribe to real-time updates
+      const unsubscribe = subscribeToMessages(
+        currentChatId,
+        (updatedMessages) => {
+          console.log('ChatModal: Received real-time message update:', updatedMessages.length);
+          setMessages(updatedMessages);
+        },
+        (error) => {
+          console.error('ChatModal: Real-time subscription error:', error);
+          setError('Connection error occurred');
+        }
       );
 
-      const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-        console.log('ChatModal: Received message snapshot, size:', snapshot.size);
-        const loadedMessages: Message[] = [];
-        
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          loadedMessages.push({
-            id: doc.id,
-            text: data.text,
-            sender: data.sender,
-            senderName: data.senderName,
-            timestamp: data.timestamp?.toDate() || new Date(),
-            chatId: data.chatId,
-            userId: data.userId,
-            read: data.read || false
-          });
-        });
-
-        console.log('ChatModal: Loaded messages:', loadedMessages.length);
-        setMessages(loadedMessages);
-        setLoading(false);
-        setError('');
-      }, (error) => {
-        console.error('ChatModal: Error in message listener:', error);
-        let errorMessage = 'Failed to load messages';
-        
-        // Generic error messages for security
-        if (error.code === 'permission-denied') {
-          errorMessage = 'Please check your credentials';
-        } else if (error.code === 'unavailable') {
-          errorMessage = 'Please check internet connectivity';
-        } else {
-          errorMessage = 'Connection error occurred';
-        }
-        
-        setError(errorMessage);
-        setLoading(false);
-        
-        // Auto-retry on permission errors
-        if (error.code === 'permission-denied' && retryCount < 3) {
-          console.log('ChatModal: Permission denied, retrying in 2 seconds...');
-          setTimeout(() => {
-            setRetryCount(prev => prev + 1);
-            loadChatMessages();
-          }, 2000);
-        }
-      });
-
-      return unsubscribe;
+      unsubscribeRef.current = unsubscribe;
+      setLoading(false);
+      setError('');
     } catch (error: any) {
-      console.error('ChatModal: Error loading chat messages:', error);
+      console.error('ChatModal: Error loading Supabase chat messages:', error);
       let errorMessage = 'Failed to initialize chat';
       
       // Generic error messages for security
@@ -172,6 +138,15 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       
       setError(errorMessage);
       setLoading(false);
+      
+      // Auto-retry on errors
+      if (retryCount < 3) {
+        console.log('ChatModal: Error occurred, retrying in 2 seconds...');
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          loadChatMessages();
+        }, 2000);
+      }
     }
   };
 
@@ -188,7 +163,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       return;
     }
 
-    console.log('ChatModal: Attempting to send message:', messageText.substring(0, 50));
+    console.log('ChatModal: Attempting to send Supabase message:', messageText.substring(0, 50));
     setSending(true);
     setNewMessage(''); // Clear input immediately for better UX
 
@@ -201,7 +176,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
         userData.isAdmin ? 'Admin' : (userData.displayName || userData.email || 'You')
       );
 
-      console.log('ChatModal: Message sent successfully');
+      console.log('ChatModal: Supabase message sent successfully');
       
       // Focus back on input for better UX
       setTimeout(() => {
@@ -209,7 +184,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       }, 100);
       
     } catch (error: any) {
-      console.error('ChatModal: Error sending message:', error);
+      console.error('ChatModal: Error sending Supabase message:', error);
       
       // Generic error messages for security
       let errorMessage = 'Failed to send message';

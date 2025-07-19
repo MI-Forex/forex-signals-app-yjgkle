@@ -8,8 +8,8 @@ import {
   sendPasswordResetEmail,
   updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { router } from 'expo-router';
 
 interface UserData {
@@ -36,13 +36,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -50,193 +50,243 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('AuthProvider: Setting up auth state listener');
-    
+    console.log('AuthContext: Setting up auth state listener');
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed:', user?.email || 'No user');
-      setUser(user);
+      console.log('AuthContext: Auth state changed:', user ? user.uid : 'null');
       
       if (user) {
-        console.log('User authenticated, fetching user data');
-        // Fetch user data from Firestore
         try {
+          console.log('AuthContext: Loading user data for:', user.uid);
           const userDoc = await getDoc(doc(db, 'users', user.uid));
+          
           if (userDoc.exists()) {
-            console.log('User data found in Firestore');
             const data = userDoc.data();
             const userData: UserData = {
-              ...data,
-              role: data.isAdmin ? 'admin' : 'user',
-            } as UserData;
+              uid: user.uid,
+              email: user.email || '',
+              displayName: data.displayName || user.displayName || '',
+              phoneNumber: data.phoneNumber || '',
+              role: data.role || 'user',
+              isAdmin: data.isAdmin || false,
+              isVIP: data.isVIP || false,
+              createdAt: data.createdAt?.toDate() || new Date()
+            };
+            
+            console.log('AuthContext: User data loaded:', {
+              uid: userData.uid,
+              email: userData.email,
+              isAdmin: userData.isAdmin,
+              isVIP: userData.isVIP
+            });
+            
+            setUser(user);
             setUserData(userData);
+            
+            // Navigate based on user role
+            if (userData.isAdmin) {
+              console.log('AuthContext: Admin user detected, navigating to admin panel');
+              router.replace('/admin');
+            } else {
+              console.log('AuthContext: Regular user detected, navigating to tabs');
+              router.replace('/(tabs)/signals');
+            }
           } else {
-            console.log('No user data found in Firestore');
+            console.log('AuthContext: User document not found, creating...');
+            // Create user document if it doesn't exist
+            const newUserData: UserData = {
+              uid: user.uid,
+              email: user.email || '',
+              displayName: user.displayName || '',
+              phoneNumber: '',
+              role: 'user',
+              isAdmin: false,
+              isVIP: false,
+              createdAt: new Date()
+            };
+            
+            await setDoc(doc(db, 'users', user.uid), {
+              ...newUserData,
+              createdAt: new Date()
+            });
+            
+            setUser(user);
+            setUserData(newUserData);
+            router.replace('/(tabs)/signals');
           }
         } catch (error) {
-          console.error('Error fetching user data:', error);
-        }
-      } else {
-        console.log('No user, clearing user data and redirecting to login');
-        setUserData(null);
-        // Force redirect to login when user is null (logged out)
-        if (!loading) {
+          console.error('AuthContext: Error loading user data:', error);
+          // If there's an error loading user data, sign out
+          await signOut(auth);
+          setUser(null);
+          setUserData(null);
           router.replace('/auth/login');
         }
+      } else {
+        console.log('AuthContext: No user, clearing state');
+        setUser(null);
+        setUserData(null);
+        router.replace('/auth/login');
       }
       
-      console.log('Setting loading to false');
       setLoading(false);
     });
 
-    return () => {
-      console.log('AuthProvider: Cleaning up auth state listener');
-      unsubscribe();
-    };
-  }, [loading]);
+    return unsubscribe;
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('Signing in user:', email);
-      console.log('Auth object:', auth);
-      console.log('Firebase app initialized:', !!auth.app);
+      console.log('AuthContext: Attempting sign in for:', email);
+      setLoading(true);
       
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log('Sign in successful:', userCredential.user.email);
+      console.log('AuthContext: Sign in successful for:', userCredential.user.uid);
       
-      return userCredential;
+      // The onAuthStateChanged listener will handle navigation
     } catch (error: any) {
-      console.error('Sign in error:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
+      console.error('AuthContext: Sign in error:', error);
+      setLoading(false);
       
-      // Generic error messages for security
-      if (error.code === 'auth/user-not-found' || 
-          error.code === 'auth/wrong-password' || 
-          error.code === 'auth/invalid-credential' ||
-          error.code === 'auth/invalid-email') {
-        throw new Error('Please check your credentials');
-      } else if (error.code === 'auth/network-request-failed' || 
-                 error.message.includes('network')) {
-        throw new Error('Please check internet connectivity');
-      } else {
-        throw new Error('Please check your credentials');
+      // Provide user-friendly error messages
+      let errorMessage = 'Please check your credentials';
+      
+      if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later.';
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = 'This account has been disabled.';
+      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        errorMessage = 'Please check your credentials';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address';
       }
+      
+      throw new Error(errorMessage);
     }
   };
 
   const signUp = async (email: string, password: string, displayName: string, phoneNumber?: string) => {
     try {
-      console.log('Creating user:', email);
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
+      console.log('AuthContext: Attempting sign up for:', email);
+      setLoading(true);
       
-      // Update profile
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      console.log('AuthContext: Sign up successful, creating user document');
+      
+      // Update the user's display name
       await updateProfile(user, { displayName });
       
       // Create user document in Firestore
-      // Check if this is the first admin user (for testing)
-      const isFirstAdmin = email.toLowerCase() === 'admin@test.com';
-      
       const userData: UserData = {
         uid: user.uid,
-        email: user.email!,
-        displayName,
-        phoneNumber,
-        role: isFirstAdmin ? 'admin' : 'user',
-        isAdmin: isFirstAdmin,
+        email: user.email || '',
+        displayName: displayName,
+        phoneNumber: phoneNumber || '',
+        role: 'user',
+        isAdmin: false,
         isVIP: false,
         createdAt: new Date()
       };
       
-      await setDoc(doc(db, 'users', user.uid), userData);
-      setUserData(userData);
-    } catch (error: any) {
-      console.error('Sign up error:', error);
+      await setDoc(doc(db, 'users', user.uid), {
+        ...userData,
+        createdAt: new Date()
+      });
       
-      // Generic error messages for security
-      if (error.code === 'auth/email-already-in-use') {
-        throw new Error('Email already in use');
-      } else if (error.code === 'auth/weak-password') {
-        throw new Error('Password should be at least 6 characters');
+      console.log('AuthContext: User document created successfully');
+      
+      // The onAuthStateChanged listener will handle navigation
+    } catch (error: any) {
+      console.error('AuthContext: Sign up error:', error);
+      setLoading(false);
+      
+      // Provide user-friendly error messages
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'An account with this email already exists.';
       } else if (error.code === 'auth/invalid-email') {
-        throw new Error('Please enter a valid email address');
-      } else if (error.code === 'auth/network-request-failed' || 
-                 error.message.includes('network')) {
-        throw new Error('Please check internet connectivity');
-      } else {
-        throw new Error('Registration failed. Please try again.');
+        errorMessage = 'Please enter a valid email address.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password should be at least 6 characters long.';
       }
+      
+      throw new Error(errorMessage);
     }
   };
 
   const logout = async () => {
     try {
-      console.log('Logging out user');
+      console.log('AuthContext: Attempting logout');
+      setLoading(true);
+      
       await signOut(auth);
-      // Clear local state immediately
+      console.log('AuthContext: Logout successful');
+      
+      // Clear state immediately
       setUser(null);
       setUserData(null);
-      // Force redirect to login and clear navigation stack
+      
+      // Navigate to login
       router.replace('/auth/login');
     } catch (error: any) {
-      console.error('Logout error:', error);
-      
-      // Generic error messages for security
-      if (error.code === 'auth/network-request-failed' || 
-          error.message.includes('network')) {
-        throw new Error('Please check internet connectivity');
-      } else {
-        throw new Error('Logout failed. Please try again.');
-      }
+      console.error('AuthContext: Logout error:', error);
+      throw new Error('Failed to log out. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const resetPassword = async (email: string) => {
     try {
-      console.log('Sending password reset email to:', email);
+      console.log('AuthContext: Sending password reset email to:', email);
       await sendPasswordResetEmail(auth, email);
+      console.log('AuthContext: Password reset email sent successfully');
     } catch (error: any) {
-      console.error('Password reset error:', error);
+      console.error('AuthContext: Password reset error:', error);
       
-      // Generic error messages for security
-      if (error.code === 'auth/user-not-found') {
-        throw new Error('No account found with this email address');
+      let errorMessage = 'Failed to send reset email. Please try again.';
+      
+      if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email address.';
       } else if (error.code === 'auth/invalid-email') {
-        throw new Error('Please enter a valid email address');
-      } else if (error.code === 'auth/network-request-failed' || 
-                 error.message.includes('network')) {
-        throw new Error('Please check internet connectivity');
-      } else {
-        throw new Error('Failed to send reset email. Please try again.');
+        errorMessage = 'Please enter a valid email address.';
       }
+      
+      throw new Error(errorMessage);
     }
   };
 
   const updateUserProfile = async (displayName: string) => {
     try {
-      if (user) {
-        console.log('Updating user profile:', displayName);
-        await updateProfile(user, { displayName });
-        
-        // Update Firestore document
-        await setDoc(doc(db, 'users', user.uid), {
-          displayName
-        }, { merge: true });
-        
-        // Update local state
-        if (userData) {
-          setUserData({ ...userData, displayName });
-        }
-      }
-    } catch (error: any) {
-      console.error('Profile update error:', error);
+      if (!user) throw new Error('No user logged in');
       
-      // Generic error messages for security
-      if (error.code === 'auth/network-request-failed' || 
-          error.message.includes('network')) {
-        throw new Error('Please check internet connectivity');
-      } else {
-        throw new Error('Failed to update profile. Please try again.');
+      console.log('AuthContext: Updating user profile');
+      
+      // Update Firebase Auth profile
+      await updateProfile(user, { displayName });
+      
+      // Update Firestore document
+      await setDoc(doc(db, 'users', user.uid), {
+        displayName: displayName
+      }, { merge: true });
+      
+      // Update local state
+      if (userData) {
+        setUserData({ ...userData, displayName });
       }
+      
+      console.log('AuthContext: User profile updated successfully');
+    } catch (error: any) {
+      console.error('AuthContext: Profile update error:', error);
+      throw new Error('Failed to update profile. Please try again.');
     }
   };
 
@@ -250,8 +300,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resetPassword,
     updateUserProfile
   };
-
-  console.log('AuthProvider rendering with loading:', loading, 'user:', user?.email || 'No user');
 
   return (
     <AuthContext.Provider value={value}>

@@ -403,6 +403,50 @@ export default function AdminVIPScreen() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Data Export</Text>
+          <Text style={styles.exportDescription}>
+            Export data for a date range. Select the start and end dates, then choose the type of data to export.
+          </Text>
+          
+          <View style={styles.dateRangeContainer}>
+            <View style={styles.dateInputContainer}>
+              <Text style={styles.dateLabel}>From Date:</Text>
+              <Button
+                text={dateFrom.toLocaleDateString()}
+                onPress={() => setShowDateFromPicker(true)}
+                variant="outline"
+                style={styles.dateButton}
+              />
+            </View>
+            
+            <View style={styles.dateInputContainer}>
+              <Text style={styles.dateLabel}>To Date:</Text>
+              <Button
+                text={dateTo.toLocaleDateString()}
+                onPress={() => setShowDateToPicker(true)}
+                variant="outline"
+                style={styles.dateButton}
+              />
+            </View>
+          </View>
+
+          <View style={styles.exportContainer}>
+            <Button
+              text="Export Users Data (CSV)"
+              onPress={() => handleExport('users')}
+              variant="outline"
+              style={styles.exportButton}
+            />
+            <Button
+              text="Export Signals Data (CSV)"
+              onPress={() => handleExport('signals')}
+              variant="outline"
+              style={styles.exportButton}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>User Management</Text>
           
           <View style={styles.searchContainer}>
@@ -453,50 +497,6 @@ export default function AdminVIPScreen() {
               </View>
             </View>
           ))}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Data Export</Text>
-          <Text style={styles.exportDescription}>
-            Export data for a date range. Select the start and end dates, then choose the type of data to export.
-          </Text>
-          
-          <View style={styles.dateRangeContainer}>
-            <View style={styles.dateInputContainer}>
-              <Text style={styles.dateLabel}>From Date:</Text>
-              <Button
-                text={dateFrom.toLocaleDateString()}
-                onPress={() => setShowDateFromPicker(true)}
-                variant="outline"
-                style={styles.dateButton}
-              />
-            </View>
-            
-            <View style={styles.dateInputContainer}>
-              <Text style={styles.dateLabel}>To Date:</Text>
-              <Button
-                text={dateTo.toLocaleDateString()}
-                onPress={() => setShowDateToPicker(true)}
-                variant="outline"
-                style={styles.dateButton}
-              />
-            </View>
-          </View>
-
-          <View style={styles.exportContainer}>
-            <Button
-              text="Export Users Data (CSV)"
-              onPress={() => handleExport('users')}
-              variant="outline"
-              style={styles.exportButton}
-            />
-            <Button
-              text="Export Signals Data (CSV)"
-              onPress={() => handleExport('signals')}
-              variant="outline"
-              style={styles.exportButton}
-            />
-          </View>
         </View>
       </ScrollView>
 
