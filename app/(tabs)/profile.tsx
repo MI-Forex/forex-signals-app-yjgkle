@@ -179,10 +179,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleAdminPanel = () => {
-    router.push('/admin');
-  };
-
   const handleManageSignals = () => {
     router.push('/admin/signals');
   };
@@ -214,7 +210,7 @@ export default function ProfileScreen() {
     >
       <View style={styles.header}>
         <Image 
-          source={require('../../assets/images/6bb0a24c-a5eb-4848-9fe8-1ae1ebfe9b27.png')}
+          source={require('../../assets/images/050c969d-e852-4174-8b38-e847feb55cb4.png')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -271,15 +267,8 @@ export default function ProfileScreen() {
           {(userData?.role === 'admin' || userData?.isAdmin) && (
             <>
               <Text style={[styles.label, { marginTop: spacing.lg, marginBottom: spacing.md }]}>
-                Admin Panel
+                Admin Management
               </Text>
-              
-              <Button
-                text="🎯 Admin Panel"
-                onPress={handleAdminPanel}
-                variant="success"
-                style={{ marginBottom: spacing.sm }}
-              />
               
               <Button
                 text="📊 Manage Forex Signals"
