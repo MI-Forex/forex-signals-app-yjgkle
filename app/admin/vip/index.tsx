@@ -32,6 +32,14 @@ interface Signal {
   takeProfit: number;
   status: string;
   createdAt: Date;
+  targetUsers?: 'normal' | 'vip';
+  isVip?: boolean;
+}
+
+interface SignalStats {
+  totalSignals: number;
+  normalSignals: number;
+  vipSignals: number;
 }
 
 export default function AdminVIPScreen() {
@@ -57,11 +65,18 @@ export default function AdminVIPScreen() {
   const [showDateFromPicker, setShowDateFromPicker] = useState(false);
   const [showDateToPicker, setShowDateToPicker] = useState(false);
   const [exportType, setExportType] = useState<'users' | 'signals' | null>(null);
+  const [signalStats, setSignalStats] = useState<SignalStats>({
+    totalSignals: 0,
+    normalSignals: 0,
+    vipSignals: 0
+  });
+  const [loadingStats, setLoadingStats] = useState(false);
   const { userData } = useAuth();
 
   useEffect(() => {
     loadVIPSettings();
     loadUsers();
+    loadSignalStats();
   }, []);
 
   // Update filtered users when users or search query changes
@@ -95,6 +110,40 @@ export default function AdminVIPScreen() {
       console.error('Error loading users:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSignalStats = async () => {
+    setLoadingStats(true);
+    try {
+      const signalsQuery = query(collection(db, 'signals'), orderBy('createdAt', 'desc'));
+      const signalsSnapshot = await getDocs(signalsQuery);
+      
+      let totalSignals = 0;
+      let normalSignals = 0;
+      let vipSignals = 0;
+
+      signalsSnapshot.docs.forEach(doc => {
+        const signal = doc.data();
+        totalSignals++;
+        
+        // Check if signal is for VIP users
+        if (signal.targetUsers === 'vip' || signal.isVip === true) {
+          vipSignals++;
+        } else {
+          normalSignals++;
+        }
+      });
+
+      setSignalStats({
+        totalSignals,
+        normalSignals,
+        vipSignals
+      });
+    } catch (error) {
+      console.error('Error loading signal stats:', error);
+    } finally {
+      setLoadingStats(false);
     }
   };
 
@@ -301,6 +350,35 @@ export default function AdminVIPScreen() {
       </View>
 
       <ScrollView style={styles.content}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Signal Statistics</Text>
+          {loadingStats ? (
+            <Text style={styles.loadingText}>Loading statistics...</Text>
+          ) : (
+            <View style={styles.statsContainer}>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{signalStats.totalSignals}</Text>
+                <Text style={styles.statLabel}>Total Signals</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{signalStats.normalSignals}</Text>
+                <Text style={styles.statLabel}>Normal User Signals</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{signalStats.vipSignals}</Text>
+                <Text style={styles.statLabel}>VIP User Signals</Text>
+              </View>
+            </View>
+          )}
+          <Button
+            text="Refresh Statistics"
+            onPress={loadSignalStats}
+            variant="outline"
+            style={styles.refreshButton}
+            loading={loadingStats}
+          />
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pricing Settings</Text>
           <View style={styles.priceContainer}>
@@ -597,5 +675,41 @@ const styles = StyleSheet.create({
   },
   exportButton: {
     marginBottom: spacing.sm,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    padding: spacing.md,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.primary,
+    marginBottom: spacing.xs,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  refreshButton: {
+    marginTop: spacing.sm,
   },
 });

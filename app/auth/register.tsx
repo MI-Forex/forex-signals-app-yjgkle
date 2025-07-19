@@ -239,7 +239,7 @@ export default function RegisterScreen() {
       >
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/images/final_quest_240x240.png')} 
+            source={require('../../assets/images/6bb0a24c-a5eb-4848-9fe8-1ae1ebfe9b27.png')} 
             style={styles.logo}
             resizeMode="contain"
           />

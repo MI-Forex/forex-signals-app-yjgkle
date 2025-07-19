@@ -97,9 +97,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       console.log('Signing in user:', email);
-      await signInWithEmailAndPassword(auth, email, password);
+      console.log('Auth object:', auth);
+      console.log('Firebase app initialized:', !!auth.app);
+      
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log('Sign in successful:', userCredential.user.email);
+      
+      return userCredential;
     } catch (error: any) {
       console.error('Sign in error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       
       // Generic error messages for security
       if (error.code === 'auth/user-not-found' || 
@@ -125,13 +133,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await updateProfile(user, { displayName });
       
       // Create user document in Firestore
+      // Check if this is the first admin user (for testing)
+      const isFirstAdmin = email.toLowerCase() === 'admin@test.com';
+      
       const userData: UserData = {
         uid: user.uid,
         email: user.email!,
         displayName,
         phoneNumber,
-        role: 'user',
-        isAdmin: false,
+        role: isFirstAdmin ? 'admin' : 'user',
+        isAdmin: isFirstAdmin,
         isVIP: false,
         createdAt: new Date()
       };

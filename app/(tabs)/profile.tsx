@@ -123,7 +123,7 @@ export default function ProfileScreen() {
     >
       <View style={styles.header}>
         <Image 
-          source={require('../../assets/images/f9d6c6d4-79e6-487b-9dff-8e0d8a79f68b.png')}
+          source={require('../../assets/images/6bb0a24c-a5eb-4848-9fe8-1ae1ebfe9b27.png')}
           style={styles.logo}
           resizeMode="contain"
         />

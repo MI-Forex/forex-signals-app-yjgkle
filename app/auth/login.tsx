@@ -128,13 +128,20 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     if (!validateForm()) return;
 
+    console.log('Starting login process for:', email.trim());
     setLoading(true);
     try {
+      console.log('Calling signIn function...');
       await signIn(email.trim(), password);
-      console.log('Login successful');
+      console.log('Login successful, waiting for navigation...');
       // Navigation is handled by AuthContext
     } catch (error: any) {
       console.error('Login error:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
       Alert.alert('Login Failed', error.message);
     } finally {
       setLoading(false);
@@ -164,7 +171,7 @@ export default function LoginScreen() {
       >
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/images/final_quest_240x240.png')} 
+            source={require('../../assets/images/6bb0a24c-a5eb-4848-9fe8-1ae1ebfe9b27.png')} 
             style={styles.logo}
             resizeMode="contain"
           />
