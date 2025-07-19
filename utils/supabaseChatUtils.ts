@@ -255,9 +255,11 @@ export const subscribeToMessages = (
       async (payload) => {
         console.log('SupabaseChatUtils: Received real-time update:', payload);
         try {
-          // Fetch all messages for this chat
-          const messages = await getChatMessages(chatId);
-          onMessage(messages);
+          // Small delay to ensure database consistency
+          setTimeout(async () => {
+            const messages = await getChatMessages(chatId);
+            onMessage(messages);
+          }, 100);
         } catch (error) {
           console.error('SupabaseChatUtils: Error handling real-time update:', error);
           onError(new Error('Failed to update messages'));
@@ -268,6 +270,8 @@ export const subscribeToMessages = (
       console.log('SupabaseChatUtils: Subscription status:', status);
       if (status === 'SUBSCRIPTION_ERROR') {
         onError(new Error('Failed to subscribe to messages'));
+      } else if (status === 'SUBSCRIBED') {
+        console.log('SupabaseChatUtils: Successfully subscribed to real-time updates');
       }
     });
 

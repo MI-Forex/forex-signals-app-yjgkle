@@ -47,7 +47,7 @@ export default function AdminNewsScreen() {
   const { userData } = useAuth();
 
   useEffect(() => {
-    if (userData?.role !== 'admin') {
+    if (!userData?.isAdmin && userData?.role !== 'admin') {
       router.replace('/(tabs)/news');
       return;
     }

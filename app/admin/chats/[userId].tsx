@@ -117,6 +117,21 @@ export default function AdminChatScreen() {
     try {
       const chatId = createChatId(userId as string);
       
+      // Create optimistic message for immediate UI update
+      const optimisticMessage: ChatMessage = {
+        id: `temp_${Date.now()}`,
+        text: messageText,
+        sender: 'admin',
+        senderName: 'Admin',
+        timestamp: new Date(),
+        chatId,
+        userId: userData.uid,
+        read: false
+      };
+
+      // Add optimistic message to UI immediately
+      setMessages(prev => [...prev, optimisticMessage]);
+      
       await sendChatMessage(
         chatId,
         userData.uid,
@@ -126,8 +141,23 @@ export default function AdminChatScreen() {
       );
 
       console.log('AdminChat: Message sent successfully');
+      
+      // Refresh messages to get the real message with proper ID
+      setTimeout(async () => {
+        try {
+          const updatedMessages = await getChatMessages(chatId);
+          setMessages(updatedMessages);
+        } catch (error) {
+          console.error('AdminChat: Error refreshing messages after send:', error);
+        }
+      }, 500);
+      
     } catch (error: any) {
       console.error('AdminChat: Error sending message:', error);
+      
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => !msg.id.startsWith('temp_')));
+      
       Alert.alert('Error', 'Failed to send message. Please try again.');
       setNewMessage(messageText); // Restore message on error
     } finally {

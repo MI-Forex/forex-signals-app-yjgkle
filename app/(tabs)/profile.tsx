@@ -155,7 +155,7 @@ export default function ProfileScreen() {
         <Text style={styles.subtitle}>
           {user?.email}
         </Text>
-        {userData?.role === 'admin' && (
+        {(userData?.role === 'admin' || userData?.isAdmin) && (
           <View style={styles.adminBadge}>
             <Text style={styles.adminText}>ADMIN</Text>
           </View>
@@ -187,49 +187,56 @@ export default function ProfileScreen() {
             disabled={loading}
           />
 
-          {userData?.role === 'admin' && (
+          {(userData?.role === 'admin' || userData?.isAdmin) && (
             <>
               <Text style={[styles.label, { marginTop: spacing.lg, marginBottom: spacing.md }]}>
                 Admin Panel
               </Text>
               
               <Button
-                text="Manage Forex Signals"
+                text="🎯 Admin Dashboard"
+                onPress={handleAdminPanel}
+                variant="success"
+                style={{ marginBottom: spacing.sm }}
+              />
+              
+              <Button
+                text="📊 Manage Forex Signals"
                 onPress={handleManageSignals}
                 variant="primary"
                 style={{ marginBottom: spacing.sm }}
               />
               
               <Button
-                text="Manage Analysis"
+                text="📈 Manage Analysis"
                 onPress={handleManageAnalysis}
                 variant="primary"
                 style={{ marginBottom: spacing.sm }}
               />
               
               <Button
-                text="Manage News Articles"
+                text="📰 Manage News Articles"
                 onPress={handleManageNews}
                 variant="primary"
                 style={{ marginBottom: spacing.sm }}
               />
               
               <Button
-                text="Manage Users"
+                text="👥 Manage Users"
                 onPress={handleManageUsers}
                 variant="primary"
                 style={{ marginBottom: spacing.sm }}
               />
               
               <Button
-                text="VIP Settings & Data Export"
+                text="💎 VIP Settings & Data Export"
                 onPress={handleManageVIP}
                 variant="primary"
                 style={{ marginBottom: spacing.sm }}
               />
               
               <Button
-                text="User Chats & Support"
+                text="💬 User Chats & Support"
                 onPress={handleManageChats}
                 variant="success"
                 style={{ marginBottom: spacing.sm }}

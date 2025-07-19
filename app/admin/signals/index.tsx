@@ -29,8 +29,8 @@ export default function AdminSignalsScreen() {
   const { userData } = useAuth();
 
   useEffect(() => {
-    if (userData?.role !== 'admin') {
-      router.replace('/dashboard');
+    if (!userData?.isAdmin && userData?.role !== 'admin') {
+      router.replace('/(tabs)/signals');
       return;
     }
 
@@ -55,7 +55,16 @@ export default function AdminSignalsScreen() {
       console.error('Error fetching admin signals:', error);
       setLoading(false);
       setRefreshing(false);
-      Alert.alert('Error', 'Failed to load signals');
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to load signals';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      Alert.alert('Error', errorMessage);
     });
 
     return unsubscribe;

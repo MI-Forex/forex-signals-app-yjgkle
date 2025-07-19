@@ -186,6 +186,21 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
     try {
       const senderName = userData.isAdmin ? 'Admin' : (userData.displayName || userData.email || 'You');
       
+      // Create optimistic message for immediate UI update
+      const optimisticMessage: ChatMessage = {
+        id: `temp_${Date.now()}`,
+        text: messageText,
+        sender: userData.isAdmin ? 'admin' : 'user',
+        senderName,
+        timestamp: new Date(),
+        chatId,
+        userId: userData.uid,
+        read: false
+      };
+
+      // Add optimistic message to UI immediately
+      setMessages(prev => [...prev, optimisticMessage]);
+      
       await sendChatMessage(
         chatId,
         userData.uid,
@@ -195,6 +210,16 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       );
 
       console.log('ChatModal: Supabase message sent successfully');
+      
+      // Refresh messages to get the real message with proper ID
+      setTimeout(async () => {
+        try {
+          const updatedMessages = await getChatMessages(chatId);
+          setMessages(updatedMessages);
+        } catch (error) {
+          console.error('ChatModal: Error refreshing messages after send:', error);
+        }
+      }, 500);
       
       // Focus back on input for better UX
       setTimeout(() => {
@@ -209,6 +234,9 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
         chatId,
         userId: userData.uid
       });
+      
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => !msg.id.startsWith('temp_')));
       
       // Generic error messages for security
       let errorMessage = 'Failed to send message';
