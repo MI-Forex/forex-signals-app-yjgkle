@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Image } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
 import Button from '../../components/Button';
@@ -12,7 +12,8 @@ export default function AdminScreen() {
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   const handleBack = () => {
-    router.back();
+    // Navigate to profile tab instead of using router.back()
+    router.replace('/(tabs)/profile');
   };
 
   const handleManageSignals = () => {
@@ -69,7 +70,14 @@ export default function AdminScreen() {
   return (
     <View style={commonStyles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Admin Panel</Text>
+        <View style={styles.headerLeft}>
+          <Image 
+            source={require('../../assets/images/6bb0a24c-a5eb-4848-9fe8-1ae1ebfe9b27.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>Admin Panel</Text>
+        </View>
         <Button
           text="Back"
           onPress={handleBack}
@@ -173,11 +181,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  logo: {
+    width: 40,
+    height: 40,
+    marginRight: spacing.md,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
-    flex: 1,
   },
   backButton: {
     paddingHorizontal: spacing.md,

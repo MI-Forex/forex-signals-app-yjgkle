@@ -20,6 +20,7 @@ import {
   createChatId, 
   subscribeToMessages,
   getChatMessages,
+  testSupabaseConnection,
   ChatMessage
 } from '../utils/supabaseChatUtils';
 
@@ -92,6 +93,12 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
         throw new Error('User not authenticated');
       }
 
+      // Test Supabase connection first
+      const connectionOk = await testSupabaseConnection();
+      if (!connectionOk) {
+        throw new Error('Unable to connect to chat service');
+      }
+
       // Create chat ID and ensure chat exists
       const currentChatId = createChatId(userData.uid);
       setChatId(currentChatId);
@@ -157,23 +164,34 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       console.log('ChatModal: Cannot send message - missing data', {
         hasText: !!messageText,
         hasChatId: !!chatId,
-        hasUserId: !!userData?.uid
+        hasUserId: !!userData?.uid,
+        chatId,
+        userId: userData?.uid
       });
       Alert.alert('Error', 'Unable to send message. Please check your connection and try again.');
       return;
     }
 
-    console.log('ChatModal: Attempting to send Supabase message:', messageText.substring(0, 50));
+    console.log('ChatModal: Attempting to send Supabase message:', {
+      messageText: messageText.substring(0, 50),
+      chatId,
+      userId: userData.uid,
+      sender: userData.isAdmin ? 'admin' : 'user',
+      senderName: userData.isAdmin ? 'Admin' : (userData.displayName || userData.email || 'You')
+    });
+    
     setSending(true);
     setNewMessage(''); // Clear input immediately for better UX
 
     try {
+      const senderName = userData.isAdmin ? 'Admin' : (userData.displayName || userData.email || 'You');
+      
       await sendChatMessage(
         chatId,
         userData.uid,
         messageText,
         userData.isAdmin ? 'admin' : 'user',
-        userData.isAdmin ? 'Admin' : (userData.displayName || userData.email || 'You')
+        senderName
       );
 
       console.log('ChatModal: Supabase message sent successfully');
@@ -185,12 +203,18 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       
     } catch (error: any) {
       console.error('ChatModal: Error sending Supabase message:', error);
+      console.error('ChatModal: Error details:', {
+        message: error.message,
+        stack: error.stack,
+        chatId,
+        userId: userData.uid
+      });
       
       // Generic error messages for security
       let errorMessage = 'Failed to send message';
-      if (error.message.includes('network')) {
+      if (error.message.includes('network') || error.message.includes('fetch')) {
         errorMessage = 'Please check internet connectivity';
-      } else if (error.message.includes('permission')) {
+      } else if (error.message.includes('permission') || error.message.includes('auth')) {
         errorMessage = 'Please check your credentials';
       }
       

@@ -116,6 +116,30 @@ export default function ProfileScreen() {
     router.push('/admin');
   };
 
+  const handleManageSignals = () => {
+    router.push('/admin/signals');
+  };
+
+  const handleManageNews = () => {
+    router.push('/admin/news');
+  };
+
+  const handleManageAnalysis = () => {
+    router.push('/admin/analysis');
+  };
+
+  const handleManageUsers = () => {
+    router.push('/admin/users');
+  };
+
+  const handleManageVIP = () => {
+    router.push('/admin/vip');
+  };
+
+  const handleManageChats = () => {
+    router.push('/admin/chats');
+  };
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
@@ -164,11 +188,53 @@ export default function ProfileScreen() {
           />
 
           {userData?.role === 'admin' && (
-            <Button
-              text="Admin Panel"
-              onPress={handleAdminPanel}
-              variant="success"
-            />
+            <>
+              <Text style={[styles.label, { marginTop: spacing.lg, marginBottom: spacing.md }]}>
+                Admin Panel
+              </Text>
+              
+              <Button
+                text="Manage Forex Signals"
+                onPress={handleManageSignals}
+                variant="primary"
+                style={{ marginBottom: spacing.sm }}
+              />
+              
+              <Button
+                text="Manage Analysis"
+                onPress={handleManageAnalysis}
+                variant="primary"
+                style={{ marginBottom: spacing.sm }}
+              />
+              
+              <Button
+                text="Manage News Articles"
+                onPress={handleManageNews}
+                variant="primary"
+                style={{ marginBottom: spacing.sm }}
+              />
+              
+              <Button
+                text="Manage Users"
+                onPress={handleManageUsers}
+                variant="primary"
+                style={{ marginBottom: spacing.sm }}
+              />
+              
+              <Button
+                text="VIP Settings & Data Export"
+                onPress={handleManageVIP}
+                variant="primary"
+                style={{ marginBottom: spacing.sm }}
+              />
+              
+              <Button
+                text="User Chats & Support"
+                onPress={handleManageChats}
+                variant="success"
+                style={{ marginBottom: spacing.sm }}
+              />
+            </>
           )}
           
           <Button

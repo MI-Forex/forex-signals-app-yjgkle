@@ -86,13 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Only navigate if this is the initial load or after sign in
             if (initializing || loading) {
               console.log('AuthContext: Navigating user after authentication');
-              if (userData.isAdmin) {
-                console.log('AuthContext: Admin user detected, navigating to admin panel');
-                router.replace('/admin');
-              } else {
-                console.log('AuthContext: Regular user detected, navigating to tabs');
-                router.replace('/(tabs)/signals');
-              }
+              // Both admin and regular users go to tabs
+              // Admin will see admin options in the profile tab
+              console.log('AuthContext: User authenticated, navigating to tabs');
+              router.replace('/(tabs)/signals');
             }
           } else {
             console.log('AuthContext: User document not found, creating...');

@@ -1,5 +1,24 @@
 import { supabase, SupabaseMessage, SupabaseChat } from './supabaseConfig';
 
+// Test Supabase connection
+export const testSupabaseConnection = async (): Promise<boolean> => {
+  try {
+    console.log('Testing Supabase connection...');
+    const { data, error } = await supabase.from('chats').select('count').limit(1);
+    
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+      return false;
+    }
+    
+    console.log('Supabase connection test successful');
+    return true;
+  } catch (error) {
+    console.error('Supabase connection test error:', error);
+    return false;
+  }
+};
+
 export interface ChatMessage {
   id: string;
   text: string;
@@ -97,45 +116,77 @@ export const sendChatMessage = async (
     
     // Validate inputs
     if (!chatId || !userId || !text.trim() || !sender || !senderName) {
+      console.error('SupabaseChatUtils: Missing required data:', {
+        chatId: !!chatId,
+        userId: !!userId,
+        text: !!text.trim(),
+        sender: !!sender,
+        senderName: !!senderName
+      });
       throw new Error('Missing required message data');
     }
 
     // Validate chatId format
     if (!chatId.includes('_admin')) {
+      console.error('SupabaseChatUtils: Invalid chat ID format:', chatId);
       throw new Error('Invalid chat ID format');
     }
+
+    // Prepare message data
+    const messageData = {
+      chat_id: chatId,
+      user_id: userId,
+      message: text.trim(),
+      sender_type: sender,
+      sender_name: senderName,
+      read: false
+    };
+
+    console.log('SupabaseChatUtils: Inserting message data:', messageData);
     
     // Add message to Supabase
     const { data: message, error: messageError } = await supabase
       .from('messages')
-      .insert([
-        {
-          chat_id: chatId,
-          user_id: userId,
-          message: text.trim(),
-          sender_type: sender,
-          sender_name: senderName,
-          read: false
-        }
-      ])
+      .insert([messageData])
       .select()
       .single();
 
     if (messageError) {
       console.error('SupabaseChatUtils: Error inserting message:', messageError);
+      console.error('SupabaseChatUtils: Message data that failed:', messageData);
       throw new Error(`Failed to send message: ${messageError.message}`);
+    }
+
+    if (!message) {
+      console.error('SupabaseChatUtils: No message returned from insert');
+      throw new Error('Failed to send message: No data returned');
     }
 
     console.log('SupabaseChatUtils: Message added with ID:', message.id);
 
     // Update chat with last message info
+    let updateData: any = {
+      last_message: text.trim(),
+      last_message_time: new Date().toISOString()
+    };
+
+    // If user is sending, increment unread count
+    if (sender === 'user') {
+      // Get current unread count first
+      const { data: currentChat, error: fetchError } = await supabase
+        .from('chats')
+        .select('unread_count')
+        .eq('id', chatId)
+        .single();
+
+      if (!fetchError && currentChat) {
+        updateData.unread_count = (currentChat.unread_count || 0) + 1;
+      }
+    }
+
     const { error: updateError } = await supabase
       .from('chats')
-      .update({
-        last_message: text.trim(),
-        last_message_time: new Date().toISOString(),
-        unread_count: sender === 'user' ? supabase.sql`unread_count + 1` : supabase.sql`unread_count`
-      })
+      .update(updateData)
       .eq('id', chatId);
 
     if (updateError) {
@@ -242,8 +293,8 @@ export const markMessagesAsRead = async (chatId: string, sender: 'user' | 'admin
       throw new Error(`Failed to mark messages as read: ${error.message}`);
     }
 
-    // Reset unread count in chat if marking admin messages as read
-    if (sender === 'admin') {
+    // Reset unread count in chat if marking user messages as read (admin reading user messages)
+    if (sender === 'user') {
       const { error: updateError } = await supabase
         .from('chats')
         .update({ unread_count: 0 })

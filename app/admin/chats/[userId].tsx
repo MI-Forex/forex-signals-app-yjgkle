@@ -19,6 +19,7 @@ import {
   createChatId, 
   subscribeToMessages,
   getChatMessages,
+  markMessagesAsRead,
   ChatMessage
 } from '../../../utils/supabaseChatUtils';
 
@@ -74,6 +75,10 @@ export default function AdminChatScreen() {
       const initialMessages = await getChatMessages(chatId);
       setMessages(initialMessages);
       console.log('AdminChat: Loaded messages:', initialMessages.length);
+
+      // Mark user messages as read (admin is reading them)
+      await markMessagesAsRead(chatId, 'user');
+      console.log('AdminChat: Marked user messages as read');
 
       // Subscribe to real-time updates
       const unsubscribe = subscribeToMessages(
