@@ -158,6 +158,26 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
     transform: [{ skewX: '-20deg' }],
   },
+  redirectContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.xl,
+  },
+  redirectText: {
+    fontSize: 18,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    lineHeight: 26,
+  },
+  redirectSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
 });
 
 export default function VIPScreen() {
@@ -177,16 +197,30 @@ export default function VIPScreen() {
   const [loading, setLoading] = useState(true);
   const { userData } = useAuth();
 
+  // Check if user is admin or editor
+  const isAdminOrEditor = userData && (
+    userData.isAdmin === true || 
+    userData.role === 'admin' || 
+    userData.isEditor === true || 
+    userData.role === 'editor'
+  );
+
   useEffect(() => {
-    // Redirect admin and editor users away from VIP page
-    if (userData?.isAdmin || userData?.role === 'admin' || userData?.isEditor || userData?.role === 'editor') {
-      console.log('Admin/Editor user accessing VIP page, redirecting to signals');
-      router.replace('/(tabs)/signals');
-      return;
+    console.log('VIP Screen: User data check:', {
+      uid: userData?.uid,
+      role: userData?.role,
+      isAdmin: userData?.isAdmin,
+      isEditor: userData?.isEditor,
+      isAdminOrEditor
+    });
+
+    // If admin or editor, show redirect message instead of redirecting immediately
+    if (!isAdminOrEditor) {
+      loadVIPSettings();
+    } else {
+      setLoading(false);
     }
-    
-    loadVIPSettings();
-  }, [userData]);
+  }, [userData, isAdminOrEditor]);
 
   const loadVIPSettings = async () => {
     try {
@@ -205,6 +239,40 @@ export default function VIPScreen() {
   const handleUpgradeToVIP = () => {
     setChatModalVisible(true);
   };
+
+  const handleGoToSignals = () => {
+    router.replace('/(tabs)/signals');
+  };
+
+  // Show redirect screen for admin/editor users
+  if (isAdminOrEditor) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={[colors.gradientStart, colors.gradientEnd]}
+          style={styles.headerGradient}
+        >
+          <Text style={styles.title}>Access Restricted</Text>
+        </LinearGradient>
+        
+        <View style={styles.redirectContainer}>
+          <Ionicons name="shield-checkmark-outline" size={64} color={colors.primary} />
+          <Text style={styles.redirectText}>
+            VIP membership is not available for admin and editor accounts.
+          </Text>
+          <Text style={styles.redirectSubtext}>
+            As a team member, you already have access to all premium features and administrative tools.
+          </Text>
+          <Button
+            text="Go to Signals"
+            onPress={handleGoToSignals}
+            variant="primary"
+            size="large"
+          />
+        </View>
+      </View>
+    );
+  }
 
   if (loading) {
     return (

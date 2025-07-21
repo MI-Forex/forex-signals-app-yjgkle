@@ -7,8 +7,21 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function TabLayout() {
   const { userData } = useAuth();
   
-  // Check if user is admin or editor
-  const isAdminOrEditor = userData?.isAdmin || userData?.role === 'admin' || userData?.isEditor || userData?.role === 'editor';
+  // Check if user is admin or editor - more comprehensive check
+  const isAdminOrEditor = userData && (
+    userData.isAdmin === true || 
+    userData.role === 'admin' || 
+    userData.isEditor === true || 
+    userData.role === 'editor'
+  );
+
+  console.log('TabLayout: User data:', {
+    uid: userData?.uid,
+    role: userData?.role,
+    isAdmin: userData?.isAdmin,
+    isEditor: userData?.isEditor,
+    isAdminOrEditor
+  });
 
   return (
     <Tabs
@@ -57,18 +70,17 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* Hide VIP tab for admin and editor users */}
-      {!isAdminOrEditor && (
-        <Tabs.Screen
-          name="vip"
-          options={{
-            title: 'VIP',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="star-outline" size={size} color={color} />
-            ),
-          }}
-        />
-      )}
+      <Tabs.Screen
+        name="vip"
+        options={{
+          title: 'VIP',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="star-outline" size={size} color={color} />
+          ),
+          // Hide VIP tab for admin and editor users
+          href: isAdminOrEditor ? null : undefined,
+        }}
+      />
       <Tabs.Screen
         name="profile"
         options={{
