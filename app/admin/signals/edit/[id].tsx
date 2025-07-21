@@ -134,6 +134,14 @@ export default function EditSignalScreen() {
   const [saving, setSaving] = useState(false);
   const { userData } = useAuth();
 
+  // Check if user has permission to edit signals
+  React.useEffect(() => {
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
+      Alert.alert('Access Denied', 'You do not have permission to edit signals');
+      router.back();
+    }
+  }, [userData]);
+
   useEffect(() => {
     if (id) {
       loadSignal();

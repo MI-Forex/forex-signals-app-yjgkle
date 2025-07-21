@@ -123,6 +123,14 @@ export default function AddSignalScreen() {
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const { userData } = useAuth();
 
+  // Check if user has permission to add signals
+  React.useEffect(() => {
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
+      Alert.alert('Access Denied', 'You do not have permission to add signals');
+      router.back();
+    }
+  }, [userData]);
+
   const validateForm = () => {
     if (!formData.pair.trim()) {
       Alert.alert('Error', 'Please enter a currency pair');

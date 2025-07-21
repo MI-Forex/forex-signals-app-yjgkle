@@ -223,6 +223,11 @@ export default function ProfileScreen() {
             <Text style={styles.adminText}>ADMIN</Text>
           </View>
         )}
+        {(userData?.role === 'editor' || userData?.isEditor) && (
+          <View style={[styles.adminBadge, { backgroundColor: colors.warning }]}>
+            <Text style={styles.adminText}>EDITOR</Text>
+          </View>
+        )}
       </View>
 
       <ScrollView 
@@ -264,10 +269,10 @@ export default function ProfileScreen() {
             disabled={loading}
           />
 
-          {(userData?.role === 'admin' || userData?.isAdmin) && (
+          {(userData?.role === 'admin' || userData?.isAdmin || userData?.role === 'editor' || userData?.isEditor) && (
             <>
               <Text style={[styles.label, { marginTop: spacing.lg, marginBottom: spacing.md }]}>
-                Admin Management
+                {(userData?.role === 'admin' || userData?.isAdmin) ? 'Admin Management' : 'Editor Management'}
               </Text>
               
               <Button
@@ -291,26 +296,30 @@ export default function ProfileScreen() {
                 style={{ marginBottom: spacing.sm }}
               />
               
-              <Button
-                text="👥 Manage Users"
-                onPress={handleManageUsers}
-                variant="primary"
-                style={{ marginBottom: spacing.sm }}
-              />
-              
-              <Button
-                text="💎 VIP Settings & Data Export"
-                onPress={handleManageVIP}
-                variant="primary"
-                style={{ marginBottom: spacing.sm }}
-              />
-              
-              <Button
-                text="💬 User Chats & Support"
-                onPress={handleManageChats}
-                variant="success"
-                style={{ marginBottom: spacing.sm }}
-              />
+              {(userData?.role === 'admin' || userData?.isAdmin) && (
+                <>
+                  <Button
+                    text="👥 Manage Users"
+                    onPress={handleManageUsers}
+                    variant="primary"
+                    style={{ marginBottom: spacing.sm }}
+                  />
+                  
+                  <Button
+                    text="💎 VIP Settings & Data Export"
+                    onPress={handleManageVIP}
+                    variant="primary"
+                    style={{ marginBottom: spacing.sm }}
+                  />
+                  
+                  <Button
+                    text="💬 User Chats & Support"
+                    onPress={handleManageChats}
+                    variant="success"
+                    style={{ marginBottom: spacing.sm }}
+                  />
+                </>
+              )}
             </>
           )}
           

@@ -108,6 +108,14 @@ export default function EditAnalysisScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const { userData } = useAuth();
 
+  // Check if user has permission to edit analysis
+  React.useEffect(() => {
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
+      Alert.alert('Access Denied', 'You do not have permission to edit analysis');
+      router.back();
+    }
+  }, [userData]);
+
   useEffect(() => {
     if (id) {
       loadAnalysis();

@@ -29,7 +29,7 @@ export default function AdminSignalsScreen() {
   const { userData } = useAuth();
 
   useEffect(() => {
-    if (!userData?.isAdmin && userData?.role !== 'admin') {
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
       router.replace('/(tabs)/signals');
       return;
     }
@@ -87,6 +87,12 @@ export default function AdminSignalsScreen() {
   };
 
   const handleDeleteSignal = async (signalId: string) => {
+    // Check if user has permission to delete
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
+      Alert.alert('Access Denied', 'You do not have permission to delete signals');
+      return;
+    }
+
     Alert.alert(
       'Delete Signal',
       'Are you sure you want to delete this signal?',
@@ -101,7 +107,16 @@ export default function AdminSignalsScreen() {
               console.log('Signal deleted:', signalId);
             } catch (error) {
               console.error('Error deleting signal:', error);
-              Alert.alert('Error', 'Failed to delete signal');
+              
+              // Generic error messages for security
+              let errorMessage = 'Failed to delete signal';
+              if (error.message.includes('network')) {
+                errorMessage = 'Please check internet connectivity';
+              } else if (error.message.includes('permission')) {
+                errorMessage = 'Please check your credentials';
+              }
+              
+              Alert.alert('Error', errorMessage);
             }
           }
         }

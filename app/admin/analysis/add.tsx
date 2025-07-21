@@ -30,6 +30,14 @@ export default function AddAnalysisScreen() {
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const { userData } = useAuth();
 
+  // Check if user has permission to add analysis
+  React.useEffect(() => {
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
+      Alert.alert('Access Denied', 'You do not have permission to add analysis');
+      router.back();
+    }
+  }, [userData]);
+
   const validateForm = () => {
     if (!formData.title.trim()) {
       Alert.alert('Validation Error', 'Please enter a title');

@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
-import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';
-import Button from '../../../components/Button';
-import { useAuth } from '../../../contexts/AuthContext';
-import { db } from '../../../firebase/config';
-import { router } from 'expo-router';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../../styles/commonStyles';
+import Button from '../../../../components/Button';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { db } from '../../../../firebase/config';
+import { router, useLocalSearchParams } from 'expo-router';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+
+interface NewsData {
+  title: string;
+  summary: string;
+  content: string;
+  imageUrl: string;
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -76,24 +83,51 @@ const styles = StyleSheet.create({
   },
 });
 
-export default function AddNewsScreen() {
-  const [formData, setFormData] = useState({
+export default function EditNewsScreen() {
+  const { id } = useLocalSearchParams();
+  const [formData, setFormData] = useState<NewsData>({
     title: '',
     summary: '',
     content: '',
     imageUrl: '',
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const { userData } = useAuth();
 
-  // Check if user has permission to add news
-  React.useEffect(() => {
-    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
-      Alert.alert('Access Denied', 'You do not have permission to add news');
-      router.back();
+  useEffect(() => {
+    if (id) {
+      loadNews();
     }
-  }, [userData]);
+  }, [id]);
+
+  const loadNews = async () => {
+    try {
+      console.log('Loading news with ID:', id);
+      const newsDoc = await getDoc(doc(db, 'news', id as string));
+      
+      if (newsDoc.exists()) {
+        const data = newsDoc.data();
+        setFormData({
+          title: data.title || '',
+          summary: data.summary || '',
+          content: data.content || '',
+          imageUrl: data.imageUrl || '',
+        });
+        console.log('News loaded successfully');
+      } else {
+        Alert.alert('Error', 'News article not found');
+        router.back();
+      }
+    } catch (error) {
+      console.error('Error loading news:', error);
+      Alert.alert('Error', 'Failed to load news article');
+      router.back();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const validateForm = () => {
     if (!formData.title.trim()) {
@@ -114,27 +148,38 @@ export default function AddNewsScreen() {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    setLoading(true);
+    setSaving(true);
     try {
-      const newsData = {
+      const updateData = {
         title: formData.title.trim(),
         summary: formData.summary.trim(),
         content: formData.content.trim(),
         imageUrl: formData.imageUrl.trim() || null,
-        createdAt: serverTimestamp(),
-        createdBy: userData?.uid || '',
+        updatedAt: serverTimestamp(),
+        updatedBy: userData?.uid || '',
+        updatedByName: userData?.displayName || 'Admin'
       };
 
-      await addDoc(collection(db, 'news'), newsData);
+      console.log('Updating news with data:', updateData);
+      await updateDoc(doc(db, 'news', id as string), updateData);
       
-      Alert.alert('Success', 'News article added successfully', [
+      Alert.alert('Success', 'News article updated successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
-      console.error('Error adding news:', error);
-      Alert.alert('Error', 'Failed to add news article. Please try again.');
+      console.error('Error updating news:', error);
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to update news article. Please try again.';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -154,6 +199,14 @@ export default function AddNewsScreen() {
     setFocusedInput(null);
   };
 
+  if (loading) {
+    return (
+      <View style={commonStyles.loading}>
+        <Text style={commonStyles.text}>Loading news article...</Text>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView 
       style={styles.container}
@@ -161,7 +214,7 @@ export default function AddNewsScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Add News Article</Text>
+        <Text style={styles.title}>Edit News Article</Text>
         <Button
           text="Cancel"
           onPress={handleBack}
@@ -250,10 +303,10 @@ export default function AddNewsScreen() {
 
         <View style={styles.buttonContainer}>
           <Button
-            text="Publish Article"
+            text="Update Article"
             onPress={handleSubmit}
-            loading={loading}
-            disabled={loading}
+            loading={saving}
+            disabled={saving}
             size="large"
           />
         </View>

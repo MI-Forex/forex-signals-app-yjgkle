@@ -47,7 +47,7 @@ export default function AdminNewsScreen() {
   const { userData } = useAuth();
 
   useEffect(() => {
-    if (!userData?.isAdmin && userData?.role !== 'admin') {
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
       router.replace('/(tabs)/news');
       return;
     }
@@ -96,6 +96,12 @@ export default function AdminNewsScreen() {
   };
 
   const handleDeleteNews = async (newsId: string) => {
+    // Check if user has permission to delete
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
+      Alert.alert('Access Denied', 'You do not have permission to delete news');
+      return;
+    }
+
     Alert.alert(
       'Delete News',
       'Are you sure you want to delete this news article?',
@@ -110,7 +116,16 @@ export default function AdminNewsScreen() {
               Alert.alert('Success', 'News article deleted successfully');
             } catch (error) {
               console.error('Error deleting news:', error);
-              Alert.alert('Error', 'Failed to delete news article');
+              
+              // Generic error messages for security
+              let errorMessage = 'Failed to delete news article';
+              if (error.message.includes('network')) {
+                errorMessage = 'Please check internet connectivity';
+              } else if (error.message.includes('permission')) {
+                errorMessage = 'Please check your credentials';
+              }
+              
+              Alert.alert('Error', errorMessage);
             }
           }
         }

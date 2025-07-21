@@ -89,6 +89,12 @@ export default function AdminAnalysisScreen() {
   };
 
   const handleDeleteAnalysis = async (analysisId: string) => {
+    // Check if user has permission to delete
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
+      Alert.alert('Access Denied', 'You do not have permission to delete analysis');
+      return;
+    }
+
     Alert.alert(
       'Delete Analysis',
       'Are you sure you want to delete this analysis? This action cannot be undone.',
@@ -103,7 +109,16 @@ export default function AdminAnalysisScreen() {
               Alert.alert('Success', 'Analysis deleted successfully');
             } catch (error) {
               console.error('Error deleting analysis:', error);
-              Alert.alert('Error', 'Failed to delete analysis');
+              
+              // Generic error messages for security
+              let errorMessage = 'Failed to delete analysis';
+              if (error.message.includes('network')) {
+                errorMessage = 'Please check internet connectivity';
+              } else if (error.message.includes('permission')) {
+                errorMessage = 'Please check your credentials';
+              }
+              
+              Alert.alert('Error', errorMessage);
             }
           }
         }
