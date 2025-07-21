@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert, RefreshControl, StyleSheet } from 'react-native';
-import { useAuth } from '../../../contexts/AuthContext';
 import { router } from 'expo-router';
-import Button from '../../../components/Button';
+import { useAuth } from '../../../contexts/AuthContext';
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
-import { commonStyles, colors, spacing } from '../../../styles/commonStyles';
 import AdminNewsCard from '../../../components/AdminNewsCard';
+import Button from '../../../components/Button';
+import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface NewsArticle {
   id: string;
@@ -19,28 +21,101 @@ interface NewsArticle {
 }
 
 const styles = StyleSheet.create({
-  header: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  headerGradient: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    borderBottomLeftRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
+  },
+  headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    justifyContent: 'space-between',
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
+    fontWeight: '700',
+    color: colors.white,
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: spacing.md,
   },
-  headerButtons: {
+  buttonContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+  },
+  backButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    minHeight: 40,
+    borderRadius: borderRadius.lg,
     flexDirection: 'row',
-    gap: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  addButton: {
+    backgroundColor: colors.success,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    minHeight: 48,
+    borderRadius: borderRadius.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.md,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    marginLeft: spacing.xs,
+  },
+  addButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
+    marginLeft: spacing.sm,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.xxxl,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.textMuted,
+    marginTop: spacing.md,
   },
 });
 
 export default function AdminNewsScreen() {
-  const [articles, setArticles] = useState<NewsArticle[]>([]);
+  const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -52,7 +127,7 @@ export default function AdminNewsScreen() {
       return;
     }
 
-    console.log('Setting up news listener for admin');
+    console.log('Setting up admin news listener');
     const q = query(
       collection(db, 'news'),
       orderBy('createdAt', 'desc')
@@ -66,14 +141,23 @@ export default function AdminNewsScreen() {
       })) as NewsArticle[];
       
       console.log('Admin news updated:', newsData.length);
-      setArticles(newsData);
+      setNews(newsData);
       setLoading(false);
       setRefreshing(false);
     }, (error) => {
-      console.error('Error fetching news:', error);
+      console.error('Error fetching admin news:', error);
       setLoading(false);
       setRefreshing(false);
-      Alert.alert('Error', 'Failed to load news');
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to load news';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      Alert.alert('Error', errorMessage);
     });
 
     return unsubscribe;
@@ -113,12 +197,12 @@ export default function AdminNewsScreen() {
           onPress: async () => {
             try {
               await deleteDoc(doc(db, 'news', newsId));
-              Alert.alert('Success', 'News article deleted successfully');
+              console.log('News deleted:', newsId);
             } catch (error) {
               console.error('Error deleting news:', error);
               
               // Generic error messages for security
-              let errorMessage = 'Failed to delete news article';
+              let errorMessage = 'Failed to delete news';
               if (error.message.includes('network')) {
                 errorMessage = 'Please check internet connectivity';
               } else if (error.message.includes('permission')) {
@@ -135,34 +219,55 @@ export default function AdminNewsScreen() {
 
   if (loading) {
     return (
-      <View style={commonStyles.loading}>
-        <Text style={commonStyles.text}>Loading news...</Text>
+      <View style={styles.loadingContainer}>
+        <Ionicons name="newspaper-outline" size={48} color={colors.primary} />
+        <Text style={styles.loadingText}>Loading news...</Text>
       </View>
     );
   }
 
   return (
-    <View style={commonStyles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Manage News</Text>
-        <View style={styles.headerButtons}>
+    <View style={styles.container}>
+      {/* Modern Header with Gradient */}
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        style={styles.headerGradient}
+      >
+        <View style={styles.headerRow}>
           <Button
-            text="Add News"
-            onPress={handleAddNews}
-            variant="primary"
-            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
-          />
-          <Button
-            text="Back"
+            text=""
             onPress={handleBack}
             variant="outline"
-            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
-          />
+            style={styles.backButton}
+            textStyle={styles.buttonText}
+          >
+            <Ionicons name="arrow-back" size={18} color={colors.primary} />
+            <Text style={styles.buttonText}>Back</Text>
+          </Button>
+          
+          <Text style={styles.title}>Manage News</Text>
+          
+          {/* Placeholder for symmetry */}
+          <View style={{ width: 70 }} />
         </View>
+      </LinearGradient>
+
+      {/* Add News Button */}
+      <View style={styles.buttonContainer}>
+        <Button
+          text=""
+          onPress={handleAddNews}
+          variant="success"
+          style={styles.addButton}
+        >
+          <Ionicons name="add-circle-outline" size={20} color={colors.white} />
+          <Text style={styles.addButtonText}>Add News</Text>
+        </Button>
       </View>
 
+      {/* News List */}
       <ScrollView
-        style={commonStyles.content}
+        style={styles.content}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -170,18 +275,18 @@ export default function AdminNewsScreen() {
             tintColor={colors.primary}
           />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {articles.length === 0 ? (
-          <View style={[commonStyles.centerContent, { minHeight: 200 }]}>
-            <Text style={commonStyles.textMuted}>No news articles found</Text>
-            <Button
-              text="Add First Article"
-              onPress={handleAddNews}
-              style={{ marginTop: spacing.md }}
-            />
+        {news.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="newspaper-outline" size={64} color={colors.textMuted} />
+            <Text style={styles.emptyText}>No news found</Text>
+            <Text style={[styles.emptyText, { fontSize: 14, marginTop: spacing.sm }]}>
+              Create your first news article to get started
+            </Text>
           </View>
         ) : (
-          articles.map((article) => (
+          news.map((article) => (
             <AdminNewsCard
               key={article.id}
               article={article}

@@ -1,67 +1,68 @@
 import React from 'react';
-import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
-import { colors, buttonStyles, spacing, borderRadius, shadows } from '../styles/commonStyles';
+import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, ActivityIndicator, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, buttonStyles, spacing, borderRadius, shadows, typography } from '../styles/commonStyles';
 
 interface ButtonProps {
   text: string;
   onPress: () => void;
   style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle;
-  variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'outline';
+  variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'outline' | 'gradient';
   disabled?: boolean;
   loading?: boolean;
   size?: 'small' | 'medium' | 'large';
+  gradient?: string[];
+  children?: React.ReactNode;
 }
 
-export default function Button({ 
-  text, 
-  onPress, 
-  style, 
-  textStyle, 
-  variant = 'primary', 
-  disabled = false, 
+const styles = StyleSheet.create({
+  button: {
+    overflow: 'hidden',
+  },
+  gradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingIndicator: {
+    marginRight: spacing.sm,
+  },
+});
+
+export default function Button({
+  text,
+  onPress,
+  style,
+  textStyle,
+  variant = 'primary',
+  disabled = false,
   loading = false,
-  size = 'medium'
+  size = 'medium',
+  gradient,
+  children
 }: ButtonProps) {
-  
   const getButtonStyle = (): ViewStyle[] => {
     const baseStyles = [buttonStyles.base];
     
-    // Size styles
-    if (size === 'small') {
-      baseStyles.push(styles.small);
-    } else if (size === 'large') {
-      baseStyles.push(styles.large);
-    }
+    if (size === 'small') baseStyles.push(buttonStyles.small);
+    if (size === 'large') baseStyles.push(buttonStyles.large);
     
-    // Variant styles
-    switch (variant) {
-      case 'primary':
-        baseStyles.push(buttonStyles.primary);
-        break;
-      case 'secondary':
-        baseStyles.push(buttonStyles.secondary);
-        break;
-      case 'success':
-        baseStyles.push(buttonStyles.success);
-        break;
-      case 'danger':
-        baseStyles.push(buttonStyles.danger);
-        break;
-      case 'warning':
-        baseStyles.push(buttonStyles.warning);
-        break;
-      case 'outline':
-        baseStyles.push(buttonStyles.outline);
-        break;
-    }
+    if (variant === 'primary') baseStyles.push(buttonStyles.primary);
+    if (variant === 'secondary') baseStyles.push(buttonStyles.secondary);
+    if (variant === 'success') baseStyles.push(buttonStyles.success);
+    if (variant === 'danger') baseStyles.push(buttonStyles.danger);
+    if (variant === 'warning') baseStyles.push(buttonStyles.warning);
+    if (variant === 'outline') baseStyles.push(buttonStyles.outline);
     
-    // Disabled state
-    if (disabled || loading) {
-      baseStyles.push(buttonStyles.disabled);
-    }
+    if (disabled) baseStyles.push(buttonStyles.disabled);
     
-    // Custom styles
     if (style) {
       if (Array.isArray(style)) {
         baseStyles.push(...style);
@@ -74,34 +75,70 @@ export default function Button({
   };
 
   const getTextColor = (): string => {
-    if (variant === 'outline') {
-      return colors.text;
-    }
+    if (variant === 'outline') return colors.text;
     return colors.white;
   };
 
-  const getTextStyle = (): TextStyle[] => {
-    const baseTextStyles = [
-      buttonStyles.text,
-      { color: getTextColor() }
-    ];
+  const getTextStyle = (): TextStyle => {
+    const baseTextStyle = size === 'small' ? buttonStyles.textSmall : buttonStyles.text;
+    const colorStyle = variant === 'outline' ? buttonStyles.textOutline : { color: getTextColor() };
     
-    if (size === 'small') {
-      baseTextStyles.push(styles.smallText);
-    } else if (size === 'large') {
-      baseTextStyles.push(styles.largeText);
-    }
-    
-    if (variant === 'outline') {
-      baseTextStyles.push(buttonStyles.textOutline);
-    }
-    
-    if (textStyle) {
-      baseTextStyles.push(textStyle);
-    }
-    
-    return baseTextStyles;
+    return {
+      ...baseTextStyle,
+      ...colorStyle,
+      ...(textStyle || {})
+    };
   };
+
+  const getGradientColors = (): string[] => {
+    if (gradient) return gradient;
+    
+    switch (variant) {
+      case 'primary':
+        return colors.gradientPrimary;
+      case 'success':
+        return colors.gradientSuccess;
+      case 'warning':
+        return colors.gradientWarning;
+      case 'danger':
+        return colors.gradientDanger;
+      default:
+        return [colors.primary, colors.primaryDark];
+    }
+  };
+
+  const buttonContent = (
+    <View style={styles.content}>
+      {loading && (
+        <ActivityIndicator
+          size="small"
+          color={getTextColor()}
+          style={styles.loadingIndicator}
+        />
+      )}
+      {children || <Text style={getTextStyle()}>{text}</Text>}
+    </View>
+  );
+
+  if (variant === 'gradient') {
+    return (
+      <TouchableOpacity
+        style={[getButtonStyle(), styles.button]}
+        onPress={onPress}
+        disabled={disabled || loading}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={getGradientColors()}
+          style={styles.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          {buttonContent}
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <TouchableOpacity
@@ -110,35 +147,7 @@ export default function Button({
       disabled={disabled || loading}
       activeOpacity={0.8}
     >
-      {loading && (
-        <ActivityIndicator 
-          size="small" 
-          color={getTextColor()} 
-          style={{ marginRight: spacing.sm }} 
-        />
-      )}
-      <Text style={getTextStyle()}>
-        {loading ? 'Loading...' : text}
-      </Text>
+      {buttonContent}
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  small: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    minHeight: 36,
-  },
-  large: {
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    minHeight: 56,
-  },
-  smallText: {
-    fontSize: 14,
-  },
-  largeText: {
-    fontSize: 18,
-  },
-});

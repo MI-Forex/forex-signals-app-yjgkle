@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';
 import Button from '../../../components/Button';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -34,20 +36,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: spacing.lg,
+    paddingTop: spacing.xl,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     ...shadows.sm,
   },
+  headerGradient: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.lg,
+    paddingTop: spacing.xl,
+    borderBottomLeftRadius: borderRadius.lg,
+    borderBottomRightRadius: borderRadius.lg,
+  },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
+    fontWeight: '700',
+    color: colors.white,
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: spacing.md,
   },
   scrollContainer: {
     flexGrow: 1,
     padding: spacing.lg,
-    paddingBottom: spacing.xxxl, // Extra padding for keyboard
+    paddingBottom: spacing.xxxl,
   },
   inputContainer: {
     marginBottom: spacing.lg,
@@ -60,8 +75,8 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
@@ -71,11 +86,12 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: colors.primary,
     borderWidth: 2,
+    ...shadows.md,
   },
   textArea: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
@@ -86,7 +102,7 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
@@ -106,6 +122,23 @@ const styles = StyleSheet.create({
   },
   flex1: {
     flex: 1,
+  },
+  compactButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    minHeight: 40,
+    borderRadius: borderRadius.lg,
+  },
+  compactButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  formCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xxl,
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
+    ...shadows.lg,
   },
 });
 
@@ -225,156 +258,178 @@ export default function AddSignalScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>Add New Signal</Text>
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        style={styles.headerGradient}
+      >
         <Button
-          text="Cancel"
+          text="← Back"
           onPress={handleBack}
           variant="outline"
-          size="small"
+          style={[styles.compactButton, { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.3)' }]}
+          textStyle={[styles.compactButtonText, { color: colors.white }]}
         />
-      </View>
+        <Text style={styles.title}>Add Signal</Text>
+        <View style={{ width: 80 }} />
+      </LinearGradient>
 
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Currency Pair *</Text>
-          <TextInput
-            style={[
-              styles.input,
-              focusedInput === 'pair' && styles.inputFocused
-            ]}
-            placeholder="e.g., EUR/USD, GBP/JPY, BTC/USD"
-            placeholderTextColor={colors.textSecondary}
-            value={formData.pair}
-            onChangeText={(value) => updateFormData('pair', value)}
-            onFocus={() => handleInputFocus('pair')}
-            onBlur={handleInputBlur}
-            autoCapitalize="characters"
-            autoCorrect={false}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Signal Type *</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formData.type}
-              onValueChange={(value) => updateFormData('type', value)}
-              style={styles.picker}
-            >
-              {SIGNAL_TYPES.map((signalType) => (
-                <Picker.Item 
-                  key={signalType.value} 
-                  label={signalType.label} 
-                  value={signalType.value} 
-                />
-              ))}
-            </Picker>
-          </View>
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Target Users *</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={formData.targetUsers}
-              onValueChange={(value) => updateFormData('targetUsers', value)}
-              style={styles.picker}
-            >
-              {USER_TYPES.map((userType) => (
-                <Picker.Item 
-                  key={userType.value} 
-                  label={userType.label} 
-                  value={userType.value} 
-                />
-              ))}
-            </Picker>
-          </View>
-        </View>
-
-        <View style={styles.row}>
-          <View style={[styles.inputContainer, styles.flex1]}>
-            <Text style={styles.label}>Entry Point *</Text>
+        <View style={styles.formCard}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              <Ionicons name="trending-up" size={16} color={colors.primary} /> Currency Pair *
+            </Text>
             <TextInput
               style={[
                 styles.input,
-                focusedInput === 'entryPoint' && styles.inputFocused
+                focusedInput === 'pair' && styles.inputFocused
+              ]}
+              placeholder="e.g., EUR/USD, GBP/JPY, BTC/USD"
+              placeholderTextColor={colors.textSecondary}
+              value={formData.pair}
+              onChangeText={(value) => updateFormData('pair', value)}
+              onFocus={() => handleInputFocus('pair')}
+              onBlur={handleInputBlur}
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              <Ionicons name="swap-horizontal" size={16} color={colors.primary} /> Signal Type *
+            </Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.type}
+                onValueChange={(value) => updateFormData('type', value)}
+                style={styles.picker}
+              >
+                {SIGNAL_TYPES.map((signalType) => (
+                  <Picker.Item 
+                    key={signalType.value} 
+                    label={signalType.label} 
+                    value={signalType.value} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              <Ionicons name="people" size={16} color={colors.primary} /> Target Users *
+            </Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.targetUsers}
+                onValueChange={(value) => updateFormData('targetUsers', value)}
+                style={styles.picker}
+              >
+                {USER_TYPES.map((userType) => (
+                  <Picker.Item 
+                    key={userType.value} 
+                    label={userType.label} 
+                    value={userType.value} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.inputContainer, styles.flex1]}>
+              <Text style={styles.label}>
+                <Ionicons name="enter" size={16} color={colors.success} /> Entry Point *
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  focusedInput === 'entryPoint' && styles.inputFocused
+                ]}
+                placeholder="0.0000"
+                placeholderTextColor={colors.textSecondary}
+                value={formData.entryPoint}
+                onChangeText={(value) => updateFormData('entryPoint', value)}
+                onFocus={() => handleInputFocus('entryPoint')}
+                onBlur={handleInputBlur}
+                keyboardType="decimal-pad"
+              />
+            </View>
+
+            <View style={[styles.inputContainer, styles.flex1]}>
+              <Text style={styles.label}>
+                <Ionicons name="stop" size={16} color={colors.danger} /> Stop Loss *
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  focusedInput === 'stopLoss' && styles.inputFocused
+                ]}
+                placeholder="0.0000"
+                placeholderTextColor={colors.textSecondary}
+                value={formData.stopLoss}
+                onChangeText={(value) => updateFormData('stopLoss', value)}
+                onFocus={() => handleInputFocus('stopLoss')}
+                onBlur={handleInputBlur}
+                keyboardType="decimal-pad"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              <Ionicons name="flag" size={16} color={colors.success} /> Take Profit *
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                focusedInput === 'takeProfit' && styles.inputFocused
               ]}
               placeholder="0.0000"
               placeholderTextColor={colors.textSecondary}
-              value={formData.entryPoint}
-              onChangeText={(value) => updateFormData('entryPoint', value)}
-              onFocus={() => handleInputFocus('entryPoint')}
+              value={formData.takeProfit}
+              onChangeText={(value) => updateFormData('takeProfit', value)}
+              onFocus={() => handleInputFocus('takeProfit')}
               onBlur={handleInputBlur}
               keyboardType="decimal-pad"
             />
           </View>
 
-          <View style={[styles.inputContainer, styles.flex1]}>
-            <Text style={styles.label}>Stop Loss *</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              <Ionicons name="document-text" size={16} color={colors.primary} /> Notes
+            </Text>
             <TextInput
               style={[
-                styles.input,
-                focusedInput === 'stopLoss' && styles.inputFocused
+                styles.textArea,
+                focusedInput === 'notes' && styles.inputFocused
               ]}
-              placeholder="0.0000"
+              placeholder="Add any additional notes or analysis..."
               placeholderTextColor={colors.textSecondary}
-              value={formData.stopLoss}
-              onChangeText={(value) => updateFormData('stopLoss', value)}
-              onFocus={() => handleInputFocus('stopLoss')}
+              value={formData.notes}
+              onChangeText={(value) => updateFormData('notes', value)}
+              onFocus={() => handleInputFocus('notes')}
               onBlur={handleInputBlur}
-              keyboardType="decimal-pad"
+              multiline
+              numberOfLines={4}
             />
           </View>
-        </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Take Profit *</Text>
-          <TextInput
-            style={[
-              styles.input,
-              focusedInput === 'takeProfit' && styles.inputFocused
-            ]}
-            placeholder="0.0000"
-            placeholderTextColor={colors.textSecondary}
-            value={formData.takeProfit}
-            onChangeText={(value) => updateFormData('takeProfit', value)}
-            onFocus={() => handleInputFocus('takeProfit')}
-            onBlur={handleInputBlur}
-            keyboardType="decimal-pad"
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Notes</Text>
-          <TextInput
-            style={[
-              styles.textArea,
-              focusedInput === 'notes' && styles.inputFocused
-            ]}
-            placeholder="Add any additional notes or analysis..."
-            placeholderTextColor={colors.textSecondary}
-            value={formData.notes}
-            onChangeText={(value) => updateFormData('notes', value)}
-            onFocus={() => handleInputFocus('notes')}
-            onBlur={handleInputBlur}
-            multiline
-            numberOfLines={4}
-          />
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <Button
-            text="Add Signal"
-            onPress={handleSubmit}
-            loading={loading}
-            disabled={loading}
-            size="large"
-          />
+          <View style={styles.buttonContainer}>
+            <Button
+              text={loading ? "Adding Signal..." : "✨ Add Signal"}
+              onPress={handleSubmit}
+              loading={loading}
+              disabled={loading}
+              size="large"
+              style={{ borderRadius: borderRadius.xl }}
+            />
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

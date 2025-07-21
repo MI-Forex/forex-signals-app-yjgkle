@@ -10,6 +10,8 @@ import {
   StyleSheet, 
   Image 
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
@@ -146,25 +148,32 @@ export default function AddAnalysisScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        style={styles.headerGradient}
+      >
+        <Button
+          text="← Back"
+          onPress={handleBack}
+          variant="outline"
+          style={[styles.compactButton, { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.3)' }]}
+          textStyle={[styles.compactButtonText, { color: colors.white }]}
+        />
+        <Text style={styles.title}>Add Analysis</Text>
+        <View style={{ width: 80 }} />
+      </LinearGradient>
+
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Button
-            text="← Back"
-            onPress={handleBack}
-            variant="outline"
-            size="small"
-          />
-          <Text style={styles.title}>Add Analysis</Text>
-        </View>
-
-        <View style={styles.form}>
+        <View style={styles.formCard}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Title *</Text>
+            <Text style={styles.label}>
+              <Ionicons name="document-text" size={16} color={colors.primary} /> Title *
+            </Text>
             <TextInput
               style={[
                 styles.input,
@@ -181,7 +190,9 @@ export default function AddAnalysisScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Content *</Text>
+            <Text style={styles.label}>
+              <Ionicons name="analytics" size={16} color={colors.primary} /> Content *
+            </Text>
             <TextInput
               style={[
                 styles.input, 
@@ -205,14 +216,17 @@ export default function AddAnalysisScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Analysis Image (Optional)</Text>
+            <Text style={styles.label}>
+              <Ionicons name="image" size={16} color={colors.primary} /> Analysis Image (Optional)
+            </Text>
             <Button
-              text={imageUploading ? "Uploading..." : "Pick Image"}
+              text={imageUploading ? "Uploading..." : "📷 Pick Image"}
               onPress={pickImage}
               variant="outline"
               loading={imageUploading}
               disabled={imageUploading}
-              style={styles.imageButton}
+              style={[styles.imageButton, styles.compactButton]}
+              textStyle={styles.compactButtonText}
             />
             
             {formData.imageUrl ? (
@@ -223,11 +237,11 @@ export default function AddAnalysisScreen() {
                   resizeMode="cover"
                 />
                 <Button
-                  text="Remove Image"
+                  text="🗑️ Remove"
                   onPress={() => updateFormData('imageUrl', '')}
                   variant="danger"
-                  size="small"
-                  style={styles.removeImageButton}
+                  style={[styles.removeImageButton, styles.compactButton]}
+                  textStyle={styles.compactButtonText}
                 />
               </View>
             ) : null}
@@ -235,11 +249,12 @@ export default function AddAnalysisScreen() {
 
           <View style={styles.buttonContainer}>
             <Button
-              text={loading ? "Adding..." : "Add Analysis"}
+              text={loading ? "Adding..." : "✨ Add Analysis"}
               onPress={handleSubmit}
               loading={loading}
               disabled={loading || imageUploading}
               size="large"
+              style={{ borderRadius: borderRadius.xl }}
             />
           </View>
         </View>
@@ -253,6 +268,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  headerGradient: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.lg,
+    paddingTop: spacing.xl,
+    borderBottomLeftRadius: borderRadius.lg,
+    borderBottomRightRadius: borderRadius.lg,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.white,
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: spacing.md,
+  },
   scrollView: {
     flex: 1,
   },
@@ -260,37 +292,25 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxxl,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
+  formCard: {
     backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    ...shadows.sm,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  form: {
-    gap: spacing.lg,
+    borderRadius: borderRadius.xxl,
+    padding: spacing.xl,
+    ...shadows.lg,
   },
   inputGroup: {
-    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
+    marginBottom: spacing.sm,
   },
   input: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
@@ -300,6 +320,7 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: colors.primary,
     borderWidth: 2,
+    ...shadows.md,
   },
   textArea: {
     minHeight: 120,
@@ -310,10 +331,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     textAlign: 'right',
+    marginTop: spacing.xs,
+  },
+  compactButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    minHeight: 40,
+    borderRadius: borderRadius.lg,
+  },
+  compactButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   imageButton: {
     alignSelf: 'flex-start',
-    paddingHorizontal: spacing.lg,
   },
   imagePreview: {
     marginTop: spacing.md,
@@ -322,12 +353,11 @@ const styles = StyleSheet.create({
   previewImage: {
     width: '100%',
     height: 200,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     backgroundColor: colors.surface,
   },
   removeImageButton: {
     alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
   },
   buttonContainer: {
     marginTop: spacing.lg,

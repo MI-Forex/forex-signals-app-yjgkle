@@ -28,10 +28,26 @@ export const colors = {
   // Modern gradient colors
   gradientStart: '#667eea',
   gradientEnd: '#764ba2',
+  gradientPrimary: ['#3b82f6', '#8b5cf6'],
+  gradientSuccess: ['#10b981', '#059669'],
+  gradientWarning: ['#f59e0b', '#d97706'],
+  gradientDanger: ['#ef4444', '#dc2626'],
+  
+  // Glass morphism colors
+  glass: 'rgba(255, 255, 255, 0.25)',
+  glassBorder: 'rgba(255, 255, 255, 0.18)',
   
   // Status colors
   info: '#3b82f6',
   infoLight: '#dbeafe',
+  
+  // Modern accent colors
+  accent: '#8b5cf6',
+  accentLight: '#c4b5fd',
+  
+  // Dark mode support (for future)
+  surfaceDark: '#1e293b',
+  textDark: '#f1f5f9',
 };
 
 export const spacing = {
@@ -51,6 +67,7 @@ export const borderRadius = {
   lg: 12,
   xl: 16,
   xxl: 20,
+  xxxl: 24,
   full: 9999,
 };
 
@@ -95,6 +112,16 @@ export const shadows = {
     shadowRadius: 16,
     elevation: 12,
   },
+  xxl: {
+    shadowColor: colors.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 20,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 16,
+  },
 };
 
 export const typography = {
@@ -102,11 +129,13 @@ export const typography = {
     fontSize: 32,
     fontWeight: '700' as const,
     lineHeight: 40,
+    letterSpacing: -0.5,
   },
   h2: {
     fontSize: 28,
     fontWeight: '600' as const,
     lineHeight: 36,
+    letterSpacing: -0.25,
   },
   h3: {
     fontSize: 24,
@@ -133,18 +162,41 @@ export const typography = {
     fontWeight: '400' as const,
     lineHeight: 16,
   },
+  button: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    letterSpacing: 0.25,
+  },
+  buttonSmall: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    letterSpacing: 0.25,
+  },
 };
 
 export const buttonStyles = StyleSheet.create({
   base: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
     flexDirection: 'row',
     ...shadows.sm,
+  },
+  small: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    minHeight: 36,
+    borderRadius: borderRadius.lg,
+  },
+  large: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    minHeight: 56,
+    borderRadius: borderRadius.xl,
+    ...shadows.md,
   },
   primary: {
     backgroundColor: colors.primary,
@@ -170,11 +222,15 @@ export const buttonStyles = StyleSheet.create({
     opacity: 0.6,
   },
   text: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.button,
+    color: colors.white,
+  },
+  textSmall: {
+    ...typography.buttonSmall,
     color: colors.white,
   },
   textOutline: {
+    ...typography.button,
     color: colors.text,
   },
 });
@@ -237,8 +293,8 @@ export const commonStyles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: 16,
     color: colors.text,
@@ -248,6 +304,7 @@ export const commonStyles = StyleSheet.create({
   inputFocused: {
     borderColor: colors.primary,
     borderWidth: 2,
+    ...shadows.md,
   },
   inputError: {
     borderColor: colors.danger,
@@ -259,17 +316,26 @@ export const commonStyles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.xxl,
     padding: spacing.lg,
     marginBottom: spacing.md,
     ...shadows.md,
   },
   cardElevated: {
     backgroundColor: colors.surfaceElevated,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.xxl,
     padding: spacing.lg,
     marginBottom: spacing.md,
     ...shadows.lg,
+  },
+  cardModern: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xxl,
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
+    ...shadows.xl,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   row: {
     flexDirection: 'row',
@@ -288,10 +354,20 @@ export const commonStyles = StyleSheet.create({
     marginVertical: spacing.md,
   },
   glassmorphism: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: borderRadius.xl,
+    backgroundColor: colors.glass,
+    borderRadius: borderRadius.xxl,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderColor: colors.glassBorder,
+    ...shadows.xl,
+    overflow: 'hidden',
+  },
+  gradient: {
+    borderRadius: borderRadius.xxl,
     ...shadows.lg,
+  },
+  modernButton: {
+    borderRadius: borderRadius.xl,
+    ...shadows.md,
+    overflow: 'hidden',
   },
 });
