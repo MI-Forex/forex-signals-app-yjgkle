@@ -17,8 +17,9 @@ interface UserData {
   email: string;
   displayName?: string;
   phoneNumber?: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'editor';
   isAdmin: boolean;
+  isEditor?: boolean;
   isVIP?: boolean;
   createdAt: Date;
 }
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               phoneNumber: data.phoneNumber || '',
               role: data.role || 'user',
               isAdmin: data.isAdmin || false,
+              isEditor: data.isEditor || false,
               isVIP: data.isVIP || false,
               createdAt: data.createdAt?.toDate() || new Date()
             };
@@ -76,7 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log('AuthContext: User data loaded:', {
               uid: userData.uid,
               email: userData.email,
+              role: userData.role,
               isAdmin: userData.isAdmin,
+              isEditor: userData.isEditor,
               isVIP: userData.isVIP
             });
             
@@ -101,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               phoneNumber: '',
               role: 'user',
               isAdmin: false,
+              isEditor: false,
               isVIP: false,
               createdAt: new Date()
             };
@@ -195,6 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         phoneNumber: phoneNumber || '',
         role: 'user',
         isAdmin: false,
+        isEditor: false,
         isVIP: false,
         createdAt: new Date()
       };

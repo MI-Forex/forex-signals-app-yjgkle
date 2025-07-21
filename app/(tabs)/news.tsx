@@ -81,6 +81,9 @@ export default function NewsScreen() {
     router.push('/admin/news');
   };
 
+  // Check if user can manage news (admin or editor)
+  const canManage = userData?.isAdmin || userData?.isEditor;
+
   if (loading) {
     return (
       <View style={commonStyles.loading}>
@@ -93,7 +96,7 @@ export default function NewsScreen() {
     <View style={commonStyles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Forex News</Text>
-        {userData?.role === 'admin' && (
+        {canManage && (
           <Button
             text="Manage"
             onPress={handleManageNews}

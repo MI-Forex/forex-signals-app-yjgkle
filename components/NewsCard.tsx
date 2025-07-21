@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
+import NewsModal from './NewsModal';
 
 interface NewsArticle {
   id: string;
@@ -16,7 +17,7 @@ interface NewsCardProps {
 }
 
 export default function NewsCard({ article }: NewsCardProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const formatTime = (date: Date) => {
     return date.toLocaleString('en-US', {
@@ -28,56 +29,59 @@ export default function NewsCard({ article }: NewsCardProps) {
     });
   };
 
-  const toggleExpanded = () => {
-    setExpanded(!expanded);
+  const openModal = () => {
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
   };
 
   const getDisplaySummary = () => {
-    if (expanded || article.summary.length <= 150) {
+    if (article.summary.length <= 120) {
       return article.summary;
     }
-    return article.summary.substring(0, 150) + '...';
+    return article.summary.substring(0, 120) + '...';
   };
 
   const shouldShowReadMore = () => {
-    return article.summary.length > 150 || article.content.length > 0;
+    return article.summary.length > 120 || article.content.length > 0;
   };
 
   return (
-    <View style={styles.newsCard}>
-      {article.imageUrl && (
-        <Image 
-          source={{ uri: article.imageUrl }} 
-          style={styles.newsImage}
-          resizeMode="cover"
-        />
-      )}
-      
-      <View style={styles.newsContent}>
-        <Text style={styles.newsTitle}>{article.title}</Text>
-        
-        <Text style={styles.timestamp}>
-          {formatTime(article.createdAt)}
-        </Text>
-        
-        <Text style={styles.summaryText}>{getDisplaySummary()}</Text>
-        
-        {expanded && article.content && (
-          <View style={styles.fullContent}>
-            <View style={styles.contentDivider} />
-            <Text style={styles.contentText}>{article.content}</Text>
-          </View>
+    <>
+      <TouchableOpacity style={styles.newsCard} onPress={openModal} activeOpacity={0.7}>
+        {article.imageUrl && (
+          <Image 
+            source={{ uri: article.imageUrl }} 
+            style={styles.newsImage}
+            resizeMode="cover"
+          />
         )}
         
-        {shouldShowReadMore() && (
-          <TouchableOpacity onPress={toggleExpanded} style={styles.readMoreButton}>
-            <Text style={styles.readMoreText}>
-              {expanded ? 'Read Less' : 'Read More'}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
+        <View style={styles.newsContent}>
+          <Text style={styles.newsTitle}>{article.title}</Text>
+          
+          <Text style={styles.timestamp}>
+            {formatTime(article.createdAt)}
+          </Text>
+          
+          <Text style={styles.summaryText}>{getDisplaySummary()}</Text>
+          
+          {shouldShowReadMore() && (
+            <View style={styles.readMoreContainer}>
+              <Text style={styles.readMoreText}>Tap to read more</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+
+      <NewsModal
+        visible={modalVisible}
+        article={article}
+        onClose={closeModal}
+      />
+    </>
   );
 }
 
@@ -124,20 +128,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: spacing.sm,
   },
-  fullContent: {
-    marginTop: spacing.md,
-  },
-  contentDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginBottom: spacing.md,
-  },
-  contentText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.text,
-  },
-  readMoreButton: {
+  readMoreContainer: {
     alignSelf: 'flex-start',
     paddingVertical: spacing.xs,
     marginTop: spacing.sm,

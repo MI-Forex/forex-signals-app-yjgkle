@@ -4,14 +4,11 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet, 
-  Image, 
-  Modal, 
-  Dimensions, 
-  ScrollView 
+  Image
 } from 'react-native';
-import ImageViewer from 'react-native-image-zoom-viewer';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
 import { getOptimizedImageUrl } from '../utils/cloudinaryUtils';
+import AnalysisModal from './AnalysisModal';
 
 interface Analysis {
   id: string;
@@ -26,8 +23,7 @@ interface AnalysisCardProps {
 }
 
 export default function AnalysisCard({ analysis }: AnalysisCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const formatTime = (date: Date) => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { 
@@ -36,103 +32,65 @@ export default function AnalysisCard({ analysis }: AnalysisCardProps) {
     });
   };
 
-  const toggleExpanded = () => {
-    setExpanded(!expanded);
+  const openModal = () => {
+    setModalVisible(true);
   };
 
-  const openImageZoom = () => {
-    if (analysis.imageUrl) {
-      setImageModalVisible(true);
-    }
-  };
-
-  const closeImageZoom = () => {
-    setImageModalVisible(false);
+  const closeModal = () => {
+    setModalVisible(false);
   };
 
   const getDisplayContent = () => {
-    if (expanded || analysis.content.length <= 200) {
+    if (analysis.content.length <= 150) {
       return analysis.content;
     }
-    return analysis.content.substring(0, 200) + '...';
+    return analysis.content.substring(0, 150) + '...';
   };
 
   const shouldShowReadMore = () => {
-    return analysis.content.length > 200;
+    return analysis.content.length > 150;
   };
 
   // Get optimized image URLs for different use cases
   const thumbnailUrl = analysis.imageUrl 
     ? getOptimizedImageUrl(analysis.imageUrl, 400, 225, 70)
     : null;
-  
-  const fullSizeUrl = analysis.imageUrl 
-    ? getOptimizedImageUrl(analysis.imageUrl, 1200, 675, 85)
-    : null;
 
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{analysis.title}</Text>
-        <Text style={styles.timestamp}>{formatTime(analysis.createdAt)}</Text>
-      </View>
+    <>
+      <TouchableOpacity style={styles.card} onPress={openModal} activeOpacity={0.7}>
+        <View style={styles.header}>
+          <Text style={styles.title}>{analysis.title}</Text>
+          <Text style={styles.timestamp}>{formatTime(analysis.createdAt)}</Text>
+        </View>
 
-      {thumbnailUrl && (
-        <TouchableOpacity onPress={openImageZoom} style={styles.imageContainer}>
-          <Image 
-            source={{ uri: thumbnailUrl }} 
-            style={styles.image}
-            resizeMode="cover"
-          />
-          <View style={styles.imageOverlay}>
-            <Text style={styles.imageOverlayText}>Tap to zoom</Text>
-          </View>
-        </TouchableOpacity>
-      )}
-
-      <View style={styles.content}>
-        <Text style={styles.contentText}>{getDisplayContent()}</Text>
-        
-        {shouldShowReadMore() && (
-          <TouchableOpacity onPress={toggleExpanded} style={styles.readMoreButton}>
-            <Text style={styles.readMoreText}>
-              {expanded ? 'Read Less' : 'Read More'}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Image Zoom Modal */}
-      <Modal
-        visible={imageModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={closeImageZoom}
-      >
-        <View style={styles.modalContainer}>
-          <TouchableOpacity 
-            style={styles.closeButton}
-            onPress={closeImageZoom}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.closeButtonText}>✕</Text>
-          </TouchableOpacity>
-          
-          {fullSizeUrl && (
-            <ImageViewer
-              imageUrls={[{ url: fullSizeUrl }]}
-              index={0}
-              onSwipeDown={closeImageZoom}
-              enableSwipeDown={true}
-              backgroundColor="rgba(0,0,0,0.9)"
-              renderIndicator={() => null}
-              saveToLocalByLongPress={false}
-              enablePreload={true}
+        {thumbnailUrl && (
+          <View style={styles.imageContainer}>
+            <Image 
+              source={{ uri: thumbnailUrl }} 
+              style={styles.image}
+              resizeMode="cover"
             />
+          </View>
+        )}
+
+        <View style={styles.content}>
+          <Text style={styles.contentText}>{getDisplayContent()}</Text>
+          
+          {shouldShowReadMore() && (
+            <View style={styles.readMoreContainer}>
+              <Text style={styles.readMoreText}>Tap to read more</Text>
+            </View>
           )}
         </View>
-      </Modal>
-    </View>
+      </TouchableOpacity>
+
+      <AnalysisModal
+        visible={modalVisible}
+        analysis={analysis}
+        onClose={closeModal}
+      />
+    </>
   );
 }
 
@@ -167,28 +125,14 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   imageContainer: {
-    position: 'relative',
     marginBottom: spacing.md,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
     height: 200,
-    borderRadius: borderRadius.md,
     backgroundColor: colors.background,
-  },
-  imageOverlay: {
-    position: 'absolute',
-    bottom: spacing.xs,
-    right: spacing.xs,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-  },
-  imageOverlayText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: '500',
   },
   content: {
     gap: spacing.sm,
@@ -198,7 +142,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: colors.text,
   },
-  readMoreButton: {
+  readMoreContainer: {
     alignSelf: 'flex-start',
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
@@ -210,26 +154,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     fontWeight: '600',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    zIndex: 1000,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    color: colors.white,
-    fontSize: 20,
-    fontWeight: 'bold',
   },
 });

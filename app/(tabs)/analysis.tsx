@@ -80,6 +80,9 @@ export default function AnalysisScreen() {
     router.push('/admin/analysis');
   };
 
+  // Check if user can manage analysis (admin or editor)
+  const canManage = userData?.isAdmin || userData?.isEditor;
+
   if (loading) {
     return (
       <View style={commonStyles.loading}>
@@ -92,7 +95,7 @@ export default function AnalysisScreen() {
     <View style={commonStyles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Market Analysis</Text>
-        {userData?.role === 'admin' && (
+        {canManage && (
           <Button
             text="Manage"
             onPress={handleManageAnalysis}

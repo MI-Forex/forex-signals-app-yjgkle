@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert, RefreshControl, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import { useAuth } from '../../../contexts/AuthContext';
+import { router } from 'expo-router';
 import { db } from '../../../firebase/config';
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { commonStyles, colors, spacing } from '../../../styles/commonStyles';
 import Button from '../../../components/Button';
 import AdminAnalysisCard from '../../../components/AdminAnalysisCard';
+import { commonStyles, colors, spacing } from '../../../styles/commonStyles';
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 
 interface Analysis {
   id: string;
@@ -18,33 +18,29 @@ interface Analysis {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: spacing.md,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  titleContainer: {
-    marginBottom: spacing.md,
-  },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: colors.text,
-    textAlign: 'center',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  headerButton: {
     flex: 1,
+  },
+  backButton: {
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  addButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginLeft: spacing.sm,
   },
 });
 
@@ -52,40 +48,28 @@ export default function AdminAnalysisScreen() {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   const { userData } = useAuth();
 
   useEffect(() => {
-    if (!userData?.isAdmin) {
-      router.back();
-      return;
-    }
-
-    console.log('Setting up admin analysis listener');
-    const q = query(
-      collection(db, 'analysis'),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const analysisData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date()
-      })) as Analysis[];
+    if (userData?.isAdmin || userData?.isEditor) {
+      const analysisQuery = query(
+        collection(db, 'analysis'),
+        orderBy('createdAt', 'desc')
+      );
       
-      console.log('Admin analysis updated:', analysisData.length);
-      setAnalyses(analysisData);
-      setLoading(false);
-      setRefreshing(false);
-    }, (error) => {
-      console.error('Error fetching analysis:', error);
-      setLoading(false);
-      setRefreshing(false);
-      Alert.alert('Error', 'Failed to load analysis');
-    });
+      const unsubscribe = onSnapshot(analysisQuery, (snapshot) => {
+        const analysisData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date()
+        })) as Analysis[];
+        setAnalyses(analysisData);
+        setLoading(false);
+        setRefreshing(false);
+      });
 
-    return unsubscribe;
+      return () => unsubscribe();
+    }
   }, [userData]);
 
   const handleRefresh = () => {
@@ -104,10 +88,10 @@ export default function AdminAnalysisScreen() {
     router.push(`/admin/analysis/edit/${analysisId}`);
   };
 
-  const handleDeleteAnalysis = (analysisId: string) => {
+  const handleDeleteAnalysis = async (analysisId: string) => {
     Alert.alert(
       'Delete Analysis',
-      'Are you sure you want to delete this analysis?',
+      'Are you sure you want to delete this analysis? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -121,11 +105,20 @@ export default function AdminAnalysisScreen() {
               console.error('Error deleting analysis:', error);
               Alert.alert('Error', 'Failed to delete analysis');
             }
-          },
-        },
+          }
+        }
       ]
     );
   };
+
+  if (!userData?.isAdmin && !userData?.isEditor) {
+    return (
+      <View style={commonStyles.centerContent}>
+        <Text style={commonStyles.text}>Access denied. Admin or Editor privileges required.</Text>
+        <Button text="Go Back" onPress={handleBack} />
+      </View>
+    );
+  }
 
   if (loading) {
     return (
@@ -136,28 +129,26 @@ export default function AdminAnalysisScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={commonStyles.container}>
       <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>Manage Analysis</Text>
-        </View>
-        <View style={styles.headerButtons}>
+        <Text style={styles.title}>Manage Analysis</Text>
+        <View style={{ flexDirection: 'row' }}>
           <Button
             text="Back"
             onPress={handleBack}
             variant="outline"
-            style={styles.headerButton}
+            style={styles.backButton}
           />
           <Button
             text="Add Analysis"
             onPress={handleAddAnalysis}
             variant="primary"
-            style={styles.headerButton}
+            style={styles.addButton}
           />
         </View>
       </View>
 
-      <ScrollView
+      <ScrollView 
         style={commonStyles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
@@ -166,6 +157,12 @@ export default function AdminAnalysisScreen() {
         {analyses.length === 0 ? (
           <View style={[commonStyles.centerContent, { minHeight: 200 }]}>
             <Text style={commonStyles.textMuted}>No analysis found</Text>
+            <Button
+              text="Add First Analysis"
+              onPress={handleAddAnalysis}
+              variant="primary"
+              style={{ marginTop: spacing.md }}
+            />
           </View>
         ) : (
           analyses.map((analysis) => (

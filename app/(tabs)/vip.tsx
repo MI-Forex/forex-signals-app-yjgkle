@@ -85,6 +85,20 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 16,
   },
+  adminMessage: {
+    backgroundColor: colors.primary + '15',
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  adminMessageText: {
+    fontSize: 16,
+    color: colors.primary,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
 });
 
 export default function VIPScreen() {
@@ -135,6 +149,44 @@ export default function VIPScreen() {
         <View style={[commonStyles.centerContent, { flex: 1 }]}>
           <Text style={styles.loadingText}>Loading VIP information...</Text>
         </View>
+      </View>
+    );
+  }
+
+  // Don't show VIP membership for admin users
+  if (userData?.isAdmin) {
+    return (
+      <View style={commonStyles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>VIP Membership</Text>
+        </View>
+        
+        <ScrollView style={styles.content}>
+          <View style={styles.adminMessage}>
+            <Text style={styles.adminMessageText}>
+              🔑 Admin Access
+            </Text>
+            <Text style={[styles.adminMessageText, { marginTop: spacing.sm, fontSize: 14 }]}>
+              As an admin, you already have full access to all features and premium content. VIP membership is not required for admin accounts.
+            </Text>
+          </View>
+          
+          <View style={styles.vipCard}>
+            <Text style={styles.vipTitle}>🌟 VIP Premium Signals</Text>
+            
+            {vipSettings.features.map((feature, index) => (
+              <View key={index} style={styles.feature}>
+                <Text style={styles.featureText}>✓ {feature}</Text>
+              </View>
+            ))}
+
+            <Text style={styles.price}>${vipSettings.monthlyPrice}/month</Text>
+            
+            <Text style={[styles.description, { fontSize: 14, color: colors.textMuted }]}>
+              This pricing is displayed to regular users who want to upgrade to VIP membership.
+            </Text>
+          </View>
+        </ScrollView>
       </View>
     );
   }

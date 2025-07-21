@@ -13,8 +13,9 @@ interface UserData {
   email: string;
   displayName?: string;
   phoneNumber?: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'editor';
   isAdmin: boolean;
+  isEditor?: boolean;
   createdAt: Date;
   isActive?: boolean;
 }
@@ -82,6 +83,23 @@ export default function AdminUsersScreen() {
     } catch (error) {
       console.error('Error updating user status:', error);
       Alert.alert('Error', 'Failed to update user status');
+    }
+  };
+
+  const handleMakeEditor = async (userId: string, isCurrentlyEditor: boolean) => {
+    try {
+      const newRole = isCurrentlyEditor ? 'user' : 'editor';
+      await updateDoc(doc(db, 'users', userId), {
+        role: newRole,
+        isEditor: !isCurrentlyEditor
+      });
+      Alert.alert(
+        'Success', 
+        `User ${isCurrentlyEditor ? 'removed from' : 'assigned as'} Editor successfully`
+      );
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      Alert.alert('Error', 'Failed to update user role');
     }
   };
 
@@ -180,6 +198,12 @@ export default function AdminUsersScreen() {
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>
+              {users.filter(user => user.isEditor).length}
+            </Text>
+            <Text style={styles.statLabel}>Editors</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>
               {users.filter(user => user.isVIP).length}
             </Text>
             <Text style={styles.statLabel}>VIP Members</Text>
@@ -206,6 +230,11 @@ export default function AdminUsersScreen() {
                     {user.isAdmin && (
                       <View style={styles.adminBadge}>
                         <Text style={styles.badgeText}>ADMIN</Text>
+                      </View>
+                    )}
+                    {user.isEditor && (
+                      <View style={styles.editorBadge}>
+                        <Text style={styles.badgeText}>EDITOR</Text>
                       </View>
                     )}
                     {user.isVIP && (
@@ -243,6 +272,13 @@ export default function AdminUsersScreen() {
                     />
                     
                     <Button
+                      text={user.isEditor ? 'Remove Editor' : 'Make Editor'}
+                      onPress={() => handleMakeEditor(user.id, user.isEditor || false)}
+                      variant={user.isEditor ? 'warning' : 'primary'}
+                      style={styles.actionButton}
+                    />
+                    
+                    <Button
                       text="Delete"
                       onPress={() => handleDeleteUser(user.id, user.email)}
                       variant="danger"
@@ -272,6 +308,9 @@ export default function AdminUsersScreen() {
             • Activate or deactivate user accounts
           </Text>
           <Text style={styles.infoText}>
+            • Assign or remove Editor role to users
+          </Text>
+          <Text style={styles.infoText}>
             • Delete user accounts permanently
           </Text>
           <Text style={styles.infoText}>
@@ -283,6 +322,9 @@ export default function AdminUsersScreen() {
           
           <View style={styles.warningBox}>
             <Text style={styles.warningTitle}>⚠️ Important Notes</Text>
+            <Text style={styles.warningText}>
+              • Editors can add and manage signals, analysis, and news
+            </Text>
             <Text style={styles.warningText}>
               • Deleting a user is permanent and cannot be undone
             </Text>
@@ -360,14 +402,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: colors.primary,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textMuted,
     marginTop: spacing.xs,
+    textAlign: 'center',
   },
   usersList: {
     marginBottom: spacing.lg,
@@ -398,9 +441,16 @@ const styles = StyleSheet.create({
   userBadges: {
     flexDirection: 'row',
     gap: spacing.xs,
+    flexWrap: 'wrap',
   },
   adminBadge: {
     backgroundColor: colors.error,
+    borderRadius: 8,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+  },
+  editorBadge: {
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
@@ -440,11 +490,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     justifyContent: 'flex-end',
+    flexWrap: 'wrap',
   },
   actionButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    minWidth: 80,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    minWidth: 70,
   },
   currentUserText: {
     fontSize: 12,
