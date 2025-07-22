@@ -149,7 +149,6 @@ export default function LoginScreen() {
     } catch (error: any) {
       console.error('Login error:', error);
       console.error('Error details:', {
-        code: error.code,
         message: error.message,
         stack: error.stack
       });
@@ -181,7 +180,7 @@ export default function LoginScreen() {
       >
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/images/6bb0a24c-a5eb-4848-9fe8-1ae1ebfe9b27.png')} 
+            source={require('../../assets/images/abeba35d-8bd7-489c-b663-a8996a997091.png')} 
             style={styles.logo}
             resizeMode="contain"
           />

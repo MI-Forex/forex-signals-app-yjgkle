@@ -142,6 +142,7 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const { signUp } = useAuth();
 
   const validateForm = () => {
@@ -198,7 +199,16 @@ export default function RegisterScreen() {
         fullPhoneNumber
       );
       console.log('Registration successful');
-      // Navigation is handled by AuthContext
+      
+      // Show email verification alert
+      Alert.alert(
+        'Registration Successful!',
+        'Please check your email and click the verification link to activate your account. You must verify your email before you can sign in.',
+        [{ text: 'OK' }]
+      );
+      
+      // Navigate to login
+      router.replace('/auth/login');
     } catch (error: any) {
       console.error('Registration error:', error);
       Alert.alert('Registration Failed', error.message);
@@ -216,8 +226,10 @@ export default function RegisterScreen() {
   };
 
   const onSelectCountry = (country: any) => {
+    console.log('Country selected:', country);
     setCountryCode(country.cca2);
     setCallingCode(country.callingCode[0]);
+    setShowCountryPicker(false);
   };
 
   const togglePasswordVisibility = () => {
@@ -226,6 +238,10 @@ export default function RegisterScreen() {
 
   const toggleConfirmPasswordVisibility = () => {
     setShowConfirmPassword(!showConfirmPassword);
+  };
+
+  const openCountryPicker = () => {
+    setShowCountryPicker(true);
   };
 
   return (
@@ -239,7 +255,7 @@ export default function RegisterScreen() {
       >
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/images/6bb0a24c-a5eb-4848-9fe8-1ae1ebfe9b27.png')} 
+            source={require('../../assets/images/abeba35d-8bd7-489c-b663-a8996a997091.png')} 
             style={styles.logo}
             resizeMode="contain"
           />
@@ -283,14 +299,20 @@ export default function RegisterScreen() {
             Phone Number <Text style={styles.requiredLabel}>*</Text>
           </Text>
           <View style={styles.phoneContainer}>
-            <TouchableOpacity style={styles.countryPickerContainer}>
+            <TouchableOpacity 
+              style={styles.countryPickerContainer}
+              onPress={openCountryPicker}
+              activeOpacity={0.7}
+            >
               <CountryPicker
                 countryCode={countryCode as any}
                 withFilter
                 withFlag
                 withCallingCode
                 withEmoji
+                visible={showCountryPicker}
                 onSelect={onSelectCountry}
+                onClose={() => setShowCountryPicker(false)}
               />
               <Text style={{ color: colors.text, marginLeft: 4 }}>
                 +{callingCode}
