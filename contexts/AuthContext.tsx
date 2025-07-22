@@ -1,7 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { supabase } from '../utils/supabaseConfig';
-import { Session, User } from '@supabase/supabase-js';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  sendEmailVerification, 
+  sendPasswordResetEmail,
+  updateProfile,
+  onAuthStateChanged,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { auth, db } from '../firebase/config';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 interface UserData {
   uid: string;
@@ -17,7 +27,7 @@ interface UserData {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: FirebaseUser | null;
   userData: UserData | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
@@ -38,57 +48,40 @@ export const useAuth = () => {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    console.log('AuthContext: Setting up auth state listener');
+    console.log('AuthContext: Setting up Firebase auth state listener');
     
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('AuthContext: Initial session:', session ? session.user.id : 'null');
-      if (session?.user) {
-        handleUserSession(session.user, session);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('AuthContext: Auth state changed:', firebaseUser ? firebaseUser.uid : 'null');
+      
+      if (firebaseUser) {
+        await handleUserSession(firebaseUser);
       } else {
+        console.log('AuthContext: User signed out');
+        setUser(null);
+        setUserData(null);
         setLoading(false);
         setInitializing(false);
-        if (initializing) {
+        if (!initializing) {
           router.replace('/auth/login');
         }
       }
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('AuthContext: Auth state changed:', event, session ? session.user.id : 'null');
-      
-      if (event === 'SIGNED_IN' && session?.user) {
-        await handleUserSession(session.user, session);
-      } else if (event === 'SIGNED_OUT') {
-        console.log('AuthContext: User signed out');
-        setUser(null);
-        setUserData(null);
-        setLoading(false);
-        router.replace('/auth/login');
-      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        console.log('AuthContext: Token refreshed');
-        await handleUserSession(session.user, session);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
-  const handleUserSession = async (user: User, session: Session) => {
+  const handleUserSession = async (firebaseUser: FirebaseUser) => {
     try {
-      console.log('AuthContext: Handling user session for:', user.id);
+      console.log('AuthContext: Handling user session for:', firebaseUser.uid);
       
       // Check if email is verified
-      if (!user.email_confirmed_at) {
+      if (!firebaseUser.emailVerified) {
         console.log('AuthContext: Email not verified');
         setUser(null);
         setUserData(null);
@@ -97,28 +90,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Get or create user profile
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('AuthContext: Error fetching profile:', error);
-        throw error;
-      }
+      // Get or create user profile in Firestore
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const userDoc = await getDoc(userDocRef);
 
       let userData: UserData;
 
-      if (!profile) {
+      if (!userDoc.exists()) {
         console.log('AuthContext: Creating new user profile');
         // Create new profile
         userData = {
-          uid: user.id,
-          email: user.email || '',
-          displayName: user.user_metadata?.displayName || '',
-          phoneNumber: user.user_metadata?.phoneNumber || '',
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || '',
+          phoneNumber: firebaseUser.phoneNumber || '',
           role: 'user',
           isAdmin: false,
           isEditor: false,
@@ -127,36 +112,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           emailVerified: true
         };
 
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            email: user.email,
-            display_name: userData.displayName,
-            phone_number: userData.phoneNumber,
-            role: userData.role,
-            is_admin: userData.isAdmin,
-            is_editor: userData.isEditor,
-            is_vip: userData.isVIP,
-            created_at: new Date().toISOString()
-          });
-
-        if (insertError) {
-          console.error('AuthContext: Error creating profile:', insertError);
-          throw insertError;
-        }
+        await setDoc(userDocRef, {
+          email: userData.email,
+          displayName: userData.displayName,
+          phoneNumber: userData.phoneNumber,
+          role: userData.role,
+          isAdmin: userData.isAdmin,
+          isEditor: userData.isEditor,
+          isVIP: userData.isVIP,
+          createdAt: userData.createdAt,
+          emailVerified: userData.emailVerified
+        });
       } else {
         console.log('AuthContext: Using existing profile');
+        const data = userDoc.data();
         userData = {
-          uid: user.id,
-          email: user.email || '',
-          displayName: profile.display_name || '',
-          phoneNumber: profile.phone_number || '',
-          role: profile.role || 'user',
-          isAdmin: profile.is_admin || false,
-          isEditor: profile.is_editor || false,
-          isVIP: profile.is_vip || false,
-          createdAt: new Date(profile.created_at),
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: data.displayName || '',
+          phoneNumber: data.phoneNumber || '',
+          role: data.role || 'user',
+          isAdmin: data.isAdmin || false,
+          isEditor: data.isEditor || false,
+          isVIP: data.isVIP || false,
+          createdAt: data.createdAt?.toDate() || new Date(),
           emailVerified: true
         };
       }
@@ -170,10 +149,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isVIP: userData.isVIP
       });
 
-      setUser(user);
+      setUser(firebaseUser);
       setUserData(userData);
 
-      // Navigate to app if this is initial load or after sign in
+      // Navigate to app if this is initial load
       if (initializing || loading) {
         console.log('AuthContext: Navigating to app');
         router.replace('/(tabs)/signals');
@@ -181,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     } catch (error) {
       console.error('AuthContext: Error handling user session:', error);
-      await supabase.auth.signOut();
+      await signOut(auth);
       setUser(null);
       setUserData(null);
       router.replace('/auth/login');
@@ -196,19 +175,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('AuthContext: Attempting sign in for:', email);
       setLoading(true);
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password
-      });
-
-      if (error) {
-        console.error('AuthContext: Sign in error:', error);
-        throw error;
-      }
-
-      if (!data.user?.email_confirmed_at) {
-        console.log('AuthContext: Email not confirmed');
-        await supabase.auth.signOut();
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      
+      if (!userCredential.user.emailVerified) {
+        console.log('AuthContext: Email not verified');
+        await signOut(auth);
         throw new Error('Please verify your email address before signing in. Check your inbox for the verification link.');
       }
 
@@ -221,15 +192,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Provide user-friendly error messages
       let errorMessage = 'Please check your credentials';
 
-      if (error.message?.includes('Invalid login credentials')) {
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         errorMessage = 'Please check your credentials';
-      } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = 'Please verify your email address before signing in. Check your inbox for the verification link.';
       } else if (error.message?.includes('verify your email')) {
         errorMessage = error.message;
-      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      } else if (error.code === 'auth/network-request-failed') {
         errorMessage = 'Please check internet connectivity';
-      } else if (error.message?.includes('Too many requests')) {
+      } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Too many failed attempts. Please try again later.';
       }
 
@@ -242,27 +211,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('AuthContext: Attempting sign up for:', email);
       setLoading(true);
 
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: password,
-        options: {
-          emailRedirectTo: 'https://natively.dev/email-confirmed',
-          data: {
-            displayName: displayName,
-            phoneNumber: phoneNumber || ''
-          }
-        }
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      
+      // Update the user profile with display name
+      await updateProfile(userCredential.user, {
+        displayName: displayName
       });
 
-      if (error) {
-        console.error('AuthContext: Sign up error:', error);
-        throw error;
-      }
+      // Send email verification
+      await sendEmailVerification(userCredential.user);
 
       console.log('AuthContext: Sign up successful, verification email sent');
       
+      // Sign out the user until they verify their email
+      await signOut(auth);
+      
       // Don't set loading to false here - let the caller handle it
-      // The user will need to verify their email before they can sign in
     } catch (error: any) {
       console.error('AuthContext: Sign up error:', error);
       setLoading(false);
@@ -270,13 +234,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Provide user-friendly error messages
       let errorMessage = 'Registration failed. Please try again.';
 
-      if (error.message?.includes('already registered')) {
+      if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'An account with this email already exists.';
-      } else if (error.message?.includes('Invalid email')) {
+      } else if (error.code === 'auth/invalid-email') {
         errorMessage = 'Please enter a valid email address.';
-      } else if (error.message?.includes('Password should be')) {
+      } else if (error.code === 'auth/weak-password') {
         errorMessage = 'Password should be at least 6 characters long.';
-      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      } else if (error.code === 'auth/network-request-failed') {
         errorMessage = 'Please check internet connectivity';
       }
 
@@ -289,12 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('AuthContext: Attempting logout');
       setLoading(true);
 
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error('AuthContext: Logout error:', error);
-        throw error;
-      }
+      await signOut(auth);
 
       console.log('AuthContext: Logout successful');
       
@@ -316,14 +275,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('AuthContext: Sending password reset email to:', email);
       
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: 'https://natively.dev/reset-password'
-      });
-
-      if (error) {
-        console.error('AuthContext: Password reset error:', error);
-        throw error;
-      }
+      await sendPasswordResetEmail(auth, email.trim());
 
       console.log('AuthContext: Password reset email sent successfully');
     } catch (error: any) {
@@ -331,10 +283,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       let errorMessage = 'Failed to send reset email. Please try again.';
 
-      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      if (error.code === 'auth/network-request-failed') {
         errorMessage = 'Please check internet connectivity';
-      } else if (error.message?.includes('Invalid email')) {
+      } else if (error.code === 'auth/invalid-email') {
         errorMessage = 'Please enter a valid email address.';
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email address.';
       }
 
       throw new Error(errorMessage);
@@ -347,16 +301,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('AuthContext: Updating user profile');
 
-      // Update Supabase profile
-      const { error } = await supabase
-        .from('profiles')
-        .update({ display_name: displayName })
-        .eq('id', user.id);
+      // Update Firebase profile
+      await updateProfile(user, { displayName });
 
-      if (error) {
-        console.error('AuthContext: Profile update error:', error);
-        throw error;
-      }
+      // Update Firestore profile
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, { displayName });
 
       // Update local state
       if (userData) {

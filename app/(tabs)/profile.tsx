@@ -210,7 +210,7 @@ export default function ProfileScreen() {
     >
       <View style={styles.header}>
         <Image 
-          source={require('../../assets/images/050c969d-e852-4174-8b38-e847feb55cb4.png')}
+          source={require('../../assets/images/00a46297-3f16-4e57-967e-c79ec0897b80.png')}
           style={styles.logo}
           resizeMode="contain"
         />

@@ -72,7 +72,7 @@ export default function AdminScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Image 
-            source={require('../../assets/images/6bb0a24c-a5eb-4848-9fe8-1ae1ebfe9b27.png')}
+            source={require('../../assets/images/00a46297-3f16-4e57-967e-c79ec0897b80.png')}
             style={styles.logo}
             resizeMode="contain"
           />
