@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
 import { commonStyles, colors } from '../styles/commonStyles';
@@ -12,13 +12,13 @@ export default function IndexScreen() {
   useEffect(() => {
     const initialize = async () => {
       try {
-        // Initialize Supabase tables
+        // Initialize Supabase tables silently
         await initializeSupabaseTables();
         
-        // Wait a bit for auth to settle
+        // Minimal delay for auth to settle
         setTimeout(() => {
           setInitializing(false);
-        }, 1000);
+        }, 500);
       } catch (error) {
         console.error('Error initializing app:', error);
         setInitializing(false);
@@ -44,9 +44,6 @@ export default function IndexScreen() {
     return (
       <View style={[commonStyles.container, commonStyles.centered]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[commonStyles.text, { marginTop: 16, textAlign: 'center' }]}>
-          {initializing ? 'Initializing CNC Forex Signals...' : 'Loading...'}
-        </Text>
       </View>
     );
   }

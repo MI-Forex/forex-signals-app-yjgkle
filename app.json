@@ -15,6 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.cncforexsignals.app",
+      "displayName": "CNC Forex Signals",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
