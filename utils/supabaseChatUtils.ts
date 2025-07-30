@@ -27,8 +27,10 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
   try {
     console.log('Testing Supabase connection...');
     
-    // Use admin client for better access
-    const { data, error } = await supabaseAdmin.from('chats').select('id').limit(1);
+    // Test with a simple query that should always work
+    const { data, error } = await supabaseAdmin
+      .from('chats')
+      .select('count(*)', { count: 'exact', head: true });
     
     if (error) {
       console.error('Supabase connection test failed:', error);
@@ -58,30 +60,12 @@ export const ensureChatExists = async (userId: string, userEmail: string, userNa
   try {
     console.log('Ensuring chat exists for user:', userId);
     
-    // Use admin client for better access
     const chatId = createChatId(userId);
     
-    // Check if chat already exists
-    const { data: existingChat, error: fetchError } = await supabaseAdmin
+    // Check if chat already exists using upsert for better reliability
+    const { data: chat, error } = await supabaseAdmin
       .from('chats')
-      .select('id')
-      .eq('id', chatId)
-      .single();
-
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Error checking existing chat:', fetchError);
-      throw new Error(`Failed to check existing chat: ${fetchError.message}`);
-    }
-
-    if (existingChat) {
-      console.log('Chat already exists:', existingChat.id);
-      return existingChat.id;
-    }
-
-    // Create new chat
-    const { data: newChat, error: insertError } = await supabaseAdmin
-      .from('chats')
-      .insert({
+      .upsert({
         id: chatId,
         user_id: userId,
         user_email: userEmail,
@@ -89,17 +73,20 @@ export const ensureChatExists = async (userId: string, userEmail: string, userNa
         last_message: '',
         unread_count: 0,
         is_vip: false
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: false
       })
       .select('id')
       .single();
 
-    if (insertError) {
-      console.error('Error creating chat:', insertError);
-      throw new Error(`Failed to create chat: ${insertError.message}`);
+    if (error) {
+      console.error('Error ensuring chat exists:', error);
+      throw new Error(`Failed to create chat: ${error.message}`);
     }
 
-    console.log('New chat created:', newChat.id);
-    return newChat.id;
+    console.log('Chat ensured:', chat.id);
+    return chat.id;
   } catch (error) {
     console.error('Error in ensureChatExists:', error);
     throw error;
@@ -116,7 +103,7 @@ export const sendChatMessage = async (
   try {
     console.log('Sending chat message:', { chatId, userId, senderType, message: message.substring(0, 50) });
     
-    // Use admin client for better access
+    // Insert message
     const { data: newMessage, error: messageError } = await supabaseAdmin
       .from('messages')
       .insert({
@@ -141,7 +128,7 @@ export const sendChatMessage = async (
       .update({
         last_message: message,
         last_message_time: new Date().toISOString(),
-        unread_count: senderType === 'user' ? 1 : 0 // Only increment for user messages
+        unread_count: senderType === 'user' ? 1 : 0
       })
       .eq('id', chatId);
 
@@ -173,7 +160,6 @@ export const getChatMessages = async (chatId: string): Promise<ChatMessage[]> =>
   try {
     console.log('Getting chat messages for chat:', chatId);
     
-    // Use admin client for better access
     const { data: messages, error } = await supabaseAdmin
       .from('messages')
       .select('*')
@@ -252,7 +238,6 @@ export const getAllUserChats = async (): Promise<ChatUser[]> => {
   try {
     console.log('Getting all user chats');
     
-    // Use admin client for better access
     const { data: chats, error } = await supabaseAdmin
       .from('chats')
       .select('*')
@@ -287,7 +272,6 @@ export const markMessagesAsRead = async (chatId: string): Promise<void> => {
   try {
     console.log('Marking messages as read for chat:', chatId);
     
-    // Use admin client for better access
     const { error } = await supabaseAdmin
       .from('messages')
       .update({ read: true })

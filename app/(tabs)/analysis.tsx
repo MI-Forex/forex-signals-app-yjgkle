@@ -49,6 +49,7 @@ export default function AnalysisScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+  const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const { user, userData } = useAuth();
 
@@ -75,16 +76,28 @@ export default function AnalysisScreen() {
       
       // Complete refresh if we're refreshing
       if (refreshing) {
-        setTimeout(() => {
-          setRefreshing(false);
-          setLastRefreshTime(new Date());
-          console.log('Analysis refresh completed');
-        }, 1000);
+        console.log('Analysis refresh completed via listener');
+        setRefreshing(false);
+        setLastRefreshTime(new Date());
+        
+        // Clear any existing timeout
+        if (refreshTimeout) {
+          clearTimeout(refreshTimeout);
+          setRefreshTimeout(null);
+        }
       }
     }, (error) => {
       console.error('Error fetching analysis:', error);
       setLoading(false);
-      setRefreshing(false);
+      
+      // Stop refreshing on error
+      if (refreshing) {
+        setRefreshing(false);
+        if (refreshTimeout) {
+          clearTimeout(refreshTimeout);
+          setRefreshTimeout(null);
+        }
+      }
       
       let errorMessage = 'Failed to load analysis';
       if (error.message.includes('network')) {
@@ -96,21 +109,33 @@ export default function AnalysisScreen() {
       Alert.alert('Error', errorMessage);
     });
 
-    return unsubscribe;
-  }, [user]);
+    return () => {
+      unsubscribe();
+      // Clear timeout on cleanup
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+    };
+  }, [user, refreshing, refreshTimeout]);
 
   const handleRefresh = () => {
     console.log('Pull to refresh triggered for analysis');
     setRefreshing(true);
     setLastRefreshTime(new Date());
     
-    // Fallback timeout in case the listener doesn't fire
-    setTimeout(() => {
-      if (refreshing) {
-        console.log('Analysis refresh timeout - completing refresh');
-        setRefreshing(false);
-      }
-    }, 5000);
+    // Clear any existing timeout
+    if (refreshTimeout) {
+      clearTimeout(refreshTimeout);
+    }
+    
+    // Fallback timeout to ensure refresh completes
+    const timeout = setTimeout(() => {
+      console.log('Analysis refresh timeout - completing refresh');
+      setRefreshing(false);
+      setRefreshTimeout(null);
+    }, 3000); // Reduced timeout to 3 seconds
+    
+    setRefreshTimeout(timeout);
   };
 
   const handleManageAnalysis = () => {

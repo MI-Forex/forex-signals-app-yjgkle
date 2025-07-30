@@ -228,20 +228,22 @@ export default function AdminSignalsScreen() {
     return unsubscribe;
   }, [userData]);
 
-  // Filter signals based on search query
+  // Filter signals based on search query - FIX: Add null checks for undefined values
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredSignals(signals);
     } else {
       const filtered = signals.filter(signal => {
         const query = searchQuery.toLowerCase();
-        return (
-          signal.signalId?.toLowerCase().includes(query) ||
-          signal.pair.toLowerCase().includes(query) ||
-          signal.type.toLowerCase().includes(query) ||
-          signal.status.toLowerCase().includes(query) ||
-          signal.segment?.toLowerCase().includes(query)
-        );
+        
+        // Safe string checks with null/undefined handling
+        const signalIdMatch = signal.signalId ? signal.signalId.toLowerCase().includes(query) : false;
+        const pairMatch = signal.pair ? signal.pair.toLowerCase().includes(query) : false;
+        const typeMatch = signal.type ? signal.type.toLowerCase().includes(query) : false;
+        const statusMatch = signal.status ? signal.status.toLowerCase().includes(query) : false;
+        const segmentMatch = signal.segment ? signal.segment.toLowerCase().includes(query) : false;
+        
+        return signalIdMatch || pairMatch || typeMatch || statusMatch || segmentMatch;
       });
       setFilteredSignals(filtered);
     }
