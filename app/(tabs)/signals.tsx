@@ -17,7 +17,7 @@ interface Signal {
   stopLoss: number;
   takeProfit: number;
   notes?: string;
-  status: 'active' | 'closed' | 'hit_tp' | 'hit_sl';
+  status: 'active' | 'closed' | 'hit_tp' | 'hit_sl' | 'inprogress' | 'pending';
   createdAt: Date;
   createdBy: string;
   isVip?: boolean;
@@ -94,6 +94,15 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
   },
+  refreshingContainer: {
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  refreshingText: {
+    fontSize: 14,
+    color: colors.primary,
+    marginTop: spacing.sm,
+  },
 });
 
 export default function SignalsScreen() {
@@ -103,6 +112,7 @@ export default function SignalsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [signalTypeFilter, setSignalTypeFilter] = useState<'all' | 'normal' | 'vip'>('all');
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
   const [filters, setFilters] = useState({
     pair: '',
     type: '',
@@ -132,12 +142,28 @@ export default function SignalsScreen() {
       console.log('Signals updated:', signalsData.length);
       setSignals(signalsData);
       setLoading(false);
-      setRefreshing(false);
+      
+      // Only set refreshing to false if we're actually refreshing
+      if (refreshing) {
+        setTimeout(() => {
+          setRefreshing(false);
+          setLastRefreshTime(new Date());
+        }, 500); // Small delay to show the refresh completed
+      }
     }, (error) => {
       console.error('Error fetching signals:', error);
       setLoading(false);
       setRefreshing(false);
-      Alert.alert('Error', 'Failed to load signals');
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to load signals';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      Alert.alert('Error', errorMessage);
     });
 
     return unsubscribe;
@@ -210,11 +236,19 @@ export default function SignalsScreen() {
   const handleRefresh = async () => {
     console.log('Pull to refresh triggered');
     setRefreshing(true);
+    setLastRefreshTime(new Date());
     
-    // Simulate a brief delay to show the refresh indicator
+    // Force a small delay to ensure the refresh indicator is visible
+    // The onSnapshot listener will automatically update the data
+    // and set refreshing to false when new data arrives
+    
+    // Fallback timeout in case the listener doesn't fire
     setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
+      if (refreshing) {
+        console.log('Refresh timeout - completing refresh');
+        setRefreshing(false);
+      }
+    }, 3000);
   };
 
   const applyFilters = (newFilters: typeof filters) => {
@@ -321,10 +355,18 @@ export default function SignalsScreen() {
             onRefresh={handleRefresh}
             tintColor={colors.primary}
             colors={[colors.primary]}
+            title="Pull to refresh"
+            titleColor={colors.textMuted}
           />
         }
         showsVerticalScrollIndicator={false}
       >
+        {refreshing && (
+          <View style={styles.refreshingContainer}>
+            <Text style={styles.refreshingText}>Refreshing signals...</Text>
+          </View>
+        )}
+        
         {filteredSignals.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
@@ -333,6 +375,11 @@ export default function SignalsScreen() {
                 : 'No signals available'
               }
             </Text>
+            {lastRefreshTime && (
+              <Text style={[styles.emptyText, { fontSize: 12, marginTop: spacing.sm }]}>
+                Last updated: {lastRefreshTime.toLocaleTimeString()}
+              </Text>
+            )}
           </View>
         ) : (
           filteredSignals.map((signal) => (

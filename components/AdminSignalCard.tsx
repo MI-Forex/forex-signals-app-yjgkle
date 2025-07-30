@@ -11,8 +11,11 @@ interface Signal {
   stopLoss: number;
   takeProfit: number;
   notes?: string;
-  status: 'active' | 'closed' | 'hit_tp' | 'hit_sl';
+  status: 'active' | 'closed' | 'hit_tp' | 'hit_sl' | 'inprogress' | 'pending';
   createdAt: Date;
+  signalId?: string;
+  segment?: string;
+  targetUsers?: 'normal' | 'vip';
 }
 
 interface AdminSignalCardProps {
@@ -25,13 +28,17 @@ export default function AdminSignalCard({ signal, onEdit, onDelete }: AdminSigna
   const getStatusColor = () => {
     switch (signal.status) {
       case 'active':
+        return colors.success;
+      case 'pending':
+        return colors.warning;
+      case 'inprogress':
         return colors.primary;
+      case 'closed':
+        return colors.textMuted;
       case 'hit_tp':
         return colors.success;
       case 'hit_sl':
         return colors.error;
-      case 'closed':
-        return colors.textMuted;
       default:
         return colors.textMuted;
     }
@@ -41,14 +48,18 @@ export default function AdminSignalCard({ signal, onEdit, onDelete }: AdminSigna
     switch (signal.status) {
       case 'active':
         return 'Active';
+      case 'pending':
+        return 'Pending';
+      case 'inprogress':
+        return 'In Progress';
+      case 'closed':
+        return 'Closed';
       case 'hit_tp':
         return 'Hit TP';
       case 'hit_sl':
         return 'Hit SL';
-      case 'closed':
-        return 'Closed';
       default:
-        return 'Unknown';
+        return signal.status || 'Unknown';
     }
   };
 
@@ -72,6 +83,11 @@ export default function AdminSignalCard({ signal, onEdit, onDelete }: AdminSigna
     });
   };
 
+  const formatSegment = (segment?: string) => {
+    if (!segment) return '';
+    return segment.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -84,6 +100,23 @@ export default function AdminSignalCard({ signal, onEdit, onDelete }: AdminSigna
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
           <Text style={styles.statusText}>{getStatusText()}</Text>
         </View>
+      </View>
+
+      {/* Signal ID and Segment */}
+      <View style={styles.metaContainer}>
+        {signal.signalId && (
+          <Text style={styles.signalId}>ID: #{signal.signalId}</Text>
+        )}
+        {signal.segment && (
+          <Text style={styles.segment}>{formatSegment(signal.segment)}</Text>
+        )}
+        {signal.targetUsers && (
+          <Text style={[styles.targetUsers, { 
+            color: signal.targetUsers === 'vip' ? colors.warning : colors.primary 
+          }]}>
+            {signal.targetUsers === 'vip' ? 'VIP' : 'Normal'}
+          </Text>
+        )}
       </View>
 
       <View style={styles.priceContainer}>
@@ -154,7 +187,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   pairContainer: {
     flexDirection: 'row',
@@ -186,6 +219,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.white,
+  },
+  metaContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  signalId: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+    backgroundColor: colors.primary + '20',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  segment: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  targetUsers: {
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.background,
   },
   priceContainer: {
     flexDirection: 'row',

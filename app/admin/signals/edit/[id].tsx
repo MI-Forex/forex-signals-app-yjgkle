@@ -40,9 +40,10 @@ const SEGMENTS = [
 ];
 
 const STATUS_OPTIONS = [
-  { label: 'In Progress', value: 'inprogress' },
+  { label: 'Active', value: 'active' },
   { label: 'Pending', value: 'pending' },
-  { label: 'Active', value: 'active' }
+  { label: 'In Progress', value: 'inprogress' },
+  { label: 'Closed', value: 'closed' }
 ];
 
 const USER_TYPES = [
@@ -228,9 +229,10 @@ export default function EditSignalScreen() {
         targetUsers: formData.targetUsers,
         isVip: formData.targetUsers === 'vip',
         updatedAt: serverTimestamp(),
-        updatedBy: userData?.uid || ''
+        updatedBy: userData?.uid || 'unknown'
       };
 
+      console.log('Updating signal with data:', updateData);
       await updateDoc(doc(db, 'signals', id as string), updateData);
       
       Alert.alert('Success', 'Signal updated successfully', [
@@ -238,7 +240,16 @@ export default function EditSignalScreen() {
       ]);
     } catch (error: any) {
       console.error('Error updating signal:', error);
-      Alert.alert('Error', 'Failed to update signal. Please try again.');
+      
+      // Generic error messages for security
+      let errorMessage = 'Failed to update signal';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      Alert.alert('Error', `${errorMessage}. Please try again.`);
     } finally {
       setLoading(false);
     }

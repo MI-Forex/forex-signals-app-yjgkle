@@ -38,6 +38,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
   const [error, setError] = useState<string>('');
   const [retryCount, setRetryCount] = useState(0);
   const [inputFocused, setInputFocused] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const scrollViewRef = useRef<ScrollView>(null);
   const textInputRef = useRef<TextInput>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
@@ -49,6 +50,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       setRetryCount(0);
       setError('');
       setLoading(true);
+      setConnectionStatus('connecting');
       loadChatMessages();
     } else if (!visible) {
       // Reset state when modal is closed
@@ -58,6 +60,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       setRetryCount(0);
       setNewMessage('');
       setInputFocused(false);
+      setConnectionStatus('connecting');
       
       // Unsubscribe from real-time updates
       if (unsubscribeRef.current) {
@@ -88,16 +91,21 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       console.log('ChatModal: Loading Supabase chat messages... (attempt:', retryCount + 1, ')');
       setLoading(true);
       setError('');
+      setConnectionStatus('connecting');
       
       if (!userData?.uid) {
         throw new Error('User not authenticated');
       }
 
       // Test Supabase connection first
+      console.log('ChatModal: Testing Supabase connection...');
       const connectionOk = await testSupabaseConnection();
       if (!connectionOk) {
         throw new Error('Unable to connect to chat service');
       }
+
+      console.log('ChatModal: Supabase connection successful');
+      setConnectionStatus('connected');
 
       // Create chat ID and ensure chat exists
       const currentChatId = createChatId(userData.uid);
@@ -126,33 +134,39 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
         (error) => {
           console.error('ChatModal: Real-time subscription error:', error);
           setError('Connection error occurred');
+          setConnectionStatus('error');
         }
       );
 
       unsubscribeRef.current = unsubscribe;
       setLoading(false);
       setError('');
+      setConnectionStatus('connected');
     } catch (error: any) {
       console.error('ChatModal: Error loading Supabase chat messages:', error);
+      setConnectionStatus('error');
+      
       let errorMessage = 'Failed to initialize chat';
       
       // Generic error messages for security
-      if (error.message.includes('network')) {
+      if (error.message.includes('network') || error.message.includes('fetch')) {
         errorMessage = 'Please check internet connectivity';
-      } else if (error.message.includes('permission')) {
+      } else if (error.message.includes('permission') || error.message.includes('auth')) {
         errorMessage = 'Please check your credentials';
+      } else if (error.message.includes('relation') || error.message.includes('does not exist')) {
+        errorMessage = 'Chat service is being set up. Please try again in a moment.';
       }
       
       setError(errorMessage);
       setLoading(false);
       
-      // Auto-retry on errors
-      if (retryCount < 3) {
-        console.log('ChatModal: Error occurred, retrying in 2 seconds...');
+      // Auto-retry on errors (max 3 attempts)
+      if (retryCount < 2) {
+        console.log('ChatModal: Error occurred, retrying in 3 seconds...');
         setTimeout(() => {
           setRetryCount(prev => prev + 1);
           loadChatMessages();
-        }, 2000);
+        }, 3000);
       }
     }
   };
@@ -189,12 +203,12 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
       // Create optimistic message for immediate UI update
       const optimisticMessage: ChatMessage = {
         id: `temp_${Date.now()}`,
-        text: messageText,
-        sender: userData.isAdmin ? 'admin' : 'user',
-        senderName,
-        timestamp: new Date(),
         chatId,
         userId: userData.uid,
+        message: messageText,
+        senderType: userData.isAdmin ? 'admin' : 'user',
+        senderName,
+        createdAt: new Date(),
         read: false
       };
 
@@ -277,6 +291,11 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const retryConnection = () => {
+    setRetryCount(0);
+    loadChatMessages();
+  };
+
   return (
     <Modal
       visible={visible}
@@ -293,9 +312,15 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
           <Text style={styles.headerTitle}>
             {userData?.isAdmin ? 'User Support Chat' : 'Chat with Admin'}
           </Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>✕</Text>
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <View style={[styles.statusIndicator, { 
+              backgroundColor: connectionStatus === 'connected' ? colors.success : 
+                             connectionStatus === 'error' ? colors.error : colors.warning 
+            }]} />
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView 
@@ -306,7 +331,9 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
         >
           {loading ? (
             <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading messages...</Text>
+              <Text style={styles.loadingText}>
+                {connectionStatus === 'connecting' ? 'Connecting to chat...' : 'Loading messages...'}
+              </Text>
               {retryCount > 0 && (
                 <Text style={styles.retryText}>Retry attempt {retryCount}/3</Text>
               )}
@@ -318,11 +345,8 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
                 This might be a temporary connection issue. Please try again.
               </Text>
               <Button 
-                text="Retry" 
-                onPress={() => {
-                  setRetryCount(0);
-                  loadChatMessages();
-                }} 
+                text="Retry Connection" 
+                onPress={retryConnection} 
                 style={styles.retryButton}
               />
             </View>
@@ -337,18 +361,18 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
                 key={message.id}
                 style={[
                   styles.messageContainer,
-                  message.sender === 'user' ? styles.userMessage : styles.adminMessage
+                  message.senderType === 'user' ? styles.userMessage : styles.adminMessage
                 ]}
               >
                 <View style={styles.messageHeader}>
                   <Text style={styles.senderName}>{message.senderName}</Text>
-                  <Text style={styles.timestamp}>{formatTime(message.timestamp)}</Text>
+                  <Text style={styles.timestamp}>{formatTime(message.createdAt)}</Text>
                 </View>
                 <Text style={[
                   styles.messageText,
-                  message.sender === 'user' ? styles.userMessageText : styles.adminMessageText
+                  message.senderType === 'user' ? styles.userMessageText : styles.adminMessageText
                 ]}>
-                  {message.text}
+                  {message.message}
                 </Text>
               </View>
             ))
@@ -377,12 +401,13 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
               placeholder={
                 loading ? "Loading chat..." :
                 error ? "Chat unavailable" :
+                connectionStatus !== 'connected' ? "Connecting..." :
                 "Type your message..."
               }
               placeholderTextColor={colors.textMuted}
               multiline
               maxLength={500}
-              editable={!sending && !loading && !error}
+              editable={!sending && !loading && !error && connectionStatus === 'connected'}
               returnKeyType="send"
               blurOnSubmit={false}
               onSubmitEditing={handleSendPress}
@@ -392,15 +417,15 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
             <TouchableOpacity
               style={[
                 styles.sendButton,
-                (!newMessage.trim() || sending || loading || !!error) && styles.sendButtonDisabled
+                (!newMessage.trim() || sending || loading || !!error || connectionStatus !== 'connected') && styles.sendButtonDisabled
               ]}
               onPress={handleSendPress}
-              disabled={!newMessage.trim() || sending || loading || !!error}
+              disabled={!newMessage.trim() || sending || loading || !!error || connectionStatus !== 'connected'}
               activeOpacity={0.7}
             >
               <Text style={[
                 styles.sendButtonText,
-                (!newMessage.trim() || sending || loading || !!error) && styles.sendButtonTextDisabled
+                (!newMessage.trim() || sending || loading || !!error || connectionStatus !== 'connected') && styles.sendButtonTextDisabled
               ]}>
                 {sending ? "..." : "Send"}
               </Text>
@@ -415,9 +440,9 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
               : 'Chat with our admin for VIP membership assistance'
             }
           </Text>
-          {error && (
+          {connectionStatus !== 'connected' && (
             <Text style={styles.footerError}>
-              Connection issue detected - messages may be delayed
+              {connectionStatus === 'connecting' ? 'Connecting...' : 'Connection issue detected'}
             </Text>
           )}
         </View>
@@ -444,6 +469,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   closeButton: {
     padding: spacing.xs,

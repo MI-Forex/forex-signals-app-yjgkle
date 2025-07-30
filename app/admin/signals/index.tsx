@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Alert, RefreshControl, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Alert, RefreshControl, StyleSheet, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../contexts/AuthContext';
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
@@ -18,9 +18,12 @@ interface Signal {
   stopLoss: number;
   takeProfit: number;
   notes?: string;
-  status: 'active' | 'closed' | 'hit_tp' | 'hit_sl';
+  status: 'active' | 'closed' | 'hit_tp' | 'hit_sl' | 'inprogress' | 'pending';
   createdAt: Date;
   createdBy: string;
+  signalId?: string;
+  segment?: string;
+  targetUsers?: 'normal' | 'vip';
 }
 
 const styles = StyleSheet.create({
@@ -67,6 +70,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     backgroundColor: colors.surface,
+    gap: spacing.md,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  searchIcon: {
+    marginRight: spacing.sm,
+  },
+  clearButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.sm,
   },
   compactButton: {
     paddingHorizontal: spacing.md,
@@ -141,12 +169,20 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: spacing.md,
   },
+  searchResultsText: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginVertical: spacing.sm,
+  },
 });
 
 export default function AdminSignalsScreen() {
   const [signals, setSignals] = useState<Signal[]>([]);
+  const [filteredSignals, setFilteredSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { userData } = useAuth();
 
@@ -192,8 +228,33 @@ export default function AdminSignalsScreen() {
     return unsubscribe;
   }, [userData]);
 
+  // Filter signals based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredSignals(signals);
+    } else {
+      const filtered = signals.filter(signal => {
+        const query = searchQuery.toLowerCase();
+        return (
+          signal.signalId?.toLowerCase().includes(query) ||
+          signal.pair.toLowerCase().includes(query) ||
+          signal.type.toLowerCase().includes(query) ||
+          signal.status.toLowerCase().includes(query) ||
+          signal.segment?.toLowerCase().includes(query)
+        );
+      });
+      setFilteredSignals(filtered);
+    }
+  }, [signals, searchQuery]);
+
   const handleRefresh = () => {
+    console.log('Pull to refresh triggered in admin signals');
     setRefreshing(true);
+    
+    // The real-time listener will handle the actual refresh
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
   };
 
   const handleBack = () => {
@@ -246,6 +307,10 @@ export default function AdminSignalsScreen() {
     );
   };
 
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -281,7 +346,7 @@ export default function AdminSignalsScreen() {
         </View>
       </LinearGradient>
 
-      {/* Add Signal Button */}
+      {/* Add Signal Button and Search */}
       <View style={styles.buttonContainer}>
         <Button
           text=""
@@ -292,6 +357,41 @@ export default function AdminSignalsScreen() {
           <Ionicons name="add-circle-outline" size={20} color={colors.white} />
           <Text style={styles.addButtonText}>Add Signal</Text>
         </Button>
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons 
+            name="search-outline" 
+            size={20} 
+            color={colors.textMuted} 
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by Signal ID, Pair, Type, Status..."
+            placeholderTextColor={colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <Button
+              text=""
+              onPress={clearSearch}
+              variant="outline"
+              style={styles.clearButton}
+            >
+              <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+            </Button>
+          )}
+        </View>
+
+        {searchQuery.length > 0 && (
+          <Text style={styles.searchResultsText}>
+            {filteredSignals.length} signal(s) found for "{searchQuery}"
+          </Text>
+        )}
       </View>
 
       {/* Signals List */}
@@ -302,20 +402,28 @@ export default function AdminSignalsScreen() {
             refreshing={refreshing}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
         showsVerticalScrollIndicator={false}
       >
-        {signals.length === 0 ? (
+        {filteredSignals.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="trending-up-outline" size={64} color={colors.textMuted} />
-            <Text style={styles.emptyText}>No signals found</Text>
-            <Text style={[styles.emptyText, { fontSize: 14, marginTop: spacing.sm }]}>
-              Create your first signal to get started
+            <Text style={styles.emptyText}>
+              {searchQuery.length > 0 
+                ? `No signals found for "${searchQuery}"`
+                : 'No signals found'
+              }
             </Text>
+            {searchQuery.length === 0 && (
+              <Text style={[styles.emptyText, { fontSize: 14, marginTop: spacing.sm }]}>
+                Create your first signal to get started
+              </Text>
+            )}
           </View>
         ) : (
-          signals.map((signal) => (
+          filteredSignals.map((signal) => (
             <AdminSignalCard
               key={signal.id}
               signal={signal}
