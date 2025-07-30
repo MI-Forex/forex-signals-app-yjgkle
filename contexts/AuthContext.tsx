@@ -22,6 +22,7 @@ interface UserData {
   isAdmin: boolean;
   isEditor?: boolean;
   isVIP?: boolean;
+  vipExpiryDate?: Date;
   createdAt: Date;
   emailVerified: boolean;
 }
@@ -75,6 +76,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return unsubscribe;
   }, []);
+
+  const checkAndUpdateVIPStatus = async (userData: UserData, userDocRef: any) => {
+    if (userData.isVIP && userData.vipExpiryDate) {
+      const now = new Date();
+      const expiryDate = userData.vipExpiryDate;
+      
+      if (now > expiryDate) {
+        console.log('AuthContext: VIP membership expired, removing VIP status');
+        
+        // Update Firestore
+        await updateDoc(userDocRef, {
+          isVIP: false,
+          vipExpiryDate: null,
+          updatedAt: new Date()
+        });
+        
+        // Update local state
+        userData.isVIP = false;
+        userData.vipExpiryDate = undefined;
+      }
+    }
+    
+    return userData;
+  };
 
   const handleUserSession = async (firebaseUser: FirebaseUser) => {
     try {
@@ -135,9 +160,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isAdmin: data.isAdmin || false,
           isEditor: data.isEditor || false,
           isVIP: data.isVIP || false,
+          vipExpiryDate: data.vipExpiryDate?.toDate(),
           createdAt: data.createdAt?.toDate() || new Date(),
           emailVerified: true
         };
+
+        // Check and update VIP status if expired
+        userData = await checkAndUpdateVIPStatus(userData, userDocRef);
       }
 
       console.log('AuthContext: User data loaded:', {
@@ -146,7 +175,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: userData.role,
         isAdmin: userData.isAdmin,
         isEditor: userData.isEditor,
-        isVIP: userData.isVIP
+        isVIP: userData.isVIP,
+        vipExpiryDate: userData.vipExpiryDate
       });
 
       setUser(firebaseUser);

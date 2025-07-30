@@ -21,10 +21,28 @@ const SIGNAL_TYPES = [
   { label: 'SELL STOP LIMIT', value: 'SELL_STOP_LIMIT' }
 ];
 
+const SEGMENTS = [
+  { label: 'Forex', value: 'forex' },
+  { label: 'Comex', value: 'comex' },
+  { label: 'Crypto', value: 'crypto' },
+  { label: 'Stocks & Indices', value: 'stocks_indices' }
+];
+
+const STATUS_OPTIONS = [
+  { label: 'In Progress', value: 'inprogress' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Active', value: 'active' }
+];
+
 const USER_TYPES = [
   { label: 'Normal Users', value: 'normal' },
   { label: 'VIP Users', value: 'vip' }
 ];
+
+// Function to generate unique signal ID
+const generateSignalId = (): string => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -140,12 +158,28 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     ...shadows.lg,
   },
+  signalIdContainer: {
+    backgroundColor: colors.primary + '20',
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.primary + '40',
+  },
+  signalIdText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+    textAlign: 'center',
+  },
 });
 
 export default function AddSignalScreen() {
   const [formData, setFormData] = useState({
     pair: '',
     type: 'BUY',
+    segment: 'forex',
+    status: 'active',
     entryPoint: '',
     stopLoss: '',
     takeProfit: '',
@@ -154,6 +188,7 @@ export default function AddSignalScreen() {
   });
   const [loading, setLoading] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [signalId] = useState(generateSignalId());
   const { userData } = useAuth();
 
   // Check if user has permission to add signals
@@ -171,6 +206,14 @@ export default function AddSignalScreen() {
     }
     if (!formData.type) {
       Alert.alert('Error', 'Please select signal type');
+      return false;
+    }
+    if (!formData.segment) {
+      Alert.alert('Error', 'Please select segment');
+      return false;
+    }
+    if (!formData.status) {
+      Alert.alert('Error', 'Please select status');
       return false;
     }
     if (!formData.entryPoint || isNaN(Number(formData.entryPoint))) {
@@ -198,13 +241,15 @@ export default function AddSignalScreen() {
     setLoading(true);
     try {
       const signalData = {
+        signalId: signalId,
         pair: formData.pair.toUpperCase(),
         type: formData.type,
+        segment: formData.segment,
+        status: formData.status,
         entryPoint: Number(formData.entryPoint),
         stopLoss: Number(formData.stopLoss),
         takeProfit: Number(formData.takeProfit),
         notes: formData.notes,
-        status: 'active',
         isVip: formData.targetUsers === 'vip',
         targetUsers: formData.targetUsers,
         createdAt: serverTimestamp(),
@@ -217,7 +262,7 @@ export default function AddSignalScreen() {
       console.log('Adding signal with data:', signalData);
       await addDoc(collection(db, 'signals'), signalData);
       
-      Alert.alert('Success', 'Signal added successfully', [
+      Alert.alert('Success', `Signal #${signalId} added successfully`, [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
@@ -279,6 +324,10 @@ export default function AddSignalScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.formCard}>
+          <View style={styles.signalIdContainer}>
+            <Text style={styles.signalIdText}>Signal ID: #{signalId}</Text>
+          </View>
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>
               <Ionicons name="trending-up" size={16} color={colors.primary} /> Currency Pair *
@@ -314,6 +363,48 @@ export default function AddSignalScreen() {
                     key={signalType.value} 
                     label={signalType.label} 
                     value={signalType.value} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              <Ionicons name="layers" size={16} color={colors.primary} /> Segment *
+            </Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.segment}
+                onValueChange={(value) => updateFormData('segment', value)}
+                style={styles.picker}
+              >
+                {SEGMENTS.map((segment) => (
+                  <Picker.Item 
+                    key={segment.value} 
+                    label={segment.label} 
+                    value={segment.value} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              <Ionicons name="checkmark-circle" size={16} color={colors.primary} /> Status *
+            </Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.status}
+                onValueChange={(value) => updateFormData('status', value)}
+                style={styles.picker}
+              >
+                {STATUS_OPTIONS.map((status) => (
+                  <Picker.Item 
+                    key={status.value} 
+                    label={status.label} 
+                    value={status.value} 
                   />
                 ))}
               </Picker>

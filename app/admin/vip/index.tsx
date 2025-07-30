@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, StyleSheet } from 'react-native';
-import { useAuth } from '../../../contexts/AuthContext';
 import { router } from 'expo-router';
-import { doc, getDoc, setDoc, collection, query, getDocs, updateDoc, deleteDoc, where, orderBy, Timestamp } from 'firebase/firestore';
+import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../firebase/config';
-import Button from '../../../components/Button';
+import { doc, getDoc, setDoc, collection, query, getDocs, updateDoc, deleteDoc, where, orderBy, Timestamp } from 'firebase/firestore';
 import { commonStyles, colors, spacing, borderRadius } from '../../../styles/commonStyles';
+import Button from '../../../components/Button';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Platform } from 'react-native';
 
@@ -20,6 +20,7 @@ interface User {
   displayName?: string;
   phoneNumber?: string;
   isVIP?: boolean;
+  vipExpiryDate?: Date;
   createdAt?: Date;
 }
 
@@ -45,50 +46,55 @@ interface SignalStats {
 export default function AdminVIPScreen() {
   const [vipSettings, setVipSettings] = useState<VIPSettings>({
     monthlyPrice: 99,
-    features: [
-      'Exclusive high-accuracy signals',
-      'Priority customer support',
-      'Advanced market analysis',
-      'Real-time notifications',
-      'Weekly market reports',
-      '1-on-1 trading consultation',
-      'Direct chat with admin'
-    ]
+    features: ['Premium Signals', 'Priority Support', 'Advanced Analysis']
   });
   const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [dateFrom, setDateFrom] = useState(new Date());
-  const [dateTo, setDateTo] = useState(new Date());
-  const [showDateFromPicker, setShowDateFromPicker] = useState(false);
-  const [showDateToPicker, setShowDateToPicker] = useState(false);
-  const [exportType, setExportType] = useState<'users' | 'signals' | null>(null);
+  const [signals, setSignals] = useState<Signal[]>([]);
   const [signalStats, setSignalStats] = useState<SignalStats>({
     totalSignals: 0,
     normalSignals: 0,
     vipSignals: 0
   });
-  const [loadingStats, setLoadingStats] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [dateFrom, setDateFrom] = useState<Date>(new Date());
+  const [dateTo, setDateTo] = useState<Date>(new Date());
+  const [showDateFromPicker, setShowDateFromPicker] = useState(false);
+  const [showDateToPicker, setShowDateToPicker] = useState(false);
+  
   const { userData } = useAuth();
 
   useEffect(() => {
-    loadVIPSettings();
-    loadUsers();
-    loadSignalStats();
-  }, []);
+    if (userData?.isAdmin) {
+      loadVIPSettings();
+      loadUsers();
+      loadSignalStats();
+    }
+  }, [userData]);
 
-  // Update filtered users when users or search query changes
   useEffect(() => {
-    handleSearch(searchQuery);
-  }, [users]);
+    // Filter users based on search query
+    if (searchQuery.trim() === '') {
+      setFilteredUsers(users);
+    } else {
+      const filtered = users.filter(user => 
+        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.displayName && user.displayName.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [users, searchQuery]);
 
   const loadVIPSettings = async () => {
     try {
       const settingsDoc = await getDoc(doc(db, 'settings', 'vip'));
       if (settingsDoc.exists()) {
-        setVipSettings(settingsDoc.data() as VIPSettings);
+        const data = settingsDoc.data();
+        setVipSettings({
+          monthlyPrice: data.monthlyPrice || 99,
+          features: data.features || ['Premium Signals', 'Priority Support', 'Advanced Analysis']
+        });
       }
     } catch (error) {
       console.error('Error loading VIP settings:', error);
@@ -97,104 +103,97 @@ export default function AdminVIPScreen() {
 
   const loadUsers = async () => {
     try {
-      const usersQuery = query(collection(db, 'users'));
+      const usersQuery = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
       const usersSnapshot = await getDocs(usersQuery);
       const usersData = usersSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date()
+        createdAt: doc.data().createdAt?.toDate(),
+        vipExpiryDate: doc.data().vipExpiryDate?.toDate()
       })) as User[];
       setUsers(usersData);
-      setFilteredUsers(usersData);
     } catch (error) {
       console.error('Error loading users:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const loadSignalStats = async () => {
-    setLoadingStats(true);
     try {
       const signalsQuery = query(collection(db, 'signals'), orderBy('createdAt', 'desc'));
       const signalsSnapshot = await getDocs(signalsQuery);
+      const signalsData = signalsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
+      })) as Signal[];
       
-      let totalSignals = 0;
-      let normalSignals = 0;
-      let vipSignals = 0;
-
-      signalsSnapshot.docs.forEach(doc => {
-        const signal = doc.data();
-        totalSignals++;
-        
-        // Check if signal is for VIP users
-        if (signal.targetUsers === 'vip' || signal.isVip === true) {
-          vipSignals++;
-        } else {
-          normalSignals++;
-        }
-      });
-
-      setSignalStats({
-        totalSignals,
-        normalSignals,
-        vipSignals
-      });
+      setSignals(signalsData);
+      
+      const stats = {
+        totalSignals: signalsData.length,
+        normalSignals: signalsData.filter(s => s.targetUsers === 'normal' || !s.isVip).length,
+        vipSignals: signalsData.filter(s => s.targetUsers === 'vip' || s.isVip).length
+      };
+      
+      setSignalStats(stats);
     } catch (error) {
       console.error('Error loading signal stats:', error);
-    } finally {
-      setLoadingStats(false);
     }
   };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (query.trim() === '') {
-      setFilteredUsers(users);
-    } else {
-      const filtered = users.filter(user => 
-        user.email.toLowerCase().includes(query.toLowerCase()) ||
-        (user.displayName && user.displayName.toLowerCase().includes(query.toLowerCase())) ||
-        (user.phoneNumber && user.phoneNumber.includes(query))
-      );
-      setFilteredUsers(filtered);
-    }
   };
 
   const saveVIPSettings = async () => {
-    setSaving(true);
+    setLoading(true);
     try {
       await setDoc(doc(db, 'settings', 'vip'), vipSettings);
       Alert.alert('Success', 'VIP settings updated successfully');
     } catch (error) {
       console.error('Error saving VIP settings:', error);
-      Alert.alert('Error', 'Failed to save VIP settings');
+      Alert.alert('Error', 'Failed to update VIP settings');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
   const toggleUserVIP = async (userId: string, currentVIPStatus: boolean) => {
     try {
-      await updateDoc(doc(db, 'users', userId), {
-        isVIP: !currentVIPStatus
-      });
+      const userRef = doc(db, 'users', userId);
       
-      setUsers(prev => prev.map(user => 
-        user.id === userId ? { ...user, isVIP: !currentVIPStatus } : user
-      ));
+      if (currentVIPStatus) {
+        // Remove VIP status
+        await updateDoc(userRef, {
+          isVIP: false,
+          vipExpiryDate: null,
+          updatedAt: new Date()
+        });
+        Alert.alert('Success', 'VIP status removed');
+      } else {
+        // Add VIP status with 3-month default duration
+        const expiryDate = new Date();
+        expiryDate.setMonth(expiryDate.getMonth() + 3);
+        
+        await updateDoc(userRef, {
+          isVIP: true,
+          vipExpiryDate: expiryDate,
+          updatedAt: new Date()
+        });
+        Alert.alert('Success', `VIP status granted until ${expiryDate.toLocaleDateString()}`);
+      }
       
-      Alert.alert('Success', `User VIP status ${!currentVIPStatus ? 'granted' : 'removed'}`);
+      loadUsers(); // Refresh the list
     } catch (error) {
-      console.error('Error updating user VIP status:', error);
-      Alert.alert('Error', 'Failed to update user VIP status');
+      console.error('Error updating VIP status:', error);
+      Alert.alert('Error', 'Failed to update VIP status');
     }
   };
 
   const deleteUser = async (userId: string, userEmail: string) => {
     Alert.alert(
       'Delete User',
-      `Are you sure you want to delete user ${userEmail}? This action cannot be undone.`,
+      `Are you sure you want to delete ${userEmail}? This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -203,8 +202,8 @@ export default function AdminVIPScreen() {
           onPress: async () => {
             try {
               await deleteDoc(doc(db, 'users', userId));
-              setUsers(prev => prev.filter(user => user.id !== userId));
               Alert.alert('Success', 'User deleted successfully');
+              loadUsers();
             } catch (error) {
               console.error('Error deleting user:', error);
               Alert.alert('Error', 'Failed to delete user');
@@ -217,39 +216,28 @@ export default function AdminVIPScreen() {
 
   const exportUsersData = async () => {
     try {
-      const startOfDay = new Date(dateFrom);
-      startOfDay.setHours(0, 0, 0, 0);
+      const fromTimestamp = Timestamp.fromDate(dateFrom);
+      const toTimestamp = Timestamp.fromDate(dateTo);
       
-      const endOfDay = new Date(dateTo);
-      endOfDay.setHours(23, 59, 59, 999);
-
       const usersQuery = query(
         collection(db, 'users'),
-        where('createdAt', '>=', Timestamp.fromDate(startOfDay)),
-        where('createdAt', '<=', Timestamp.fromDate(endOfDay)),
+        where('createdAt', '>=', fromTimestamp),
+        where('createdAt', '<=', toTimestamp),
         orderBy('createdAt', 'desc')
       );
       
       const usersSnapshot = await getDocs(usersQuery);
       const usersData = usersSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate()
+        email: doc.data().email,
+        displayName: doc.data().displayName,
+        phoneNumber: doc.data().phoneNumber,
+        isVIP: doc.data().isVIP,
+        vipExpiryDate: doc.data().vipExpiryDate?.toDate()?.toLocaleDateString(),
+        createdAt: doc.data().createdAt?.toDate()?.toLocaleDateString()
       }));
-
-      // Generate CSV content
-      const csvHeader = 'ID,Email,Display Name,Phone Number,VIP Status,Created At\n';
-      const csvContent = usersData.map(user => 
-        `${user.id},"${user.email}","${user.displayName || ''}","${user.phoneNumber || ''}","${user.isVIP ? 'Yes' : 'No'}","${user.createdAt?.toISOString() || ''}"`
-      ).join('\n');
       
-      const fullCsv = csvHeader + csvContent;
-      
-      console.log('Users CSV data:', fullCsv);
-      Alert.alert(
-        'Export Users', 
-        `Found ${usersData.length} users from ${dateFrom.toLocaleDateString()} to ${dateTo.toLocaleDateString()}.\n\nCSV data has been logged to console. In a production app, this would be downloaded as a file.`
-      );
+      console.log('Users data for export:', usersData);
+      Alert.alert('Export Ready', `Found ${usersData.length} users for the selected date range. Data logged to console.`);
     } catch (error) {
       console.error('Error exporting users data:', error);
       Alert.alert('Error', 'Failed to export users data');
@@ -258,39 +246,32 @@ export default function AdminVIPScreen() {
 
   const exportSignalsData = async () => {
     try {
-      const startOfDay = new Date(dateFrom);
-      startOfDay.setHours(0, 0, 0, 0);
+      const fromTimestamp = Timestamp.fromDate(dateFrom);
+      const toTimestamp = Timestamp.fromDate(dateTo);
       
-      const endOfDay = new Date(dateTo);
-      endOfDay.setHours(23, 59, 59, 999);
-
       const signalsQuery = query(
         collection(db, 'signals'),
-        where('createdAt', '>=', Timestamp.fromDate(startOfDay)),
-        where('createdAt', '<=', Timestamp.fromDate(endOfDay)),
+        where('createdAt', '>=', fromTimestamp),
+        where('createdAt', '<=', toTimestamp),
         orderBy('createdAt', 'desc')
       );
       
       const signalsSnapshot = await getDocs(signalsQuery);
       const signalsData = signalsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate()
+        signalId: doc.data().signalId,
+        pair: doc.data().pair,
+        type: doc.data().type,
+        segment: doc.data().segment,
+        status: doc.data().status,
+        entryPoint: doc.data().entryPoint,
+        stopLoss: doc.data().stopLoss,
+        takeProfit: doc.data().takeProfit,
+        targetUsers: doc.data().targetUsers,
+        createdAt: doc.data().createdAt?.toDate()?.toLocaleDateString()
       }));
-
-      // Generate CSV content
-      const csvHeader = 'ID,Pair,Type,Entry Point,Stop Loss,Take Profit,Status,Target Users,Notes,Created At\n';
-      const csvContent = signalsData.map(signal => 
-        `${signal.id},"${signal.pair}","${signal.type}","${signal.entryPoint}","${signal.stopLoss}","${signal.takeProfit}","${signal.status}","${signal.targetUsers || (signal.isVip ? 'vip' : 'normal')}","${signal.notes || ''}","${signal.createdAt?.toISOString() || ''}"`
-      ).join('\n');
       
-      const fullCsv = csvHeader + csvContent;
-      
-      console.log('Signals CSV data:', fullCsv);
-      Alert.alert(
-        'Export Signals', 
-        `Found ${signalsData.length} signals from ${dateFrom.toLocaleDateString()} to ${dateTo.toLocaleDateString()}.\n\nCSV data has been logged to console. In a production app, this would be downloaded as a file.`
-      );
+      console.log('Signals data for export:', signalsData);
+      Alert.alert('Export Ready', `Found ${signalsData.length} signals for the selected date range. Data logged to console.`);
     } catch (error) {
       console.error('Error exporting signals data:', error);
       Alert.alert('Error', 'Failed to export signals data');
@@ -312,7 +293,6 @@ export default function AdminVIPScreen() {
   };
 
   const handleExport = (type: 'users' | 'signals') => {
-    setExportType(type);
     if (type === 'users') {
       exportUsersData();
     } else {
@@ -322,183 +302,141 @@ export default function AdminVIPScreen() {
 
   if (!userData?.isAdmin) {
     return (
-      <View style={commonStyles.centerContent}>
+      <View style={[commonStyles.container, commonStyles.centerContent]}>
         <Text style={commonStyles.text}>Access denied. Admin privileges required.</Text>
         <Button text="Go Back" onPress={() => router.back()} />
       </View>
     );
   }
 
-  if (loading) {
-    return (
-      <View style={commonStyles.loading}>
-        <Text style={commonStyles.text}>Loading VIP settings...</Text>
-      </View>
-    );
-  }
-
   return (
-    <View style={commonStyles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
+        <Button text="← Back" onPress={() => router.back()} variant="outline" />
         <Text style={styles.title}>VIP Settings Management</Text>
+      </View>
+
+      {/* Signal Statistics */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Signal Statistics</Text>
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{signalStats.totalSignals}</Text>
+            <Text style={styles.statLabel}>Total Signals</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: colors.primary }]}>{signalStats.normalSignals}</Text>
+            <Text style={styles.statLabel}>Normal User Signals</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: colors.success }]}>{signalStats.vipSignals}</Text>
+            <Text style={styles.statLabel}>VIP Signals</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Pricing Settings */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Pricing Settings</Text>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Monthly Price ($)</Text>
+          <TextInput
+            style={styles.input}
+            value={vipSettings.monthlyPrice.toString()}
+            onChangeText={(text) => setVipSettings(prev => ({ ...prev, monthlyPrice: Number(text) || 0 }))}
+            keyboardType="numeric"
+            placeholder="99"
+          />
+        </View>
         <Button
-          text="Back"
-          onPress={() => router.back()}
-          variant="outline"
-          style={styles.backButton}
+          text={loading ? "Saving..." : "Save Pricing"}
+          onPress={saveVIPSettings}
+          loading={loading}
+          style={styles.saveButton}
         />
       </View>
 
-      <ScrollView style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Signal Statistics</Text>
-          {loadingStats ? (
-            <Text style={styles.loadingText}>Loading statistics...</Text>
-          ) : (
-            <View style={styles.statsContainer}>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{signalStats.totalSignals}</Text>
-                <Text style={styles.statLabel}>Total Signals</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{signalStats.normalSignals}</Text>
-                <Text style={styles.statLabel}>Normal User Signals</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{signalStats.vipSignals}</Text>
-                <Text style={styles.statLabel}>VIP User Signals</Text>
-              </View>
-            </View>
-          )}
+      {/* Data Export Settings */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Data Export Settings</Text>
+        <View style={styles.dateContainer}>
+          <View style={styles.dateInputContainer}>
+            <Text style={styles.label}>From Date</Text>
+            <Button
+              text={dateFrom.toLocaleDateString()}
+              onPress={() => setShowDateFromPicker(true)}
+              variant="outline"
+              style={styles.dateButton}
+            />
+          </View>
+          <View style={styles.dateInputContainer}>
+            <Text style={styles.label}>To Date</Text>
+            <Button
+              text={dateTo.toLocaleDateString()}
+              onPress={() => setShowDateToPicker(true)}
+              variant="outline"
+              style={styles.dateButton}
+            />
+          </View>
+        </View>
+        <View style={styles.exportButtons}>
           <Button
-            text="Refresh Statistics"
-            onPress={loadSignalStats}
+            text="Export Users"
+            onPress={() => handleExport('users')}
             variant="outline"
-            style={styles.refreshButton}
-            loading={loadingStats}
+            style={styles.exportButton}
           />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pricing Settings</Text>
-          <View style={styles.priceContainer}>
-            <Text style={styles.label}>Monthly Price ($)</Text>
-            <TextInput
-              style={styles.priceInput}
-              value={vipSettings.monthlyPrice.toString()}
-              onChangeText={(text) => {
-                const price = parseFloat(text) || 0;
-                setVipSettings(prev => ({ ...prev, monthlyPrice: price }));
-              }}
-              keyboardType="numeric"
-              placeholder="Enter monthly price"
-            />
-          </View>
           <Button
-            text="Save Settings"
-            onPress={saveVIPSettings}
-            loading={saving}
-            style={styles.saveButton}
+            text="Export Signals"
+            onPress={() => handleExport('signals')}
+            variant="outline"
+            style={styles.exportButton}
           />
         </View>
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Data Export</Text>
-          <Text style={styles.exportDescription}>
-            Export data for a date range. Select the start and end dates, then choose the type of data to export.
-          </Text>
-          
-          <View style={styles.dateRangeContainer}>
-            <View style={styles.dateInputContainer}>
-              <Text style={styles.dateLabel}>From Date:</Text>
-              <Button
-                text={dateFrom.toLocaleDateString()}
-                onPress={() => setShowDateFromPicker(true)}
-                variant="outline"
-                style={styles.dateButton}
-              />
-            </View>
-            
-            <View style={styles.dateInputContainer}>
-              <Text style={styles.dateLabel}>To Date:</Text>
-              <Button
-                text={dateTo.toLocaleDateString()}
-                onPress={() => setShowDateToPicker(true)}
-                variant="outline"
-                style={styles.dateButton}
-              />
-            </View>
-          </View>
-
-          <View style={styles.exportContainer}>
-            <Button
-              text="Export Users Data (CSV)"
-              onPress={() => handleExport('users')}
-              variant="outline"
-              style={styles.exportButton}
-            />
-            <Button
-              text="Export Signals Data (CSV)"
-              onPress={() => handleExport('signals')}
-              variant="outline"
-              style={styles.exportButton}
-            />
-          </View>
+      {/* User Management */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>User Management</Text>
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search users by email or name..."
+            value={searchQuery}
+            onChangeText={handleSearch}
+          />
         </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>User Management</Text>
-          
-          <View style={styles.searchContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search users by name, email, or phone..."
-              placeholderTextColor={colors.textMuted}
-              value={searchQuery}
-              onChangeText={handleSearch}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-
-          {searchQuery.trim() !== '' && (
-            <View style={styles.searchResults}>
-              <Text style={styles.searchResultsText}>
-                Found {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} matching "{searchQuery}"
-              </Text>
-            </View>
-          )}
-
-          {filteredUsers.map((user) => (
-            <View key={user.id} style={styles.userCard}>
-              <View style={styles.userInfo}>
-                <Text style={styles.userName}>{user.displayName || 'Unknown'}</Text>
-                <Text style={styles.userEmail}>{user.email}</Text>
-                {user.phoneNumber && (
-                  <Text style={styles.userPhone}>{user.phoneNumber}</Text>
-                )}
-                <Text style={[styles.vipStatus, user.isVIP && styles.vipActive]}>
-                  {user.isVIP ? 'VIP Member' : 'Regular User'}
+        
+        {filteredUsers.map((user) => (
+          <View key={user.id} style={styles.userCard}>
+            <View style={styles.userInfo}>
+              <Text style={styles.userEmail}>{user.email}</Text>
+              {user.displayName && (
+                <Text style={styles.userName}>{user.displayName}</Text>
+              )}
+              {user.isVIP && user.vipExpiryDate && (
+                <Text style={styles.vipExpiry}>
+                  VIP until: {user.vipExpiryDate.toLocaleDateString()}
                 </Text>
-              </View>
-              <View style={styles.userActions}>
-                <Button
-                  text={user.isVIP ? 'Remove VIP' : 'Make VIP'}
-                  onPress={() => toggleUserVIP(user.id, user.isVIP || false)}
-                  variant={user.isVIP ? 'outline' : 'success'}
-                  style={styles.actionButton}
-                />
-                <Button
-                  text="Delete"
-                  onPress={() => deleteUser(user.id, user.email)}
-                  variant="danger"
-                  style={styles.actionButton}
-                />
-              </View>
+              )}
             </View>
-          ))}
-        </View>
-      </ScrollView>
+            <View style={styles.userActions}>
+              <Button
+                text={user.isVIP ? "Remove VIP" : "Make VIP"}
+                onPress={() => toggleUserVIP(user.id, user.isVIP || false)}
+                variant={user.isVIP ? "danger" : "success"}
+                style={styles.actionButton}
+              />
+              <Button
+                text="Delete"
+                onPress={() => deleteUser(user.id, user.email)}
+                variant="danger"
+                style={styles.actionButton}
+              />
+            </View>
+          </View>
+        ))}
+      </View>
 
       {showDateFromPicker && (
         <DateTimePicker
@@ -517,19 +455,23 @@ export default function AdminVIPScreen() {
           onChange={handleDateToChange}
         />
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     padding: spacing.md,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: spacing.md,
   },
   title: {
     fontSize: 20,
@@ -537,19 +479,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
   },
-  backButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
   section: {
     backgroundColor: colors.surface,
+    margin: spacing.md,
+    padding: spacing.md,
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   sectionTitle: {
     fontSize: 18,
@@ -557,16 +493,34 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: spacing.md,
   },
-  priceContainer: {
-    marginBottom: spacing.lg,
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  inputContainer: {
+    marginBottom: spacing.md,
   },
   label: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.sm,
   },
-  priceInput: {
+  input: {
     backgroundColor: colors.background,
     borderRadius: borderRadius.md,
     padding: spacing.md,
@@ -576,7 +530,25 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   saveButton: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  dateInputContainer: {
+    flex: 1,
+  },
+  dateButton: {
+    backgroundColor: colors.background,
+  },
+  exportButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  exportButton: {
+    flex: 1,
   },
   searchContainer: {
     marginBottom: spacing.md,
@@ -590,126 +562,42 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  searchResults: {
-    backgroundColor: colors.background,
-    padding: spacing.sm,
-    borderRadius: borderRadius.sm,
-    marginBottom: spacing.md,
-  },
-  searchResultsText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
   userCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: spacing.md,
     backgroundColor: colors.background,
     borderRadius: borderRadius.md,
-    padding: spacing.md,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   userInfo: {
     flex: 1,
   },
-  userName: {
+  userEmail: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
   },
-  userEmail: {
+  userName: {
     fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  userPhone: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  vipStatus: {
-    fontSize: 12,
     color: colors.textMuted,
     marginTop: spacing.xs,
   },
-  vipActive: {
+  vipExpiry: {
+    fontSize: 12,
     color: colors.success,
-    fontWeight: '600',
+    marginTop: spacing.xs,
   },
   userActions: {
-    flexDirection: 'column',
-    gap: spacing.xs,
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
   actionButton: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     minWidth: 80,
-  },
-  exportDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
-    lineHeight: 20,
-  },
-  dateRangeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-    gap: spacing.md,
-  },
-  dateInputContainer: {
-    flex: 1,
-  },
-  dateLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  dateButton: {
-    paddingVertical: spacing.sm,
-  },
-  exportContainer: {
-    gap: spacing.sm,
-  },
-  exportButton: {
-    marginBottom: spacing.sm,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    padding: spacing.md,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: spacing.xs,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  refreshButton: {
-    marginTop: spacing.sm,
   },
 });

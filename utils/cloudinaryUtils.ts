@@ -41,6 +41,10 @@ export const uploadImageToCloudinary = async (
     formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
     formData.append('folder', folder);
     
+    // Add quality and format optimizations
+    formData.append('quality', 'auto:good');
+    formData.append('fetch_format', 'auto');
+    
     console.log('Cloudinary: Uploading to URL:', CLOUDINARY_CONFIG.uploadUrl);
     
     // Upload to Cloudinary
@@ -68,7 +72,7 @@ export const uploadImageToCloudinary = async (
     console.error('Cloudinary: Upload error:', error);
     Alert.alert(
       'Upload Error',
-      `Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check your internet connection and try again.`
+      `Failed to upload image. Please check your internet connection and try again.`
     );
     return null;
   }
@@ -109,13 +113,15 @@ export const getOptimizedImageUrl = (
       return originalUrl;
     }
 
-    // Build transformation parameters
+    // Build transformation parameters for faster loading
     const transformations = [];
     
     if (width) transformations.push(`w_${width}`);
     if (height) transformations.push(`h_${height}`);
     transformations.push(`q_${quality}`);
-    transformations.push('f_auto'); // Auto format
+    transformations.push('f_auto'); // Auto format (WebP, AVIF when supported)
+    transformations.push('c_fill'); // Fill mode for consistent sizing
+    transformations.push('g_auto'); // Auto gravity for smart cropping
     
     const transformationString = transformations.join(',');
     
@@ -135,4 +141,24 @@ export const getOptimizedImageUrl = (
     console.error('Cloudinary: Error generating optimized URL:', error);
     return originalUrl;
   }
+};
+
+// Preload images for faster display
+export const preloadImage = (url: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = reject;
+    img.src = url;
+  });
+};
+
+// Get thumbnail URL for faster loading in lists
+export const getThumbnailUrl = (originalUrl: string): string => {
+  return getOptimizedImageUrl(originalUrl, 300, 200, 70);
+};
+
+// Get full-size optimized URL for detail views
+export const getFullSizeUrl = (originalUrl: string): string => {
+  return getOptimizedImageUrl(originalUrl, 800, 600, 85);
 };

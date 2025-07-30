@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { router, useLocalSearchParams } from 'expo-router';
 import { commonStyles, colors, spacing, borderRadius } from '../../../../styles/commonStyles';
-import Button from '../../../../components/Button';
-import { Picker } from '@react-native-picker/picker';
 import { db } from '../../../../firebase/config';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { router, useLocalSearchParams } from 'expo-router';
+import Button from '../../../../components/Button';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { Picker } from '@react-native-picker/picker';
 
 interface SignalData {
   pair: string;
   type: string;
+  segment: string;
+  status: string;
   entryPoint: string;
   stopLoss: string;
   takeProfit: string;
   notes: string;
-  status: 'active' | 'closed' | 'hit_tp' | 'hit_sl';
   targetUsers: 'normal' | 'vip';
+  signalId?: string;
 }
 
 const SIGNAL_TYPES = [
@@ -30,16 +32,22 @@ const SIGNAL_TYPES = [
   { label: 'SELL STOP LIMIT', value: 'SELL_STOP_LIMIT' }
 ];
 
-const USER_TYPES = [
-  { label: 'Normal Users', value: 'normal' },
-  { label: 'VIP Users', value: 'vip' }
+const SEGMENTS = [
+  { label: 'Forex', value: 'forex' },
+  { label: 'Comex', value: 'comex' },
+  { label: 'Crypto', value: 'crypto' },
+  { label: 'Stocks & Indices', value: 'stocks_indices' }
 ];
 
 const STATUS_OPTIONS = [
-  { label: 'Active', value: 'active' },
-  { label: 'Closed', value: 'closed' },
-  { label: 'Hit Take Profit', value: 'hit_tp' },
-  { label: 'Hit Stop Loss', value: 'hit_sl' }
+  { label: 'In Progress', value: 'inprogress' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Active', value: 'active' }
+];
+
+const USER_TYPES = [
+  { label: 'Normal Users', value: 'normal' },
+  { label: 'VIP Users', value: 'vip' }
 ];
 
 const styles = StyleSheet.create({
@@ -57,16 +65,16 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: colors.text,
   },
   scrollContainer: {
     flexGrow: 1,
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   inputContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   label: {
     fontSize: 16,
@@ -99,14 +107,12 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    overflow: 'hidden',
   },
   picker: {
     color: colors.text,
-    backgroundColor: colors.surface,
   },
   buttonContainer: {
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
     gap: spacing.md,
   },
   row: {
@@ -116,6 +122,20 @@ const styles = StyleSheet.create({
   flex1: {
     flex: 1,
   },
+  signalIdContainer: {
+    backgroundColor: colors.primary + '20',
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.primary + '40',
+  },
+  signalIdText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+    textAlign: 'center',
+  },
 });
 
 export default function EditSignalScreen() {
@@ -123,24 +143,17 @@ export default function EditSignalScreen() {
   const [formData, setFormData] = useState<SignalData>({
     pair: '',
     type: 'BUY',
+    segment: 'forex',
+    status: 'active',
     entryPoint: '',
     stopLoss: '',
     takeProfit: '',
     notes: '',
-    status: 'active',
     targetUsers: 'normal',
   });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const { userData } = useAuth();
-
-  // Check if user has permission to edit signals
-  React.useEffect(() => {
-    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
-      Alert.alert('Access Denied', 'You do not have permission to edit signals');
-      router.back();
-    }
-  }, [userData]);
 
   useEffect(() => {
     if (id) {
@@ -150,22 +163,21 @@ export default function EditSignalScreen() {
 
   const loadSignal = async () => {
     try {
-      console.log('Loading signal with ID:', id);
       const signalDoc = await getDoc(doc(db, 'signals', id as string));
-      
       if (signalDoc.exists()) {
         const data = signalDoc.data();
         setFormData({
           pair: data.pair || '',
           type: data.type || 'BUY',
+          segment: data.segment || 'forex',
+          status: data.status || 'active',
           entryPoint: data.entryPoint?.toString() || '',
           stopLoss: data.stopLoss?.toString() || '',
           takeProfit: data.takeProfit?.toString() || '',
           notes: data.notes || '',
-          status: data.status || 'active',
-          targetUsers: data.targetUsers || (data.isVip ? 'vip' : 'normal'),
+          targetUsers: data.targetUsers || 'normal',
+          signalId: data.signalId || '',
         });
-        console.log('Signal loaded successfully');
       } else {
         Alert.alert('Error', 'Signal not found');
         router.back();
@@ -175,17 +187,13 @@ export default function EditSignalScreen() {
       Alert.alert('Error', 'Failed to load signal');
       router.back();
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
     }
   };
 
   const validateForm = () => {
     if (!formData.pair.trim()) {
       Alert.alert('Error', 'Please enter a currency pair');
-      return false;
-    }
-    if (!formData.type) {
-      Alert.alert('Error', 'Please select signal type');
       return false;
     }
     if (!formData.entryPoint || isNaN(Number(formData.entryPoint))) {
@@ -200,38 +208,29 @@ export default function EditSignalScreen() {
       Alert.alert('Error', 'Please enter a valid take profit');
       return false;
     }
-    if (!formData.status) {
-      Alert.alert('Error', 'Please select signal status');
-      return false;
-    }
-    if (!formData.targetUsers) {
-      Alert.alert('Error', 'Please select target user type');
-      return false;
-    }
     return true;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    setSaving(true);
+    setLoading(true);
     try {
       const updateData = {
         pair: formData.pair.toUpperCase(),
         type: formData.type,
+        segment: formData.segment,
+        status: formData.status,
         entryPoint: Number(formData.entryPoint),
         stopLoss: Number(formData.stopLoss),
         takeProfit: Number(formData.takeProfit),
         notes: formData.notes,
-        status: formData.status,
-        isVip: formData.targetUsers === 'vip',
         targetUsers: formData.targetUsers,
+        isVip: formData.targetUsers === 'vip',
         updatedAt: serverTimestamp(),
-        updatedBy: userData?.uid || '',
-        updatedByName: userData?.displayName || 'Admin'
+        updatedBy: userData?.uid || ''
       };
 
-      console.log('Updating signal with data:', updateData);
       await updateDoc(doc(db, 'signals', id as string), updateData);
       
       Alert.alert('Success', 'Signal updated successfully', [
@@ -239,18 +238,9 @@ export default function EditSignalScreen() {
       ]);
     } catch (error: any) {
       console.error('Error updating signal:', error);
-      
-      // Generic error messages for security
-      let errorMessage = 'Failed to update signal. Please try again.';
-      if (error.message.includes('network')) {
-        errorMessage = 'Please check internet connectivity';
-      } else if (error.message.includes('permission')) {
-        errorMessage = 'Please check your credentials';
-      }
-      
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Error', 'Failed to update signal. Please try again.');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -262,9 +252,9 @@ export default function EditSignalScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  if (loading) {
+  if (initialLoading) {
     return (
-      <View style={commonStyles.loading}>
+      <View style={[commonStyles.container, commonStyles.centerContent]}>
         <Text style={commonStyles.text}>Loading signal...</Text>
       </View>
     );
@@ -276,29 +266,29 @@ export default function EditSignalScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.header}>
+        <Button text="← Back" onPress={handleBack} variant="outline" />
         <Text style={styles.title}>Edit Signal</Text>
-        <Button
-          text="Cancel"
-          onPress={handleBack}
-          variant="outline"
-          style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
-        />
+        <View style={{ width: 60 }} />
       </View>
 
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
+        {formData.signalId && (
+          <View style={styles.signalIdContainer}>
+            <Text style={styles.signalIdText}>Signal ID: #{formData.signalId}</Text>
+          </View>
+        )}
+
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Currency Pair *</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g., EUR/USD, GBP/JPY, BTC/USD"
-            placeholderTextColor={colors.textSecondary}
+            placeholder="e.g., EUR/USD, GBP/JPY"
             value={formData.pair}
             onChangeText={(value) => updateFormData('pair', value)}
             autoCapitalize="characters"
-            autoCorrect={false}
           />
         </View>
 
@@ -322,18 +312,18 @@ export default function EditSignalScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Target Users *</Text>
+          <Text style={styles.label}>Segment *</Text>
           <View style={styles.pickerContainer}>
             <Picker
-              selectedValue={formData.targetUsers}
-              onValueChange={(value) => updateFormData('targetUsers', value)}
+              selectedValue={formData.segment}
+              onValueChange={(value) => updateFormData('segment', value)}
               style={styles.picker}
             >
-              {USER_TYPES.map((userType) => (
+              {SEGMENTS.map((segment) => (
                 <Picker.Item 
-                  key={userType.value} 
-                  label={userType.label} 
-                  value={userType.value} 
+                  key={segment.value} 
+                  label={segment.label} 
+                  value={segment.value} 
                 />
               ))}
             </Picker>
@@ -359,13 +349,31 @@ export default function EditSignalScreen() {
           </View>
         </View>
 
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Target Users *</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.targetUsers}
+              onValueChange={(value) => updateFormData('targetUsers', value)}
+              style={styles.picker}
+            >
+              {USER_TYPES.map((userType) => (
+                <Picker.Item 
+                  key={userType.value} 
+                  label={userType.label} 
+                  value={userType.value} 
+                />
+              ))}
+            </Picker>
+          </View>
+        </View>
+
         <View style={styles.row}>
           <View style={[styles.inputContainer, styles.flex1]}>
             <Text style={styles.label}>Entry Point *</Text>
             <TextInput
               style={styles.input}
               placeholder="0.0000"
-              placeholderTextColor={colors.textSecondary}
               value={formData.entryPoint}
               onChangeText={(value) => updateFormData('entryPoint', value)}
               keyboardType="decimal-pad"
@@ -377,7 +385,6 @@ export default function EditSignalScreen() {
             <TextInput
               style={styles.input}
               placeholder="0.0000"
-              placeholderTextColor={colors.textSecondary}
               value={formData.stopLoss}
               onChangeText={(value) => updateFormData('stopLoss', value)}
               keyboardType="decimal-pad"
@@ -390,7 +397,6 @@ export default function EditSignalScreen() {
           <TextInput
             style={styles.input}
             placeholder="0.0000"
-            placeholderTextColor={colors.textSecondary}
             value={formData.takeProfit}
             onChangeText={(value) => updateFormData('takeProfit', value)}
             keyboardType="decimal-pad"
@@ -401,8 +407,7 @@ export default function EditSignalScreen() {
           <Text style={styles.label}>Notes</Text>
           <TextInput
             style={styles.textArea}
-            placeholder="Add any additional notes or analysis..."
-            placeholderTextColor={colors.textSecondary}
+            placeholder="Add any additional notes..."
             value={formData.notes}
             onChangeText={(value) => updateFormData('notes', value)}
             multiline
@@ -412,10 +417,10 @@ export default function EditSignalScreen() {
 
         <View style={styles.buttonContainer}>
           <Button
-            text="Update Signal"
+            text={loading ? "Updating..." : "Update Signal"}
             onPress={handleSubmit}
-            loading={saving}
-            disabled={saving}
+            loading={loading}
+            disabled={loading}
           />
         </View>
       </ScrollView>

@@ -4,10 +4,11 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet, 
-  Image
+  Image,
+  ActivityIndicator
 } from 'react-native';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
-import { getOptimizedImageUrl } from '../utils/cloudinaryUtils';
+import { getThumbnailUrl, getFullSizeUrl } from '../utils/cloudinaryUtils';
 import AnalysisModal from './AnalysisModal';
 
 interface Analysis {
@@ -24,12 +25,11 @@ interface AnalysisCardProps {
 
 export default function AnalysisCard({ analysis }: AnalysisCardProps) {
   const [modalVisible, setModalVisible] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   const formatTime = (date: Date) => {
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const openModal = () => {
@@ -51,36 +51,53 @@ export default function AnalysisCard({ analysis }: AnalysisCardProps) {
     return analysis.content.length > 150;
   };
 
-  // Get optimized image URLs for different use cases
-  const thumbnailUrl = analysis.imageUrl 
-    ? getOptimizedImageUrl(analysis.imageUrl, 400, 225, 70)
-    : null;
+  const handleImageLoad = () => {
+    setImageLoading(false);
+    setImageError(false);
+  };
+
+  const handleImageError = () => {
+    setImageLoading(false);
+    setImageError(true);
+  };
 
   return (
     <>
-      <TouchableOpacity style={styles.card} onPress={openModal} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.container} onPress={openModal} activeOpacity={0.7}>
         <View style={styles.header}>
           <Text style={styles.title}>{analysis.title}</Text>
           <Text style={styles.timestamp}>{formatTime(analysis.createdAt)}</Text>
         </View>
 
-        {thumbnailUrl && (
+        {analysis.imageUrl && (
           <View style={styles.imageContainer}>
-            <Image 
-              source={{ uri: thumbnailUrl }} 
-              style={styles.image}
-              resizeMode="cover"
-            />
+            {imageLoading && (
+              <View style={styles.imageLoader}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.loadingText}>Loading image...</Text>
+              </View>
+            )}
+            {!imageError && (
+              <Image
+                source={{ uri: getThumbnailUrl(analysis.imageUrl) }}
+                style={[styles.image, imageLoading && styles.imageHidden]}
+                onLoad={handleImageLoad}
+                onError={handleImageError}
+                resizeMode="cover"
+              />
+            )}
+            {imageError && (
+              <View style={styles.imageError}>
+                <Text style={styles.errorText}>Failed to load image</Text>
+              </View>
+            )}
           </View>
         )}
 
         <View style={styles.content}>
-          <Text style={styles.contentText}>{getDisplayContent()}</Text>
-          
+          <Text style={styles.description}>{getDisplayContent()}</Text>
           {shouldShowReadMore() && (
-            <View style={styles.readMoreContainer}>
-              <Text style={styles.readMoreText}>Tap to read more</Text>
-            </View>
+            <Text style={styles.readMore}>Read More</Text>
           )}
         </View>
       </TouchableOpacity>
@@ -95,24 +112,26 @@ export default function AnalysisCard({ analysis }: AnalysisCardProps) {
 }
 
 const styles = StyleSheet.create({
-  card: {
+  container: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: colors.text,
+    overflow: 'hidden',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 4,
+    elevation: 3,
   },
   header: {
-    marginBottom: spacing.sm,
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   title: {
     fontSize: 18,
@@ -125,33 +144,57 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   imageContainer: {
-    marginBottom: spacing.md,
-    borderRadius: borderRadius.md,
-    overflow: 'hidden',
+    height: 200,
+    backgroundColor: colors.background,
+    position: 'relative',
   },
   image: {
     width: '100%',
-    height: 200,
+    height: '100%',
+  },
+  imageHidden: {
+    opacity: 0,
+  },
+  imageLoader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: colors.background,
   },
-  content: {
-    gap: spacing.sm,
-  },
-  contentText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.text,
-  },
-  readMoreContainer: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.primary + '15',
-    borderRadius: borderRadius.sm,
+  loadingText: {
+    fontSize: 12,
+    color: colors.textMuted,
     marginTop: spacing.xs,
   },
-  readMoreText: {
+  imageError: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  content: {
+    padding: spacing.md,
+  },
+  description: {
     fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+    marginBottom: spacing.sm,
+  },
+  readMore: {
+    fontSize: 12,
     color: colors.primary,
     fontWeight: '600',
   },

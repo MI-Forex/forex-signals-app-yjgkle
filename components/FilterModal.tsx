@@ -87,6 +87,7 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
                 onValueChange={(value) => setFilters(prev => ({ ...prev, pair: value }))}
                 style={styles.picker}
                 dropdownIconColor={colors.text}
+                itemStyle={styles.pickerItem}
               >
                 {CURRENCY_PAIRS.map(pair => (
                   <Picker.Item 
@@ -108,6 +109,7 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
                 onValueChange={(value) => setFilters(prev => ({ ...prev, type: value }))}
                 style={styles.picker}
                 dropdownIconColor={colors.text}
+                itemStyle={styles.pickerItem}
               >
                 {SIGNAL_TYPES.map(type => (
                   <Picker.Item 
@@ -146,6 +148,7 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
               onPress={handleReset}
               variant="outline"
               style={styles.resetButton}
+              textStyle={styles.resetButtonText}
             />
             <Button
               text="Apply"
@@ -222,7 +225,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     fontSize: 20,
-    color: colors.textMuted,
+    color: colors.text,
     fontWeight: 'bold',
   },
   filterSection: {
@@ -239,10 +242,17 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
   },
   picker: {
     color: colors.text,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.background,
+    height: 50,
+  },
+  pickerItem: {
+    color: colors.text,
+    backgroundColor: colors.background,
+    fontSize: 16,
   },
   dateContainer: {
     flexDirection: 'row',
@@ -275,6 +285,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 2,
     borderColor: colors.border,
+  },
+  resetButtonText: {
+    color: colors.text,
   },
   applyButton: {
     flex: 1,

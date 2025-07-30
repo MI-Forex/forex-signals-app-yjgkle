@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, Alert, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore';
+import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import SignalCard from '../../components/SignalCard';
 import FilterModal from '../../components/FilterModal';
 import Button from '../../components/Button';
-import { commonStyles, colors, spacing } from '../../styles/commonStyles';
-import { router } from 'expo-router';
 
 interface Signal {
   id: string;
@@ -22,6 +22,8 @@ interface Signal {
   createdBy: string;
   isVip?: boolean;
   targetUsers?: 'normal' | 'vip';
+  signalId?: string;
+  segment?: string;
 }
 
 const styles = StyleSheet.create({
@@ -48,18 +50,49 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   filterButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  signalTypeContainer: {
-    flexDirection: 'row',
-    padding: spacing.md,
-    backgroundColor: colors.background,
-    gap: spacing.sm,
-  },
-  signalTypeButton: {
     flex: 1,
     paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  filterButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  filterButtonTextActive: {
+    color: colors.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.textMuted,
+    marginTop: spacing.md,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+    minHeight: 300,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: colors.textMuted,
+    textAlign: 'center',
   },
 });
 
@@ -71,8 +104,8 @@ export default function SignalsScreen() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [signalTypeFilter, setSignalTypeFilter] = useState<'all' | 'normal' | 'vip'>('all');
   const [filters, setFilters] = useState({
-    pair: 'all',
-    type: 'all',
+    pair: '',
+    type: '',
     dateFrom: undefined as Date | undefined,
     dateTo: undefined as Date | undefined,
   });
@@ -111,21 +144,20 @@ export default function SignalsScreen() {
   }, [user, filters]);
 
   useEffect(() => {
-    loadSignals();
-  }, [signals, filters, signalTypeFilter, userData]);
-
-  const loadSignals = () => {
+    // Apply filters whenever signals or filters change
     let filtered = [...signals];
 
-    // Apply signal type filter based on user VIP status
+    // Apply signal type filter (VIP/Normal)
     filtered = applySignalTypeFilter(filtered, signalTypeFilter);
 
     // Apply other filters
-    if (filters.pair !== 'all') {
-      filtered = filtered.filter(signal => signal.pair === filters.pair);
+    if (filters.pair) {
+      filtered = filtered.filter(signal => 
+        signal.pair.toLowerCase().includes(filters.pair.toLowerCase())
+      );
     }
 
-    if (filters.type !== 'all') {
+    if (filters.type) {
       filtered = filtered.filter(signal => signal.type === filters.type);
     }
 
@@ -134,47 +166,60 @@ export default function SignalsScreen() {
     }
 
     if (filters.dateTo) {
-      const endOfDay = new Date(filters.dateTo);
-      endOfDay.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(signal => signal.createdAt <= endOfDay);
+      const endDate = new Date(filters.dateTo);
+      endDate.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(signal => signal.createdAt <= endDate);
     }
 
     setFilteredSignals(filtered);
+  }, [signals, filters, signalTypeFilter, userData]);
+
+  const loadSignals = async () => {
+    // This function is called by the refresh control
+    // The real-time listener will handle the actual data loading
+    console.log('Manual refresh triggered');
   };
 
   const applySignalTypeFilter = (signalsToFilter: Signal[], typeFilter: 'all' | 'normal' | 'vip') => {
     if (typeFilter === 'all') {
-      // Show all signals user has access to
-      if (userData?.isVIP || userData?.isAdmin || userData?.isEditor) {
-        return signalsToFilter; // VIP users see all signals
+      // Show all signals if user is VIP, otherwise only normal signals
+      if (userData?.isVIP) {
+        return signalsToFilter;
       } else {
         return signalsToFilter.filter(signal => 
-          signal.targetUsers === 'normal' || !signal.targetUsers || !signal.isVip
+          signal.targetUsers === 'normal' || !signal.isVip
         );
       }
     } else if (typeFilter === 'normal') {
       return signalsToFilter.filter(signal => 
-        signal.targetUsers === 'normal' || !signal.targetUsers || !signal.isVip
+        signal.targetUsers === 'normal' || !signal.isVip
       );
     } else if (typeFilter === 'vip') {
-      if (userData?.isVIP || userData?.isAdmin || userData?.isEditor) {
+      // Only show VIP signals if user is VIP
+      if (userData?.isVIP) {
         return signalsToFilter.filter(signal => 
           signal.targetUsers === 'vip' || signal.isVip
         );
       } else {
-        return []; // Non-VIP users can't see VIP signals
+        return [];
       }
     }
     return signalsToFilter;
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    console.log('Pull to refresh triggered');
     setRefreshing(true);
+    
+    // Simulate a brief delay to show the refresh indicator
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
   };
 
   const applyFilters = (newFilters: typeof filters) => {
+    console.log('Applying filters:', newFilters);
     setFilters(newFilters);
-    setFilterModalVisible(false);
   };
 
   const handleManageSignals = () => {
@@ -190,8 +235,13 @@ export default function SignalsScreen() {
 
   if (loading) {
     return (
-      <View style={commonStyles.loading}>
-        <Text style={commonStyles.text}>Loading signals...</Text>
+      <View style={commonStyles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Forex Signals</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading signals...</Text>
+        </View>
       </View>
     );
   }
@@ -200,48 +250,68 @@ export default function SignalsScreen() {
     <View style={commonStyles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Forex Signals</Text>
-        {canManage && (
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
           <Button
-            text="Manage"
-            onPress={handleManageSignals}
-            variant="primary"
+            text="Filter"
+            onPress={() => setFilterModalVisible(true)}
+            variant="outline"
             style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+          />
+          {canManage && (
+            <Button
+              text="Manage"
+              onPress={handleManageSignals}
+              variant="primary"
+              style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+            />
+          )}
+        </View>
+      </View>
+
+      {/* Signal Type Filter */}
+      <View style={styles.filterContainer}>
+        <Button
+          text="All Signals"
+          onPress={() => handleSignalTypeFilter('all')}
+          variant={signalTypeFilter === 'all' ? 'primary' : 'outline'}
+          style={[
+            styles.filterButton,
+            signalTypeFilter === 'all' && styles.filterButtonActive
+          ]}
+          textStyle={[
+            styles.filterButtonText,
+            signalTypeFilter === 'all' && styles.filterButtonTextActive
+          ]}
+        />
+        <Button
+          text="Normal"
+          onPress={() => handleSignalTypeFilter('normal')}
+          variant={signalTypeFilter === 'normal' ? 'primary' : 'outline'}
+          style={[
+            styles.filterButton,
+            signalTypeFilter === 'normal' && styles.filterButtonActive
+          ]}
+          textStyle={[
+            styles.filterButtonText,
+            signalTypeFilter === 'normal' && styles.filterButtonTextActive
+          ]}
+        />
+        {userData?.isVIP && (
+          <Button
+            text="VIP"
+            onPress={() => handleSignalTypeFilter('vip')}
+            variant={signalTypeFilter === 'vip' ? 'primary' : 'outline'}
+            style={[
+              styles.filterButton,
+              signalTypeFilter === 'vip' && styles.filterButtonActive
+            ]}
+            textStyle={[
+              styles.filterButtonText,
+              signalTypeFilter === 'vip' && styles.filterButtonTextActive
+            ]}
           />
         )}
       </View>
-
-      <View style={styles.filterContainer}>
-        <Button
-          text="Filter"
-          onPress={() => setFilterModalVisible(true)}
-          variant="outline"
-          style={styles.filterButton}
-        />
-      </View>
-
-      {/* Signal Type Filter - only show if user is VIP, admin, or editor */}
-      {(userData?.isVIP || userData?.isAdmin || userData?.isEditor) && (
-        <View style={styles.signalTypeContainer}>
-          <Button
-            text="All Signals"
-            onPress={() => handleSignalTypeFilter('all')}
-            variant={signalTypeFilter === 'all' ? 'primary' : 'outline'}
-            style={styles.signalTypeButton}
-          />
-          <Button
-            text="Normal"
-            onPress={() => handleSignalTypeFilter('normal')}
-            variant={signalTypeFilter === 'normal' ? 'primary' : 'outline'}
-            style={styles.signalTypeButton}
-          />
-          <Button
-            text="VIP Only"
-            onPress={() => handleSignalTypeFilter('vip')}
-            variant={signalTypeFilter === 'vip' ? 'primary' : 'outline'}
-            style={styles.signalTypeButton}
-          />
-        </View>
-      )}
 
       <ScrollView
         style={commonStyles.content}
@@ -250,12 +320,19 @@ export default function SignalsScreen() {
             refreshing={refreshing}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
+        showsVerticalScrollIndicator={false}
       >
         {filteredSignals.length === 0 ? (
-          <View style={[commonStyles.centerContent, { minHeight: 200 }]}>
-            <Text style={commonStyles.textMuted}>No signals available</Text>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              {signalTypeFilter === 'vip' && !userData?.isVIP
+                ? 'VIP signals are available for VIP members only'
+                : 'No signals available'
+              }
+            </Text>
           </View>
         ) : (
           filteredSignals.map((signal) => (
