@@ -37,9 +37,10 @@ export default function AdminChatsScreen() {
       setFilteredChatUsers(users);
       console.log('AdminChats: Loaded chat users:', users.length);
     } catch (error: any) {
-      console.error('AdminChats: Error loading chats:', error);
-      setError('Failed to load chats');
-      Alert.alert('Error', 'Failed to load chats. Please try again.');
+      console.error('AdminChats: Error loading chats Error:', error);
+      const errorMessage = error?.message || 'Unknown error occurred';
+      setError('Failed to load chats: ' + errorMessage);
+      Alert.alert('Error', `Failed to load chats: ${errorMessage}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -64,8 +65,8 @@ export default function AdminChatsScreen() {
     }
 
     const filtered = chatUsers.filter(user =>
-      user.displayName.toLowerCase().includes(query.toLowerCase()) ||
-      user.email.toLowerCase().includes(query.toLowerCase()) ||
+      user.userName.toLowerCase().includes(query.toLowerCase()) ||
+      user.userEmail.toLowerCase().includes(query.toLowerCase()) ||
       user.lastMessage.toLowerCase().includes(query.toLowerCase())
     );
     setFilteredChatUsers(filtered);
@@ -154,14 +155,14 @@ export default function AdminChatsScreen() {
               <TouchableOpacity
                 key={user.id}
                 style={styles.chatItem}
-                onPress={() => openChat(user.id, user.displayName)}
+                onPress={() => openChat(user.userId, user.userName)}
                 activeOpacity={0.7}
               >
                 <View style={styles.chatHeader}>
                   <View style={styles.userInfo}>
-                    <Text style={styles.userName}>{user.displayName}</Text>
-                    <Text style={styles.userEmail}>{user.email}</Text>
-                    {user.isVIP && (
+                    <Text style={styles.userName}>{user.userName}</Text>
+                    <Text style={styles.userEmail}>{user.userEmail}</Text>
+                    {user.isVip && (
                       <Text style={styles.vipBadge}>VIP</Text>
                     )}
                   </View>

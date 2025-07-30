@@ -25,7 +25,7 @@ export interface ChatUser {
 
 export const testSupabaseConnection = async (): Promise<boolean> => {
   try {
-    console.log('Testing Supabase connection...');
+    console.log('SupabaseChatUtils: Testing connection...');
     
     // Test with a simple query that should always work
     const { data, error } = await supabaseAdmin
@@ -33,21 +33,31 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
       .select('count(*)', { count: 'exact', head: true });
     
     if (error) {
-      console.error('Supabase connection test failed:', error);
+      console.error('SupabaseChatUtils: Connection test failed:', {
+        code: error.code,
+        message: error.message,
+        details: error.details
+      });
       
       // If table doesn't exist, that's still a connection success
       if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
-        console.log('Connection successful, but tables may need setup');
+        console.log('SupabaseChatUtils: Connection successful, but tables may need setup');
         return true;
+      }
+      
+      // Check for API key issues
+      if (error.message.includes('Invalid API key') || error.message.includes('JWT')) {
+        console.error('SupabaseChatUtils: API key validation failed');
+        return false;
       }
       
       return false;
     }
     
-    console.log('Supabase connection test successful');
+    console.log('SupabaseChatUtils: Connection test successful');
     return true;
   } catch (error) {
-    console.error('Supabase connection test error:', error);
+    console.error('SupabaseChatUtils: Connection test error:', error);
     return false;
   }
 };
@@ -101,8 +111,19 @@ export const sendChatMessage = async (
   senderName: string
 ): Promise<ChatMessage> => {
   try {
-    console.log('Sending chat message:', { chatId, userId, senderType, message: message.substring(0, 50) });
+    console.log('SupabaseChatUtils: Sending message:', { chatId, userId, senderType, message: message.substring(0, 50) });
     
+    // Validate inputs
+    if (!chatId || !userId || !message || !senderType || !senderName) {
+      throw new Error('Missing required parameters for sending message');
+    }
+
+    // Check if supabaseAdmin is properly initialized
+    if (!supabaseAdmin || typeof supabaseAdmin.from !== 'function') {
+      console.error('SupabaseChatUtils: supabaseAdmin not properly initialized');
+      throw new Error('Chat service not available');
+    }
+
     // Insert message
     const { data: newMessage, error: messageError } = await supabaseAdmin
       .from('messages')
@@ -118,8 +139,12 @@ export const sendChatMessage = async (
       .single();
 
     if (messageError) {
-      console.error('Error inserting message:', messageError);
+      console.error('SupabaseChatUtils: Error inserting message:', messageError);
       throw new Error(`Failed to send message: ${messageError.message}`);
+    }
+
+    if (!newMessage) {
+      throw new Error('Failed to send message: No data returned');
     }
 
     // Update chat with last message
@@ -133,7 +158,7 @@ export const sendChatMessage = async (
       .eq('id', chatId);
 
     if (updateError) {
-      console.error('Error updating chat:', updateError);
+      console.error('SupabaseChatUtils: Error updating chat:', updateError);
       // Don't throw here, message was sent successfully
     }
 
@@ -148,10 +173,10 @@ export const sendChatMessage = async (
       read: newMessage.read
     };
 
-    console.log('Message sent successfully:', chatMessage.id);
+    console.log('SupabaseChatUtils: Message sent successfully:', chatMessage.id);
     return chatMessage;
   } catch (error) {
-    console.error('Error in sendChatMessage:', error);
+    console.error('SupabaseChatUtils: Error sending message:', error);
     throw error;
   }
 };
@@ -236,7 +261,13 @@ export const subscribeToMessages = (
 
 export const getAllUserChats = async (): Promise<ChatUser[]> => {
   try {
-    console.log('Getting all user chats');
+    console.log('Getting all user chats with supabaseAdmin client');
+    
+    // Test connection first
+    const connectionTest = await testSupabaseConnection();
+    if (!connectionTest) {
+      throw new Error('Unable to connect to chat service');
+    }
     
     const { data: chats, error } = await supabaseAdmin
       .from('chats')
@@ -245,6 +276,12 @@ export const getAllUserChats = async (): Promise<ChatUser[]> => {
 
     if (error) {
       console.error('Error fetching chats:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
       throw new Error(`Failed to fetch chats: ${error.message}`);
     }
 
@@ -260,7 +297,7 @@ export const getAllUserChats = async (): Promise<ChatUser[]> => {
       createdAt: new Date(chat.created_at)
     }));
 
-    console.log(`Fetched ${chatUsers.length} chats`);
+    console.log(`Fetched ${chatUsers.length} chats successfully`);
     return chatUsers;
   } catch (error) {
     console.error('Error in getAllUserChats:', error);

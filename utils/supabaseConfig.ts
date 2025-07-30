@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://qfkghlcxjswdfvgothph.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFma2dobGN4anN3ZGZ2Z290aHBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5MzE2NjksImV4cCI6MjA2ODUwNzY2OX0.KwLB7SVVJr2BlnzEQcDXhqWkNq0enNcwHUPignfnbIU';
 
-// Use the provided Natively Integration token for enhanced access
-const supabaseServiceKey = 'sbp_0d0dfccb61aa3556b940fcf6f66e16c499862a50';
+// Use the anon key for admin operations as well since we have permissive RLS policies
+const supabaseServiceKey = supabaseAnonKey;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -19,11 +19,17 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// Enhanced client with service key for admin operations
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+// Enhanced client with anon key for admin operations (using permissive RLS policies)
+export const supabaseAdmin = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: false,
-    persistSession: false,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
   },
 });
 
@@ -97,21 +103,33 @@ export const initializeSupabaseTables = async () => {
 // Helper function to test connection with better error handling
 export const testSupabaseConnection = async (): Promise<boolean> => {
   try {
-    console.log('Testing Supabase connection with enhanced client...');
+    console.log('Testing Supabase connection...');
+    console.log('Using URL:', supabaseUrl);
+    console.log('Using key (first 20 chars):', supabaseAnonKey.substring(0, 20) + '...');
     
     // Try to access chats table first
     const { data, error } = await supabaseAdmin
       .from('chats')
-      .select('id')
-      .limit(1);
+      .select('count(*)', { count: 'exact', head: true });
     
     if (error) {
-      console.log('Supabase connection test error:', error.message);
+      console.log('Supabase connection test error:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
       
       // If table doesn't exist, that's still a successful connection
       if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
         console.log('Connection successful, but tables may need setup');
         return true;
+      }
+      
+      // Check for API key issues
+      if (error.message.includes('Invalid API key') || error.message.includes('JWT')) {
+        console.error('API key validation failed');
+        return false;
       }
       
       return false;

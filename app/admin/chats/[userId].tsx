@@ -77,7 +77,7 @@ export default function AdminChatScreen() {
       console.log('AdminChat: Loaded messages:', initialMessages.length);
 
       // Mark user messages as read (admin is reading them)
-      await markMessagesAsRead(chatId, 'user');
+      await markMessagesAsRead(chatId);
       console.log('AdminChat: Marked user messages as read');
 
       // Subscribe to real-time updates
@@ -120,12 +120,12 @@ export default function AdminChatScreen() {
       // Create optimistic message for immediate UI update
       const optimisticMessage: ChatMessage = {
         id: `temp_${Date.now()}`,
-        text: messageText,
-        sender: 'admin',
-        senderName: 'Admin',
-        timestamp: new Date(),
         chatId,
         userId: userData.uid,
+        message: messageText,
+        senderType: 'admin',
+        senderName: 'Admin',
+        createdAt: new Date(),
         read: false
       };
 
@@ -227,30 +227,30 @@ export default function AdminChatScreen() {
         ) : (
           messages.map((message, index) => {
             const showDate = index === 0 || 
-              formatDate(message.timestamp) !== formatDate(messages[index - 1].timestamp);
+              formatDate(message.createdAt) !== formatDate(messages[index - 1].createdAt);
             
             return (
               <View key={message.id}>
                 {showDate && (
                   <View style={styles.dateContainer}>
-                    <Text style={styles.dateText}>{formatDate(message.timestamp)}</Text>
+                    <Text style={styles.dateText}>{formatDate(message.createdAt)}</Text>
                   </View>
                 )}
                 <View
                   style={[
                     styles.messageContainer,
-                    message.sender === 'admin' ? styles.adminMessage : styles.userMessage
+                    message.senderType === 'admin' ? styles.adminMessage : styles.userMessage
                   ]}
                 >
                   <View style={styles.messageHeader}>
                     <Text style={styles.senderName}>{message.senderName}</Text>
-                    <Text style={styles.timestamp}>{formatTime(message.timestamp)}</Text>
+                    <Text style={styles.timestamp}>{formatTime(message.createdAt)}</Text>
                   </View>
                   <Text style={[
                     styles.messageText,
-                    message.sender === 'admin' ? styles.adminMessageText : styles.userMessageText
+                    message.senderType === 'admin' ? styles.adminMessageText : styles.userMessageText
                   ]}>
-                    {message.text}
+                    {message.message}
                   </Text>
                 </View>
               </View>
