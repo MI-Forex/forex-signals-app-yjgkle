@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
@@ -114,6 +114,34 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     fontWeight: '600',
   },
+  resendContainer: {
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  resendTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  resendText: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    lineHeight: 20,
+  },
+  resendTimer: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
 });
 
 export default function LoginScreen() {
@@ -121,7 +149,52 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { signIn } = useAuth();
+  const [showResendOption, setShowResendOption] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [canResend, setCanResend] = useState(false);
+  const { signIn, userData, resendVerificationEmail } = useAuth();
+
+  // Check if user just registered and show resend option
+  useEffect(() => {
+    // Check localStorage for recent registration
+    const checkRecentRegistration = () => {
+      try {
+        const registrationTime = localStorage.getItem('recentRegistration');
+        if (registrationTime) {
+          const timeDiff = Date.now() - parseInt(registrationTime);
+          if (timeDiff < 300000) { // 5 minutes
+            setShowResendOption(true);
+            const remainingTime = Math.max(0, 60 - Math.floor(timeDiff / 1000));
+            setResendTimer(remainingTime);
+            setCanResend(remainingTime === 0);
+          } else {
+            localStorage.removeItem('recentRegistration');
+          }
+        }
+      } catch (error) {
+        // localStorage not available (mobile), ignore
+      }
+    };
+
+    checkRecentRegistration();
+  }, []);
+
+  // Timer countdown for resend verification
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (showResendOption && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => {
+          if (prev <= 1) {
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [showResendOption, resendTimer]);
 
   const validateForm = () => {
     if (!email.trim()) {
@@ -145,6 +218,14 @@ export default function LoginScreen() {
       console.log('Calling signIn function...');
       await signIn(email.trim(), password);
       console.log('Login successful, navigation will be handled by AuthContext');
+      
+      // Clear registration flag if login successful
+      try {
+        localStorage.removeItem('recentRegistration');
+      } catch (error) {
+        // Ignore localStorage errors on mobile
+      }
+      
       // Don't set loading to false here - let AuthContext handle navigation
     } catch (error: any) {
       console.error('Login error:', error);
@@ -154,6 +235,31 @@ export default function LoginScreen() {
       });
       Alert.alert('Login Failed', error.message);
       setLoading(false); // Only set loading to false on error
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!canResend || !email.trim()) {
+      Alert.alert('Error', 'Please enter your email address first');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await resendVerificationEmail();
+      Alert.alert(
+        'Verification Email Sent',
+        'Please check your inbox and click the verification link to activate your account.',
+        [{ text: 'OK' }]
+      );
+      
+      // Reset timer
+      setResendTimer(60);
+      setCanResend(false);
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -230,6 +336,27 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Resend Verification Section */}
+        {showResendOption && (
+          <View style={styles.resendContainer}>
+            <Text style={styles.resendTitle}>Need to verify your email?</Text>
+            <Text style={styles.resendText}>
+              If you just registered, you need to verify your email address before signing in.
+            </Text>
+            <Button
+              text={canResend ? "Resend Verification Link" : "Resend Verification Link"}
+              onPress={handleResendVerification}
+              disabled={!canResend || loading}
+              variant="outline"
+            />
+            {!canResend && resendTimer > 0 && (
+              <Text style={styles.resendTimer}>
+                You can resend in {resendTimer} seconds
+              </Text>
+            )}
+          </View>
+        )}
 
         <View style={styles.buttonContainer}>
           <Button

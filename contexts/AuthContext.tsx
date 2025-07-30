@@ -25,6 +25,7 @@ interface UserData {
   vipExpiryDate?: Date;
   createdAt: Date;
   emailVerified: boolean;
+  justRegistered?: boolean; // Flag to track if user just registered
 }
 
 interface AuthContextType {
@@ -36,6 +37,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateUserProfile: (displayName: string) => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
+  clearJustRegistered: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -162,7 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isVIP: data.isVIP || false,
           vipExpiryDate: data.vipExpiryDate?.toDate(),
           createdAt: data.createdAt?.toDate() || new Date(),
-          emailVerified: true
+          emailVerified: true,
+          justRegistered: data.justRegistered || false
         };
 
         // Check and update VIP status if expired
@@ -176,7 +180,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin: userData.isAdmin,
         isEditor: userData.isEditor,
         isVIP: userData.isVIP,
-        vipExpiryDate: userData.vipExpiryDate
+        vipExpiryDate: userData.vipExpiryDate,
+        justRegistered: userData.justRegistered
       });
 
       setUser(firebaseUser);
@@ -246,6 +251,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Update the user profile with display name
       await updateProfile(userCredential.user, {
         displayName: displayName
+      });
+
+      // Create user document with justRegistered flag
+      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      await setDoc(userDocRef, {
+        email: email.trim(),
+        displayName: displayName,
+        phoneNumber: phoneNumber || '',
+        role: 'user',
+        isAdmin: false,
+        isEditor: false,
+        isVIP: false,
+        createdAt: new Date(),
+        emailVerified: false,
+        justRegistered: true // Flag to show resend verification option
       });
 
       // Send email verification
@@ -350,6 +370,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const resendVerificationEmail = async () => {
+    try {
+      if (!user) {
+        throw new Error('No user logged in');
+      }
+
+      console.log('AuthContext: Resending verification email');
+      await sendEmailVerification(user);
+      console.log('AuthContext: Verification email resent successfully');
+    } catch (error: any) {
+      console.error('AuthContext: Resend verification error:', error);
+      
+      let errorMessage = 'Failed to resend verification email';
+      if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many requests. Please wait before trying again.';
+      }
+      
+      throw new Error(errorMessage);
+    }
+  };
+
+  const clearJustRegistered = () => {
+    if (userData) {
+      setUserData({ ...userData, justRegistered: false });
+    }
+  };
+
   const value = {
     user,
     userData,
@@ -358,7 +407,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     logout,
     resetPassword,
-    updateUserProfile
+    updateUserProfile,
+    resendVerificationEmail,
+    clearJustRegistered
   };
 
   return (

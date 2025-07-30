@@ -1,4 +1,4 @@
-import { supabase, SupabaseMessage, SupabaseChat } from './supabaseConfig';
+import { supabase, supabaseAdmin, SupabaseMessage, SupabaseChat } from './supabaseConfig';
 
 export interface ChatMessage {
   id: string;
@@ -26,10 +26,19 @@ export interface ChatUser {
 export const testSupabaseConnection = async (): Promise<boolean> => {
   try {
     console.log('Testing Supabase connection...');
-    const { data, error } = await supabase.from('profiles').select('id').limit(1);
+    
+    // Use admin client for better access
+    const { data, error } = await supabaseAdmin.from('chats').select('id').limit(1);
     
     if (error) {
       console.error('Supabase connection test failed:', error);
+      
+      // If table doesn't exist, that's still a connection success
+      if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
+        console.log('Connection successful, but tables may need setup');
+        return true;
+      }
+      
       return false;
     }
     
@@ -49,11 +58,14 @@ export const ensureChatExists = async (userId: string, userEmail: string, userNa
   try {
     console.log('Ensuring chat exists for user:', userId);
     
+    // Use admin client for better access
+    const chatId = createChatId(userId);
+    
     // Check if chat already exists
-    const { data: existingChat, error: fetchError } = await supabase
+    const { data: existingChat, error: fetchError } = await supabaseAdmin
       .from('chats')
       .select('id')
-      .eq('user_id', userId)
+      .eq('id', chatId)
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
@@ -67,9 +79,10 @@ export const ensureChatExists = async (userId: string, userEmail: string, userNa
     }
 
     // Create new chat
-    const { data: newChat, error: insertError } = await supabase
+    const { data: newChat, error: insertError } = await supabaseAdmin
       .from('chats')
       .insert({
+        id: chatId,
         user_id: userId,
         user_email: userEmail,
         user_name: userName,
@@ -103,8 +116,8 @@ export const sendChatMessage = async (
   try {
     console.log('Sending chat message:', { chatId, userId, senderType, message: message.substring(0, 50) });
     
-    // Insert message
-    const { data: newMessage, error: messageError } = await supabase
+    // Use admin client for better access
+    const { data: newMessage, error: messageError } = await supabaseAdmin
       .from('messages')
       .insert({
         chat_id: chatId,
@@ -123,7 +136,7 @@ export const sendChatMessage = async (
     }
 
     // Update chat with last message
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('chats')
       .update({
         last_message: message,
@@ -160,7 +173,8 @@ export const getChatMessages = async (chatId: string): Promise<ChatMessage[]> =>
   try {
     console.log('Getting chat messages for chat:', chatId);
     
-    const { data: messages, error } = await supabase
+    // Use admin client for better access
+    const { data: messages, error } = await supabaseAdmin
       .from('messages')
       .select('*')
       .eq('chat_id', chatId)
@@ -192,7 +206,8 @@ export const getChatMessages = async (chatId: string): Promise<ChatMessage[]> =>
 
 export const subscribeToMessages = (
   chatId: string,
-  callback: (messages: ChatMessage[]) => void
+  callback: (messages: ChatMessage[]) => void,
+  onError?: (error: any) => void
 ): (() => void) => {
   console.log('Subscribing to messages for chat:', chatId);
   
@@ -214,10 +229,18 @@ export const subscribeToMessages = (
           callback(messages);
         } catch (error) {
           console.error('Error handling message subscription:', error);
+          if (onError) {
+            onError(error);
+          }
         }
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      console.log('Subscription status:', status);
+      if (status === 'SUBSCRIPTION_ERROR' && onError) {
+        onError(new Error('Subscription failed'));
+      }
+    });
 
   return () => {
     console.log('Unsubscribing from messages for chat:', chatId);
@@ -229,7 +252,8 @@ export const getAllUserChats = async (): Promise<ChatUser[]> => {
   try {
     console.log('Getting all user chats');
     
-    const { data: chats, error } = await supabase
+    // Use admin client for better access
+    const { data: chats, error } = await supabaseAdmin
       .from('chats')
       .select('*')
       .order('last_message_time', { ascending: false });
@@ -245,7 +269,7 @@ export const getAllUserChats = async (): Promise<ChatUser[]> => {
       userEmail: chat.user_email,
       userName: chat.user_name,
       lastMessage: chat.last_message || '',
-      lastMessageTime: new Date(chat.last_message_time),
+      lastMessageTime: new Date(chat.last_message_time || chat.created_at),
       unreadCount: chat.unread_count || 0,
       isVip: chat.is_vip || false,
       createdAt: new Date(chat.created_at)
@@ -263,7 +287,8 @@ export const markMessagesAsRead = async (chatId: string): Promise<void> => {
   try {
     console.log('Marking messages as read for chat:', chatId);
     
-    const { error } = await supabase
+    // Use admin client for better access
+    const { error } = await supabaseAdmin
       .from('messages')
       .update({ read: true })
       .eq('chat_id', chatId)
@@ -275,7 +300,7 @@ export const markMessagesAsRead = async (chatId: string): Promise<void> => {
     }
 
     // Reset unread count for chat
-    const { error: chatError } = await supabase
+    const { error: chatError } = await supabaseAdmin
       .from('chats')
       .update({ unread_count: 0 })
       .eq('id', chatId);

@@ -3,10 +3,10 @@ import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platfor
 import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
 import Button from '../../components/Button';
-import { Ionicons } from '@expo/vector-icons';
-import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import CountryPicker from 'react-native-country-picker-modal';
 import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
+import { Ionicons } from '@expo/vector-icons';
+import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 
 const styles = StyleSheet.create({
   container: {
@@ -61,6 +61,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  phoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  countryPicker: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
+  },
+  phoneInput: {
+    flex: 1,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+  },
   passwordContainer: {
     position: 'relative',
   },
@@ -79,30 +99,6 @@ const styles = StyleSheet.create({
     right: spacing.md,
     top: spacing.md,
     padding: spacing.xs,
-  },
-  phoneContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  countryPickerContainer: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 80,
-  },
-  phoneInput: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    fontSize: 16,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   buttonContainer: {
     marginTop: spacing.lg,
@@ -127,6 +123,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: spacing.xs,
   },
+  loadingContainer: {
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.primary,
+    marginTop: spacing.sm,
+    fontWeight: '600',
+  },
 });
 
 export default function RegisterScreen() {
@@ -139,10 +145,11 @@ export default function RegisterScreen() {
   });
   const [countryCode, setCountryCode] = useState('US');
   const [callingCode, setCallingCode] = useState('1');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showCountryPicker, setShowCountryPicker] = useState(false);
+
   const { signUp } = useAuth();
 
   const validateForm = () => {
@@ -162,12 +169,12 @@ export default function RegisterScreen() {
       Alert.alert('Error', 'Please enter a password');
       return false;
     }
-    if (formData.password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
-      return false;
-    }
     if (formData.password !== formData.confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
+      return false;
+    }
+    if (formData.password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
       return false;
     }
 
@@ -190,25 +197,34 @@ export default function RegisterScreen() {
     if (!validateForm()) return;
 
     setLoading(true);
+    
     try {
       const fullPhoneNumber = `+${callingCode}${formData.phoneNumber}`;
+      
       await signUp(
         formData.email.trim(),
         formData.password,
         formData.displayName.trim(),
         fullPhoneNumber
       );
-      console.log('Registration successful');
-      
-      // Show email verification alert
+
+      // Store registration time for resend verification feature
+      try {
+        localStorage.setItem('recentRegistration', Date.now().toString());
+      } catch (error) {
+        // localStorage not available on mobile, ignore
+      }
+
       Alert.alert(
         'Registration Successful!',
-        'Please check your email and click the verification link to activate your account. You must verify your email before you can sign in.',
-        [{ text: 'OK' }]
+        'Please check your email and click the verification link to activate your account. You can then sign in.',
+        [
+          {
+            text: 'Go to Sign In',
+            onPress: () => router.replace('/auth/login')
+          }
+        ]
       );
-      
-      // Navigate to login
-      router.replace('/auth/login');
     } catch (error: any) {
       console.error('Registration error:', error);
       Alert.alert('Registration Failed', error.message);
@@ -260,7 +276,7 @@ export default function RegisterScreen() {
             resizeMode="contain"
           />
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join our trading community</Text>
+          <Text style={styles.subtitle}>Join us today</Text>
         </View>
 
         <View style={styles.inputContainer}>
@@ -274,7 +290,7 @@ export default function RegisterScreen() {
             value={formData.displayName}
             onChangeText={(value) => updateFormData('displayName', value)}
             autoCapitalize="words"
-            autoCorrect={false}
+            editable={!loading}
           />
         </View>
 
@@ -291,6 +307,7 @@ export default function RegisterScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            editable={!loading}
           />
         </View>
 
@@ -300,9 +317,9 @@ export default function RegisterScreen() {
           </Text>
           <View style={styles.phoneContainer}>
             <TouchableOpacity 
-              style={styles.countryPickerContainer}
+              style={styles.countryPicker} 
               onPress={openCountryPicker}
-              activeOpacity={0.7}
+              disabled={loading}
             >
               <CountryPicker
                 countryCode={countryCode as any}
@@ -310,11 +327,11 @@ export default function RegisterScreen() {
                 withFlag
                 withCallingCode
                 withEmoji
-                visible={showCountryPicker}
                 onSelect={onSelectCountry}
+                visible={showCountryPicker}
                 onClose={() => setShowCountryPicker(false)}
               />
-              <Text style={{ color: colors.text, marginLeft: 4 }}>
+              <Text style={{ color: colors.text, marginLeft: spacing.xs }}>
                 +{callingCode}
               </Text>
             </TouchableOpacity>
@@ -325,15 +342,13 @@ export default function RegisterScreen() {
               value={formData.phoneNumber}
               onChangeText={(value) => updateFormData('phoneNumber', value)}
               keyboardType="phone-pad"
-              autoCorrect={false}
+              editable={!loading}
             />
           </View>
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>
-            Password <Text style={styles.requiredLabel}>*</Text>
-          </Text>
+          <Text style={styles.label}>Password</Text>
           <View style={styles.passwordContainer}>
             <TextInput
               style={styles.passwordInput}
@@ -344,24 +359,24 @@ export default function RegisterScreen() {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!loading}
             />
             <TouchableOpacity 
               style={styles.eyeIcon}
               onPress={togglePasswordVisibility}
+              disabled={loading}
             >
               <Ionicons 
                 name={showPassword ? 'eye-off' : 'eye'} 
                 size={24} 
-                color={colors.textMuted} 
+                color={loading ? colors.textMuted : colors.textSecondary} 
               />
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>
-            Confirm Password <Text style={styles.requiredLabel}>*</Text>
-          </Text>
+          <Text style={styles.label}>Confirm Password</Text>
           <View style={styles.passwordContainer}>
             <TextInput
               style={styles.passwordInput}
@@ -372,15 +387,17 @@ export default function RegisterScreen() {
               secureTextEntry={!showConfirmPassword}
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!loading}
             />
             <TouchableOpacity 
               style={styles.eyeIcon}
               onPress={toggleConfirmPasswordVisibility}
+              disabled={loading}
             >
               <Ionicons 
                 name={showConfirmPassword ? 'eye-off' : 'eye'} 
                 size={24} 
-                color={colors.textMuted} 
+                color={loading ? colors.textMuted : colors.textSecondary} 
               />
             </TouchableOpacity>
           </View>
@@ -388,18 +405,24 @@ export default function RegisterScreen() {
 
         <View style={styles.buttonContainer}>
           <Button
-            text="Create Account"
+            text={loading ? "Creating Account..." : "Create Account"}
             onPress={handleRegister}
             loading={loading}
             disabled={loading}
           />
+          
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Setting up your account...</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.linkContainer}>
           <View style={styles.signInContainer}>
-            <Text style={styles.signInText}>Already have an account?</Text>
-            <TouchableOpacity onPress={handleLogin}>
-              <Text style={styles.signInLink}>Sign In</Text>
+            <Text style={[styles.signInText, loading && { opacity: 0.5 }]}>Already have an account?</Text>
+            <TouchableOpacity onPress={handleLogin} disabled={loading}>
+              <Text style={[styles.signInLink, loading && { opacity: 0.5 }]}>Sign In</Text>
             </TouchableOpacity>
           </View>
         </View>

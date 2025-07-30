@@ -27,6 +27,18 @@ export default function AnalysisCard({ analysis }: AnalysisCardProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [showLoadingMessage, setShowLoadingMessage] = useState(false);
+
+  React.useEffect(() => {
+    if (analysis.imageUrl && imageLoading) {
+      // Show loading message after 2 seconds
+      const timer = setTimeout(() => {
+        setShowLoadingMessage(true);
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [analysis.imageUrl, imageLoading]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -54,11 +66,13 @@ export default function AnalysisCard({ analysis }: AnalysisCardProps) {
   const handleImageLoad = () => {
     setImageLoading(false);
     setImageError(false);
+    setShowLoadingMessage(false);
   };
 
   const handleImageError = () => {
     setImageLoading(false);
     setImageError(true);
+    setShowLoadingMessage(false);
   };
 
   return (
@@ -74,7 +88,9 @@ export default function AnalysisCard({ analysis }: AnalysisCardProps) {
             {imageLoading && (
               <View style={styles.imageLoader}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={styles.loadingText}>Loading image...</Text>
+                <Text style={styles.loadingText}>
+                  {showLoadingMessage ? 'Loading Images...' : 'Loading image...'}
+                </Text>
               </View>
             )}
             {!imageError && (
@@ -166,9 +182,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   loadingText: {
-    fontSize: 12,
-    color: colors.textMuted,
+    fontSize: 14,
+    color: colors.primary,
     marginTop: spacing.xs,
+    fontWeight: '600',
   },
   imageError: {
     position: 'absolute',

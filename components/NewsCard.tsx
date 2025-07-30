@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
 import NewsModal from './NewsModal';
 
@@ -18,6 +18,20 @@ interface NewsCardProps {
 
 export default function NewsCard({ article }: NewsCardProps) {
   const [modalVisible, setModalVisible] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const [showLoadingMessage, setShowLoadingMessage] = useState(false);
+
+  React.useEffect(() => {
+    if (article.imageUrl && imageLoading) {
+      // Show loading message after 2 seconds
+      const timer = setTimeout(() => {
+        setShowLoadingMessage(true);
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [article.imageUrl, imageLoading]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleString('en-US', {
@@ -48,15 +62,46 @@ export default function NewsCard({ article }: NewsCardProps) {
     return article.summary.length > 120 || article.content.length > 0;
   };
 
+  const handleImageLoad = () => {
+    setImageLoading(false);
+    setImageError(false);
+    setShowLoadingMessage(false);
+  };
+
+  const handleImageError = () => {
+    setImageLoading(false);
+    setImageError(true);
+    setShowLoadingMessage(false);
+  };
+
   return (
     <>
       <TouchableOpacity style={styles.newsCard} onPress={openModal} activeOpacity={0.7}>
         {article.imageUrl && (
-          <Image 
-            source={{ uri: article.imageUrl }} 
-            style={styles.newsImage}
-            resizeMode="cover"
-          />
+          <View style={styles.imageContainer}>
+            {imageLoading && (
+              <View style={styles.imageLoader}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.loadingText}>
+                  {showLoadingMessage ? 'Loading Images...' : 'Loading image...'}
+                </Text>
+              </View>
+            )}
+            {!imageError && (
+              <Image 
+                source={{ uri: article.imageUrl }} 
+                style={[styles.newsImage, imageLoading && styles.imageHidden]}
+                resizeMode="cover"
+                onLoad={handleImageLoad}
+                onError={handleImageError}
+              />
+            )}
+            {imageError && (
+              <View style={styles.imageError}>
+                <Text style={styles.errorText}>Failed to load image</Text>
+              </View>
+            )}
+          </View>
         )}
         
         <View style={styles.newsContent}>
@@ -102,10 +147,47 @@ const styles = StyleSheet.create({
     elevation: 5,
     overflow: 'hidden',
   },
-  newsImage: {
-    width: '100%',
+  imageContainer: {
     height: 200,
     backgroundColor: colors.background,
+    position: 'relative',
+  },
+  newsImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageHidden: {
+    opacity: 0,
+  },
+  imageLoader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.primary,
+    marginTop: spacing.xs,
+    fontWeight: '600',
+  },
+  imageError: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
   newsContent: {
     padding: spacing.md,

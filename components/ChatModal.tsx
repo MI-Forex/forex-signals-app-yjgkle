@@ -386,7 +386,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
               style={[
                 styles.textInput,
                 inputFocused && styles.textInputFocused,
-                (!sending && !loading && !error) ? {} : styles.textInputDisabled
+                (!sending && !loading && !error && connectionStatus === 'connected') ? {} : styles.textInputDisabled
               ]}
               value={newMessage}
               onChangeText={handleTextChange}

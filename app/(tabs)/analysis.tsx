@@ -32,12 +32,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.text,
   },
+  refreshingContainer: {
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  refreshingText: {
+    fontSize: 14,
+    color: colors.primary,
+    marginTop: spacing.sm,
+    fontWeight: '600',
+  },
 });
 
 export default function AnalysisScreen() {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
 
   const { user, userData } = useAuth();
 
@@ -61,19 +72,45 @@ export default function AnalysisScreen() {
       console.log('Analysis updated:', analysisData.length);
       setAnalyses(analysisData);
       setLoading(false);
-      setRefreshing(false);
+      
+      // Complete refresh if we're refreshing
+      if (refreshing) {
+        setTimeout(() => {
+          setRefreshing(false);
+          setLastRefreshTime(new Date());
+          console.log('Analysis refresh completed');
+        }, 1000);
+      }
     }, (error) => {
       console.error('Error fetching analysis:', error);
       setLoading(false);
       setRefreshing(false);
-      Alert.alert('Error', 'Failed to load analysis');
+      
+      let errorMessage = 'Failed to load analysis';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      Alert.alert('Error', errorMessage);
     });
 
     return unsubscribe;
   }, [user]);
 
   const handleRefresh = () => {
+    console.log('Pull to refresh triggered for analysis');
     setRefreshing(true);
+    setLastRefreshTime(new Date());
+    
+    // Fallback timeout in case the listener doesn't fire
+    setTimeout(() => {
+      if (refreshing) {
+        console.log('Analysis refresh timeout - completing refresh');
+        setRefreshing(false);
+      }
+    }, 5000);
   };
 
   const handleManageAnalysis = () => {
@@ -85,8 +122,13 @@ export default function AnalysisScreen() {
 
   if (loading) {
     return (
-      <View style={commonStyles.loading}>
-        <Text style={commonStyles.text}>Loading analysis...</Text>
+      <View style={commonStyles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Market Analysis</Text>
+        </View>
+        <View style={commonStyles.loading}>
+          <Text style={commonStyles.text}>Loading analysis...</Text>
+        </View>
       </View>
     );
   }
@@ -112,12 +154,27 @@ export default function AnalysisScreen() {
             refreshing={refreshing}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
+            colors={[colors.primary]}
+            title="Pull to refresh analysis"
+            titleColor={colors.textMuted}
           />
         }
+        showsVerticalScrollIndicator={false}
       >
+        {refreshing && (
+          <View style={styles.refreshingContainer}>
+            <Text style={styles.refreshingText}>Refreshing analysis...</Text>
+          </View>
+        )}
+        
         {analyses.length === 0 ? (
           <View style={[commonStyles.centerContent, { minHeight: 200 }]}>
             <Text style={commonStyles.textMuted}>No analysis available</Text>
+            {lastRefreshTime && (
+              <Text style={[commonStyles.textMuted, { fontSize: 12, marginTop: spacing.sm }]}>
+                Last updated: {lastRefreshTime.toLocaleTimeString()}
+              </Text>
+            )}
           </View>
         ) : (
           analyses.map((analysis) => (

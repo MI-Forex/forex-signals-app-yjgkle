@@ -102,6 +102,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     marginTop: spacing.sm,
+    fontWeight: '600',
   },
 });
 
@@ -143,12 +144,13 @@ export default function SignalsScreen() {
       setSignals(signalsData);
       setLoading(false);
       
-      // Only set refreshing to false if we're actually refreshing
+      // Complete refresh if we're refreshing
       if (refreshing) {
         setTimeout(() => {
           setRefreshing(false);
           setLastRefreshTime(new Date());
-        }, 500); // Small delay to show the refresh completed
+          console.log('Signals refresh completed');
+        }, 1000); // Show refresh completed for 1 second
       }
     }, (error) => {
       console.error('Error fetching signals:', error);
@@ -200,12 +202,6 @@ export default function SignalsScreen() {
     setFilteredSignals(filtered);
   }, [signals, filters, signalTypeFilter, userData]);
 
-  const loadSignals = async () => {
-    // This function is called by the refresh control
-    // The real-time listener will handle the actual data loading
-    console.log('Manual refresh triggered');
-  };
-
   const applySignalTypeFilter = (signalsToFilter: Signal[], typeFilter: 'all' | 'normal' | 'vip') => {
     if (typeFilter === 'all') {
       // Show all signals if user is VIP, otherwise only normal signals
@@ -234,21 +230,20 @@ export default function SignalsScreen() {
   };
 
   const handleRefresh = async () => {
-    console.log('Pull to refresh triggered');
+    console.log('Pull to refresh triggered for signals');
     setRefreshing(true);
     setLastRefreshTime(new Date());
     
-    // Force a small delay to ensure the refresh indicator is visible
     // The onSnapshot listener will automatically update the data
     // and set refreshing to false when new data arrives
     
     // Fallback timeout in case the listener doesn't fire
     setTimeout(() => {
       if (refreshing) {
-        console.log('Refresh timeout - completing refresh');
+        console.log('Signals refresh timeout - completing refresh');
         setRefreshing(false);
       }
-    }, 3000);
+    }, 5000);
   };
 
   const applyFilters = (newFilters: typeof filters) => {
@@ -355,7 +350,7 @@ export default function SignalsScreen() {
             onRefresh={handleRefresh}
             tintColor={colors.primary}
             colors={[colors.primary]}
-            title="Pull to refresh"
+            title="Pull to refresh signals"
             titleColor={colors.textMuted}
           />
         }

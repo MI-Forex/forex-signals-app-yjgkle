@@ -1,27 +1,40 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
-import { commonStyles, colors } from '../styles/commonStyles';
+import { commonStyles, colors, spacing } from '../styles/commonStyles';
 import { initializeSupabaseTables } from '../utils/supabaseConfig';
 
 export default function IndexScreen() {
   const { user, loading } = useAuth();
   const [initializing, setInitializing] = useState(true);
+  const [showLoadingMessage, setShowLoadingMessage] = useState(false);
 
   useEffect(() => {
     const initialize = async () => {
       try {
+        console.log('IndexScreen: Starting app initialization');
+        
+        // Show loading message after 2 seconds
+        const loadingTimer = setTimeout(() => {
+          setShowLoadingMessage(true);
+        }, 2000);
+
         // Initialize Supabase tables silently
         await initializeSupabaseTables();
+        
+        // Clear the loading message timer
+        clearTimeout(loadingTimer);
         
         // Minimal delay for auth to settle
         setTimeout(() => {
           setInitializing(false);
+          setShowLoadingMessage(false);
         }, 500);
       } catch (error) {
         console.error('Error initializing app:', error);
         setInitializing(false);
+        setShowLoadingMessage(false);
       }
     };
 
@@ -42,8 +55,18 @@ export default function IndexScreen() {
 
   if (loading || initializing) {
     return (
-      <View style={[commonStyles.container, commonStyles.centered]}>
+      <View style={[commonStyles.container, commonStyles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
+        {showLoadingMessage && (
+          <Text style={{
+            fontSize: 16,
+            color: colors.textMuted,
+            marginTop: spacing.md,
+            textAlign: 'center'
+          }}>
+            Loading App...
+          </Text>
+        )}
       </View>
     );
   }

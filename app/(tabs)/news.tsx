@@ -33,12 +33,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.text,
   },
+  refreshingContainer: {
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  refreshingText: {
+    fontSize: 14,
+    color: colors.primary,
+    marginTop: spacing.sm,
+    fontWeight: '600',
+  },
 });
 
 export default function NewsScreen() {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
 
   const { user, userData } = useAuth();
 
@@ -62,19 +73,45 @@ export default function NewsScreen() {
       console.log('News updated:', newsData.length);
       setArticles(newsData);
       setLoading(false);
-      setRefreshing(false);
+      
+      // Complete refresh if we're refreshing
+      if (refreshing) {
+        setTimeout(() => {
+          setRefreshing(false);
+          setLastRefreshTime(new Date());
+          console.log('News refresh completed');
+        }, 1000);
+      }
     }, (error) => {
       console.error('Error fetching news:', error);
       setLoading(false);
       setRefreshing(false);
-      Alert.alert('Error', 'Failed to load news');
+      
+      let errorMessage = 'Failed to load news';
+      if (error.message.includes('network')) {
+        errorMessage = 'Please check internet connectivity';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Please check your credentials';
+      }
+      
+      Alert.alert('Error', errorMessage);
     });
 
     return unsubscribe;
   }, [user]);
 
   const handleRefresh = () => {
+    console.log('Pull to refresh triggered for news');
     setRefreshing(true);
+    setLastRefreshTime(new Date());
+    
+    // Fallback timeout in case the listener doesn't fire
+    setTimeout(() => {
+      if (refreshing) {
+        console.log('News refresh timeout - completing refresh');
+        setRefreshing(false);
+      }
+    }, 5000);
   };
 
   const handleManageNews = () => {
@@ -86,8 +123,13 @@ export default function NewsScreen() {
 
   if (loading) {
     return (
-      <View style={commonStyles.loading}>
-        <Text style={commonStyles.text}>Loading news...</Text>
+      <View style={commonStyles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Forex News</Text>
+        </View>
+        <View style={commonStyles.loading}>
+          <Text style={commonStyles.text}>Loading news...</Text>
+        </View>
       </View>
     );
   }
@@ -113,12 +155,27 @@ export default function NewsScreen() {
             refreshing={refreshing}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
+            colors={[colors.primary]}
+            title="Pull to refresh news"
+            titleColor={colors.textMuted}
           />
         }
+        showsVerticalScrollIndicator={false}
       >
+        {refreshing && (
+          <View style={styles.refreshingContainer}>
+            <Text style={styles.refreshingText}>Refreshing news...</Text>
+          </View>
+        )}
+        
         {articles.length === 0 ? (
           <View style={[commonStyles.centerContent, { minHeight: 200 }]}>
             <Text style={commonStyles.textMuted}>No news articles available</Text>
+            {lastRefreshTime && (
+              <Text style={[commonStyles.textMuted, { fontSize: 12, marginTop: spacing.sm }]}>
+                Last updated: {lastRefreshTime.toLocaleTimeString()}
+              </Text>
+            )}
           </View>
         ) : (
           articles.map((article) => (
