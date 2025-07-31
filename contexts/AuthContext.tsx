@@ -213,7 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      console.log('AuthContext: User data loaded:', {
+      console.log('AuthContext: User data loaded successfully:', {
         uid: userData.uid,
         email: userData.email,
         role: userData.role,
@@ -224,13 +224,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         justRegistered: userData.justRegistered
       });
 
+      console.log('AuthContext: Setting user and userData state');
+
       setUser(firebaseUser);
       setUserData(userData);
 
+      console.log('AuthContext: User and userData state set successfully');
+
       // Navigate to app if this is initial load
       if (initializing || loading) {
-        console.log('AuthContext: Navigating to app');
-        router.replace('/(tabs)/signals');
+        console.log('AuthContext: Preparing to navigate to app');
+        setTimeout(() => {
+          try {
+            console.log('AuthContext: Executing navigation to /(tabs)/signals');
+            router.replace('/(tabs)/signals');
+            console.log('AuthContext: Navigation completed successfully');
+          } catch (navError) {
+            console.error('AuthContext: Navigation error:', navError);
+            // Fallback navigation
+            console.log('AuthContext: Attempting fallback navigation');
+            router.push('/(tabs)/signals');
+          }
+        }, 100); // Small delay to ensure proper navigation
       }
 
     } catch (error) {
@@ -254,7 +269,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         
         if (initializing || loading) {
-          router.replace('/(tabs)/signals');
+          setTimeout(() => {
+            try {
+              router.replace('/(tabs)/signals');
+            } catch (navError) {
+              console.error('AuthContext: Navigation error:', navError);
+              // Fallback navigation
+              router.push('/(tabs)/signals');
+            }
+          }, 100); // Small delay to ensure proper navigation
         }
       } else {
         // For other errors, sign out and redirect to login

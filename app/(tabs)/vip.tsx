@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.xl,
     marginBottom: spacing.lg,
-    ...shadows.medium,
+    ...shadows.md,
   },
   vipTitle: {
     fontSize: 24,
@@ -341,13 +341,13 @@ export default function VIPScreen() {
             text="Dismiss"
             onPress={dismissConnectivityError}
             variant="outline"
-            style={{ 
+            style={StyleSheet.flatten({ 
               marginTop: spacing.sm, 
               paddingHorizontal: spacing.md, 
               paddingVertical: spacing.xs,
               borderColor: colors.white,
-            }}
-            textStyle={{ color: colors.white, fontSize: 12 }}
+            })}
+            textStyle={StyleSheet.flatten({ color: colors.white, fontSize: 12 })}
           />
         </View>
       )}
@@ -375,31 +375,28 @@ export default function VIPScreen() {
             </Text>
           </View>
         ) : (
-          <LinearGradient
-            colors={[colors.primary, colors.secondary]}
-            style={styles.vipCard}
-          >
-            <Text style={[styles.vipTitle, { color: colors.white }]}>
+          <View style={[styles.vipCard, { backgroundColor: colors.primary }]}>
+            <Text style={StyleSheet.flatten([styles.vipTitle, { color: colors.white }])}>
               Premium VIP Membership
             </Text>
             
             <View style={styles.priceContainer}>
-              <Text style={[styles.price, { color: colors.white }]}>
+              <Text style={StyleSheet.flatten([styles.price, { color: colors.white }])}>
                 ${vipSettings.monthlyPrice}
               </Text>
-              <Text style={[styles.priceSubtext, { color: colors.white, opacity: 0.9 }]}>
+              <Text style={StyleSheet.flatten([styles.priceSubtext, { color: colors.white, opacity: 0.9 }])}>
                 per month
               </Text>
             </View>
 
             <View style={styles.featuresContainer}>
-              <Text style={[styles.featuresTitle, { color: colors.white }]}>
+              <Text style={StyleSheet.flatten([styles.featuresTitle, { color: colors.white }])}>
                 Premium Features
               </Text>
               {vipSettings.features.map((feature, index) => (
                 <View key={index} style={styles.feature}>
                   <Ionicons name="checkmark-circle" size={20} color={colors.white} />
-                  <Text style={[styles.featureText, { color: colors.white }]}>
+                  <Text style={StyleSheet.flatten([styles.featureText, { color: colors.white }])}>
                     {feature}
                   </Text>
                 </View>
@@ -412,7 +409,7 @@ export default function VIPScreen() {
               variant="secondary"
               style={styles.upgradeButton}
             />
-          </LinearGradient>
+          </View>
         )}
 
         <Button

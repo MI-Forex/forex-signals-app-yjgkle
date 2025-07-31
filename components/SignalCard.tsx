@@ -86,7 +86,7 @@ export default function SignalCard({ signal }: SignalCardProps) {
           )}
         </View>
         <View style={styles.headerRight}>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
+          <View style={StyleSheet.flatten([styles.statusBadge, { backgroundColor: getStatusColor() }])}>
             <Text style={styles.statusText}>{getStatusText()}</Text>
           </View>
         </View>
@@ -94,8 +94,8 @@ export default function SignalCard({ signal }: SignalCardProps) {
 
       <View style={styles.content}>
         <View style={styles.row}>
-          <View style={[styles.typeBadge, { backgroundColor: getTypeColor() + '20' }]}>
-            <Text style={[styles.typeText, { color: getTypeColor() }]}>
+          <View style={StyleSheet.flatten([styles.typeBadge, { backgroundColor: getTypeColor() + '20' }])}>
+            <Text style={StyleSheet.flatten([styles.typeText, { color: getTypeColor() }])}>
               {formatSignalType(signal.type)}
             </Text>
           </View>
@@ -113,11 +113,11 @@ export default function SignalCard({ signal }: SignalCardProps) {
           </View>
           <View style={styles.priceItem}>
             <Text style={styles.priceLabel}>SL</Text>
-            <Text style={[styles.priceValue, { color: colors.danger }]}>{signal.stopLoss}</Text>
+            <Text style={StyleSheet.flatten([styles.priceValue, { color: colors.danger }])}>{signal.stopLoss}</Text>
           </View>
           <View style={styles.priceItem}>
             <Text style={styles.priceLabel}>TP</Text>
-            <Text style={[styles.priceValue, { color: colors.success }]}>{signal.takeProfit}</Text>
+            <Text style={StyleSheet.flatten([styles.priceValue, { color: colors.success }])}>{signal.takeProfit}</Text>
           </View>
         </View>
 

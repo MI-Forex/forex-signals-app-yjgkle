@@ -48,8 +48,8 @@ export default function Button({
   gradient,
   children
 }: ButtonProps) {
-  const getButtonStyle = (): ViewStyle[] => {
-    const baseStyles = [buttonStyles.base];
+  const getButtonStyle = (): ViewStyle => {
+    const baseStyles: ViewStyle[] = [buttonStyles.base];
     
     if (size === 'small') baseStyles.push(buttonStyles.small);
     if (size === 'large') baseStyles.push(buttonStyles.large);
@@ -71,7 +71,8 @@ export default function Button({
       }
     }
     
-    return baseStyles;
+    // Flatten the styles to avoid array issues in web
+    return StyleSheet.flatten(baseStyles);
   };
 
   const getTextColor = (): string => {
@@ -91,17 +92,17 @@ export default function Button({
   };
 
   const getGradientColors = (): string[] => {
-    if (gradient) return gradient;
+    if (gradient && Array.isArray(gradient)) return gradient;
     
     switch (variant) {
       case 'primary':
-        return colors.gradientPrimary;
+        return Array.isArray(colors.gradientPrimary) ? colors.gradientPrimary : [colors.primary, colors.primaryDark];
       case 'success':
-        return colors.gradientSuccess;
+        return Array.isArray(colors.gradientSuccess) ? colors.gradientSuccess : [colors.success, colors.success];
       case 'warning':
-        return colors.gradientWarning;
+        return Array.isArray(colors.gradientWarning) ? colors.gradientWarning : [colors.warning, colors.warning];
       case 'danger':
-        return colors.gradientDanger;
+        return Array.isArray(colors.gradientDanger) ? colors.gradientDanger : [colors.danger, colors.danger];
       default:
         return [colors.primary, colors.primaryDark];
     }
@@ -121,33 +122,72 @@ export default function Button({
   );
 
   if (variant === 'gradient') {
+    try {
+      return (
+        <TouchableOpacity
+          style={StyleSheet.flatten([getButtonStyle(), styles.button])}
+          onPress={onPress}
+          disabled={disabled || loading}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={getGradientColors()}
+            style={styles.gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            {buttonContent}
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    } catch (gradientError) {
+      console.error('Button: Gradient error, falling back to solid color:', gradientError);
+      // Fallback to solid color button
+      return (
+        <TouchableOpacity
+          style={getButtonStyle()}
+          onPress={onPress}
+          disabled={disabled || loading}
+          activeOpacity={0.8}
+        >
+          {buttonContent}
+        </TouchableOpacity>
+      );
+    }
+  }
+
+  try {
     return (
       <TouchableOpacity
-        style={[getButtonStyle(), styles.button]}
+        style={getButtonStyle()}
         onPress={onPress}
         disabled={disabled || loading}
         activeOpacity={0.8}
       >
-        <LinearGradient
-          colors={getGradientColors()}
-          style={styles.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          {buttonContent}
-        </LinearGradient>
+        {buttonContent}
+      </TouchableOpacity>
+    );
+  } catch (buttonError) {
+    console.error('Button: Rendering error, using fallback:', buttonError);
+    // Fallback button with minimal styling
+    return (
+      <TouchableOpacity
+        style={{
+          backgroundColor: colors.primary,
+          paddingVertical: 12,
+          paddingHorizontal: 24,
+          borderRadius: 8,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        onPress={onPress}
+        disabled={disabled || loading}
+        activeOpacity={0.8}
+      >
+        <Text style={{ color: colors.white, fontSize: 16, fontWeight: '600' }}>
+          {text}
+        </Text>
       </TouchableOpacity>
     );
   }
-
-  return (
-    <TouchableOpacity
-      style={getButtonStyle()}
-      onPress={onPress}
-      disabled={disabled || loading}
-      activeOpacity={0.8}
-    >
-      {buttonContent}
-    </TouchableOpacity>
-  );
 }

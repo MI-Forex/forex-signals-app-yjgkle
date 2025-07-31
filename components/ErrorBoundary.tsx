@@ -62,6 +62,11 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     if (error.message.includes('TurboModuleRegistry') || error.message.includes('RNGoogleSignin')) {
       console.error('TurboModule error detected:', error.message);
     }
+    
+    // Log CSS style errors
+    if (error.message.includes('CSSStyleDeclaration') || error.message.includes('indexed property')) {
+      console.error('CSS style error detected:', error.message);
+    }
   }
 
   resetError = () => {
@@ -82,7 +87,10 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
         <View style={styles.container}>
           <Text style={styles.title}>Something went wrong</Text>
           <Text style={styles.message}>
-            The app encountered an unexpected error. This might be due to a missing native module or configuration issue.
+            {this.state.error?.message?.includes('CSSStyleDeclaration') || this.state.error?.message?.includes('indexed property')
+              ? 'The app encountered a styling issue. This is likely due to a compatibility problem with the web platform.'
+              : 'The app encountered an unexpected error. This might be due to a missing native module or configuration issue.'
+            }
           </Text>
           {this.state.error && (
             <Text style={styles.errorDetails}>

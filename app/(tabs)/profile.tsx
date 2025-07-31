@@ -264,13 +264,13 @@ export default function ProfileScreen() {
             text="Dismiss"
             onPress={dismissConnectivityError}
             variant="outline"
-            style={{ 
+            style={StyleSheet.flatten({ 
               marginTop: spacing.sm, 
               paddingHorizontal: spacing.md, 
               paddingVertical: spacing.xs,
               borderColor: colors.white,
-            }}
-            textStyle={{ color: colors.white, fontSize: 12 }}
+            })}
+            textStyle={StyleSheet.flatten({ color: colors.white, fontSize: 12 })}
           />
         </View>
       )}
@@ -320,7 +320,7 @@ export default function ProfileScreen() {
             text="Update Profile"
             onPress={handleUpdateProfile}
             variant="primary"
-            style={{ marginBottom: spacing.md }}
+            style={StyleSheet.flatten({ marginBottom: spacing.md })}
           />
 
           <Button

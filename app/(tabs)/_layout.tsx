@@ -5,6 +5,7 @@ import { colors } from '../../styles/commonStyles';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function TabLayout() {
+  console.log('TabLayout: Component rendering');
   const { userData } = useAuth();
   
   // Check if user is admin or editor - more comprehensive check
@@ -22,6 +23,8 @@ export default function TabLayout() {
     isEditor: userData?.isEditor,
     isAdminOrEditor
   });
+
+  console.log('TabLayout: Rendering tabs with isAdminOrEditor:', isAdminOrEditor);
 
   return (
     <Tabs

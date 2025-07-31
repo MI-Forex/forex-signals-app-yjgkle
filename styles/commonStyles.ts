@@ -1,4 +1,4 @@
-import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { StyleSheet, ViewStyle, TextStyle, Platform } from 'react-native';
 
 export const colors = {
   primary: '#3b82f6',
@@ -81,6 +81,10 @@ export const shadows = {
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+    // Add web-compatible shadow
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+    }),
   },
   md: {
     shadowColor: colors.shadow,
@@ -91,6 +95,10 @@ export const shadows = {
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 4,
+    // Add web-compatible shadow
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    }),
   },
   lg: {
     shadowColor: colors.shadow,
@@ -101,6 +109,10 @@ export const shadows = {
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
+    // Add web-compatible shadow
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 8px 12px rgba(0, 0, 0, 0.15)',
+    }),
   },
   xl: {
     shadowColor: colors.shadow,
@@ -111,6 +123,10 @@ export const shadows = {
     shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 12,
+    // Add web-compatible shadow
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 12px 16px rgba(0, 0, 0, 0.2)',
+    }),
   },
   xxl: {
     shadowColor: colors.shadow,
@@ -121,6 +137,10 @@ export const shadows = {
     shadowOpacity: 0.25,
     shadowRadius: 24,
     elevation: 16,
+    // Add web-compatible shadow
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 20px 24px rgba(0, 0, 0, 0.25)',
+    }),
   },
 };
 
@@ -243,6 +263,9 @@ export const commonStyles = StyleSheet.create({
   wrapper: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  content: {
+    flex: 1,
   },
   centerContent: {
     flexGrow: 1,

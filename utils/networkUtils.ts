@@ -4,21 +4,31 @@ import NetInfo from '@react-native-community/netinfo';
 export const checkInternetConnectivity = async (): Promise<boolean> => {
   try {
     console.log('NetworkUtils: Checking internet connectivity...');
-    const netInfoState = await NetInfo.fetch();
-    console.log('NetworkUtils: Network state:', {
-      isConnected: netInfoState.isConnected,
-      isInternetReachable: netInfoState.isInternetReachable,
-      type: netInfoState.type
+    
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise<boolean>((_, reject) => {
+      setTimeout(() => reject(new Error('Network check timeout')), 5000);
     });
     
-    // Check if we're connected and have internet access
-    const isConnected = netInfoState.isConnected === true && netInfoState.isInternetReachable === true;
-    console.log('NetworkUtils: Internet connectivity result:', isConnected);
+    const netInfoPromise = NetInfo.fetch().then(netInfoState => {
+      console.log('NetworkUtils: Network state:', {
+        isConnected: netInfoState.isConnected,
+        isInternetReachable: netInfoState.isInternetReachable,
+        type: netInfoState.type
+      });
+      
+      // Check if we're connected and have internet access
+      const isConnected = netInfoState.isConnected === true && netInfoState.isInternetReachable === true;
+      console.log('NetworkUtils: Internet connectivity result:', isConnected);
+      
+      return isConnected;
+    });
     
-    return isConnected;
+    return await Promise.race([netInfoPromise, timeoutPromise]);
   } catch (error) {
     console.error('NetworkUtils: Error checking network connectivity:', error);
-    return false;
+    // Return true by default to avoid blocking the app
+    return true;
   }
 };
 

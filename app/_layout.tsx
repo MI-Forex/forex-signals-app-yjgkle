@@ -1,8 +1,8 @@
 import { Stack, useGlobalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Platform, SafeAreaView } from 'react-native';
-import { commonStyles } from '../styles/commonStyles';
+import { Platform, SafeAreaView, StyleSheet } from 'react-native';
+import { commonStyles, colors } from '../styles/commonStyles';
 import { useEffect, useState } from 'react';
 import { setupErrorLogging } from '../utils/errorLogger';
 import { AuthProvider } from '../contexts/AuthContext';
@@ -52,16 +52,20 @@ export default function RootLayout() {
 
   console.log('RootLayout rendering with insets:', insetsToUse);
 
+  const safeAreaStyle = {
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingTop: insetsToUse.top,
+    paddingBottom: insetsToUse.bottom,
+    paddingLeft: insetsToUse.left,
+    paddingRight: insetsToUse.right,
+  };
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
         <AuthProvider>
-          <SafeAreaView style={[commonStyles.wrapper, {
-              paddingTop: insetsToUse.top,
-              paddingBottom: insetsToUse.bottom,
-              paddingLeft: insetsToUse.left,
-              paddingRight: insetsToUse.right,
-           }]}>
+          <SafeAreaView style={safeAreaStyle}>
             <StatusBar style="light" />
             <Stack
               screenOptions={{

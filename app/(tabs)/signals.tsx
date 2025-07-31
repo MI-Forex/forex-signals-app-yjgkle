@@ -122,6 +122,7 @@ const styles = StyleSheet.create({
 });
 
 export default function SignalsScreen() {
+  console.log('SignalsScreen: Component rendering');
   const [signals, setSignals] = useState<Signal[]>([]);
   const [filteredSignals, setFilteredSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -346,14 +347,14 @@ export default function SignalsScreen() {
             text="Filter"
             onPress={() => setFilterModalVisible(true)}
             variant="outline"
-            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+            style={StyleSheet.flatten({ paddingHorizontal: spacing.md, paddingVertical: spacing.sm })}
           />
           {canManage && (
             <Button
               text="Manage"
               onPress={handleManageSignals}
               variant="primary"
-              style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+              style={StyleSheet.flatten({ paddingHorizontal: spacing.md, paddingVertical: spacing.sm })}
             />
           )}
         </View>
@@ -369,13 +370,13 @@ export default function SignalsScreen() {
             text="Dismiss"
             onPress={dismissConnectivityError}
             variant="outline"
-            style={{ 
+            style={StyleSheet.flatten({ 
               marginTop: spacing.sm, 
               paddingHorizontal: spacing.md, 
               paddingVertical: spacing.xs,
               borderColor: colors.white,
-            }}
-            textStyle={{ color: colors.white, fontSize: 12 }}
+            })}
+            textStyle={StyleSheet.flatten({ color: colors.white, fontSize: 12 })}
           />
         </View>
       )}
@@ -386,41 +387,41 @@ export default function SignalsScreen() {
           text="All Signals"
           onPress={() => handleSignalTypeFilter('all')}
           variant={signalTypeFilter === 'all' ? 'primary' : 'outline'}
-          style={[
+          style={StyleSheet.flatten([
             styles.filterButton,
             signalTypeFilter === 'all' && styles.filterButtonActive
-          ]}
-          textStyle={[
+          ])}
+          textStyle={StyleSheet.flatten([
             styles.filterButtonText,
             signalTypeFilter === 'all' && styles.filterButtonTextActive
-          ]}
+          ])}
         />
         <Button
           text="Normal"
           onPress={() => handleSignalTypeFilter('normal')}
           variant={signalTypeFilter === 'normal' ? 'primary' : 'outline'}
-          style={[
+          style={StyleSheet.flatten([
             styles.filterButton,
             signalTypeFilter === 'normal' && styles.filterButtonActive
-          ]}
-          textStyle={[
+          ])}
+          textStyle={StyleSheet.flatten([
             styles.filterButtonText,
             signalTypeFilter === 'normal' && styles.filterButtonTextActive
-          ]}
+          ])}
         />
         {userData?.isVIP && (
           <Button
             text="VIP"
             onPress={() => handleSignalTypeFilter('vip')}
             variant={signalTypeFilter === 'vip' ? 'primary' : 'outline'}
-            style={[
+            style={StyleSheet.flatten([
               styles.filterButton,
               signalTypeFilter === 'vip' && styles.filterButtonActive
-            ]}
-            textStyle={[
+            ])}
+            textStyle={StyleSheet.flatten([
               styles.filterButtonText,
               signalTypeFilter === 'vip' && styles.filterButtonTextActive
-            ]}
+            ])}
           />
         )}
       </View>
