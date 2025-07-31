@@ -115,24 +115,38 @@ export default function AdminVIPScreen() {
 
   const loadWhatsAppSettings = async () => {
     try {
-      console.log('Loading WhatsApp settings from Supabase...');
-      const { data, error } = await supabase
+      console.log('Admin VIP: Loading WhatsApp settings from Supabase...');
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 8000);
+      });
+
+      const queryPromise = supabase
         .from('settings')
         .select('value')
         .eq('id', 'whatsapp_link')
         .single();
 
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+
       if (error) {
-        console.error('Error loading WhatsApp settings:', error);
+        console.log('Admin VIP: Error loading WhatsApp settings:', error.message);
+        // Use default settings if loading fails
         return;
       }
 
       if (data?.value) {
-        console.log('WhatsApp settings loaded:', data.value);
-        setWhatsappSettings(data.value as WhatsAppSettings);
+        console.log('Admin VIP: WhatsApp settings loaded:', data.value);
+        const settings = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        setWhatsappSettings({
+          url: settings.url || 'https://wa.me/+919343601863',
+          enabled: settings.enabled !== false
+        });
       }
     } catch (error) {
-      console.error('Error loading WhatsApp settings:', error);
+      console.log('Admin VIP: Error loading WhatsApp settings:', error);
+      // Continue with default settings
     }
   };
 
@@ -196,9 +210,27 @@ export default function AdminVIPScreen() {
   const saveWhatsAppSettings = async () => {
     setWhatsappLoading(true);
     try {
-      console.log('Saving WhatsApp settings to Supabase:', whatsappSettings);
+      console.log('Admin VIP: Saving WhatsApp settings to Supabase:', whatsappSettings);
       
-      const { error } = await supabase
+      // Validate URL format
+      if (!whatsappSettings.url || !whatsappSettings.url.trim()) {
+        Alert.alert('Error', 'WhatsApp URL cannot be empty');
+        return;
+      }
+
+      // Ensure URL starts with https://wa.me/ or https://api.whatsapp.com/
+      const url = whatsappSettings.url.trim();
+      if (!url.startsWith('https://wa.me/') && !url.startsWith('https://api.whatsapp.com/')) {
+        Alert.alert('Error', 'Please enter a valid WhatsApp URL (https://wa.me/...)');
+        return;
+      }
+
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 10000);
+      });
+
+      const updatePromise = supabase
         .from('settings')
         .upsert({
           id: 'whatsapp_link',
@@ -207,15 +239,19 @@ export default function AdminVIPScreen() {
           updated_by: userData?.uid || 'admin'
         });
 
+      const { error } = await Promise.race([updatePromise, timeoutPromise]) as any;
+
       if (error) {
-        throw error;
+        console.error('Admin VIP: Supabase error:', error);
+        throw new Error(`Database update failed: ${error.message}`);
       }
 
       Alert.alert('Success', 'WhatsApp link updated successfully');
-      console.log('WhatsApp settings saved successfully');
+      console.log('Admin VIP: WhatsApp settings saved successfully');
     } catch (error) {
-      console.error('Error saving WhatsApp settings:', error);
-      Alert.alert('Error', 'Failed to update WhatsApp link');
+      console.error('Admin VIP: Error saving WhatsApp settings:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Alert.alert('Error', `Failed to update WhatsApp link: ${errorMessage}`);
     } finally {
       setWhatsappLoading(false);
     }
@@ -375,7 +411,13 @@ export default function AdminVIPScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Button text="← Back" onPress={() => router.back()} variant="outline" />
+        <Button 
+          text="← Back" 
+          onPress={() => router.back()} 
+          variant="outline" 
+          style={{ borderColor: colors.primary, backgroundColor: colors.background }}
+          textStyle={{ color: colors.primary, fontWeight: '600' }}
+        />
         <Text style={styles.title}>VIP Settings Management</Text>
       </View>
 
@@ -415,7 +457,9 @@ export default function AdminVIPScreen() {
           text={loading ? "Saving..." : "Save Pricing"}
           onPress={saveVIPSettings}
           loading={loading}
+          disabled={loading}
           style={styles.saveButton}
+          variant="success"
         />
       </View>
 
@@ -445,7 +489,9 @@ export default function AdminVIPScreen() {
           text={whatsappLoading ? "Saving..." : "Save WhatsApp Settings"}
           onPress={saveWhatsAppSettings}
           loading={whatsappLoading}
+          disabled={whatsappLoading}
           style={styles.saveButton}
+          variant="primary"
         />
       </View>
 
@@ -560,81 +606,98 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: spacing.lg,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
     gap: spacing.md,
+    ...shadows.sm,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '700',
     color: colors.text,
     flex: 1,
+    letterSpacing: -0.25,
   },
   section: {
     backgroundColor: colors.surface,
     margin: spacing.md,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
+    borderRadius: borderRadius.xxl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
+    ...shadows.md,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    letterSpacing: -0.25,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    paddingVertical: spacing.md,
   },
   statItem: {
     alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    minWidth: 80,
+    ...shadows.sm,
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '800',
     color: colors.text,
+    letterSpacing: -0.5,
   },
   statLabel: {
     fontSize: 12,
     color: colors.textMuted,
     textAlign: 'center',
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
+    fontWeight: '500',
   },
   inputContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   input: {
     backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.sm,
   },
   saveButton: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
+    ...shadows.md,
   },
   dateContainer: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   dateInputContainer: {
     flex: 1,
   },
   dateButton: {
     backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
   },
   exportButtons: {
     flexDirection: 'row',
@@ -642,62 +705,70 @@ const styles = StyleSheet.create({
   },
   exportButton: {
     flex: 1,
+    ...shadows.sm,
   },
   searchContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   searchInput: {
     backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.sm,
   },
   userCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: spacing.lg,
     backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
+    borderRadius: borderRadius.xl,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
+    ...shadows.sm,
   },
   userInfo: {
     flex: 1,
+    marginRight: spacing.md,
   },
   userEmail: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
+    marginBottom: spacing.xs,
   },
   userName: {
     fontSize: 14,
     color: colors.textMuted,
-    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
   },
   vipExpiry: {
     fontSize: 12,
     color: colors.success,
-    marginTop: spacing.xs,
+    fontWeight: '500',
   },
   userActions: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
   actionButton: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    minWidth: 80,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    minWidth: 90,
+    ...shadows.sm,
   },
   checkboxContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   toggleButton: {
     alignSelf: 'flex-start',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    ...shadows.sm,
   },
 });

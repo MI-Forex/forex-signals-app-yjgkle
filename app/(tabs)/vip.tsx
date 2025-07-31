@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions, Linking, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Dimensions, Linking, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import Button from '../../components/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
@@ -28,22 +28,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    padding: spacing.lg,
+    padding: spacing.xl,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
+    ...shadows.sm,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '700',
     color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.sm,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
     color: colors.textMuted,
     textAlign: 'center',
+    lineHeight: 24,
   },
   content: {
     flex: 1,
@@ -51,95 +54,115 @@ const styles = StyleSheet.create({
   },
   vipCard: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xxl,
     padding: spacing.xl,
     marginBottom: spacing.lg,
-    ...shadows.md,
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   vipTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '700',
     color: colors.primary,
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    letterSpacing: -0.25,
   },
   priceContainer: {
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+    paddingVertical: spacing.md,
   },
   price: {
-    fontSize: 36,
-    fontWeight: 'bold',
+    fontSize: 48,
+    fontWeight: '800',
     color: colors.text,
+    letterSpacing: -1,
   },
   priceSubtext: {
-    fontSize: 16,
+    fontSize: 18,
     color: colors.textMuted,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
+    fontWeight: '500',
   },
   featuresContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   featuresTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
     textAlign: 'center',
   },
   feature: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
   },
   featureText: {
     fontSize: 16,
     color: colors.text,
-    marginLeft: spacing.sm,
+    marginLeft: spacing.md,
     flex: 1,
+    lineHeight: 24,
+    fontWeight: '500',
   },
   upgradeButton: {
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
+    ...shadows.md,
   },
   currentVipContainer: {
     backgroundColor: colors.success,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xxl,
     padding: spacing.xl,
     marginBottom: spacing.lg,
     alignItems: 'center',
+    ...shadows.lg,
   },
   currentVipText: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '700',
     color: colors.white,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
   },
   currentVipSubtext: {
     fontSize: 16,
     color: colors.white,
     textAlign: 'center',
-    opacity: 0.9,
+    opacity: 0.95,
+    lineHeight: 24,
+    paddingHorizontal: spacing.md,
   },
   signalsButton: {
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
+    ...shadows.md,
   },
   connectivityError: {
     backgroundColor: colors.danger,
-    padding: spacing.md,
+    padding: spacing.lg,
     margin: spacing.md,
-    borderRadius: spacing.sm,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
+    ...shadows.md,
   },
   connectivityErrorText: {
     color: colors.white,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+    lineHeight: 22,
   },
 });
 
-export default function VIPScreen() {
+function VIPScreenContent() {
   const { userData } = useAuth();
   const [vipSettings, setVipSettings] = useState<VIPSettings>({
     monthlyPrice: 99,
@@ -158,6 +181,7 @@ export default function VIPScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showConnectivityError, setShowConnectivityError] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   // Check if user is admin or editor
   const isAdminOrEditor = userData?.isAdmin || userData?.isEditor;
@@ -195,7 +219,7 @@ export default function VIPScreen() {
       
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('WhatsApp settings timeout')), 5000);
+        setTimeout(() => reject(new Error('WhatsApp settings timeout')), 8000);
       });
 
       const supabasePromise = supabase
@@ -208,18 +232,35 @@ export default function VIPScreen() {
 
       if (error) {
         console.log('VIP: Error loading WhatsApp settings:', error.message);
-        // Use default settings
+        // Use default settings if loading fails
+        setWhatsAppSettings({
+          url: 'https://wa.me/+919343601863',
+          enabled: true
+        });
         return;
       }
 
       if (data?.value) {
         const settings = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
-        setWhatsAppSettings(settings);
-        console.log('VIP: WhatsApp settings loaded successfully');
+        setWhatsAppSettings({
+          url: settings.url || 'https://wa.me/+919343601863',
+          enabled: settings.enabled !== false
+        });
+        console.log('VIP: WhatsApp settings loaded successfully:', settings);
+      } else {
+        console.log('VIP: No WhatsApp settings found, using defaults');
+        setWhatsAppSettings({
+          url: 'https://wa.me/+919343601863',
+          enabled: true
+        });
       }
     } catch (error) {
       console.log('VIP: Error loading WhatsApp settings:', error);
       // Continue with default settings
+      setWhatsAppSettings({
+        url: 'https://wa.me/+919343601863',
+        enabled: true
+      });
     }
   };
 
@@ -244,34 +285,83 @@ export default function VIPScreen() {
     setShowConnectivityError(false);
     
     try {
-      await Promise.all([
+      // Add timeout to prevent infinite refresh
+      const refreshTimeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Refresh timeout')), 15000);
+      });
+
+      const refreshPromise = Promise.all([
         loadVIPSettings(),
         loadWhatsAppSettings()
       ]);
+
+      await Promise.race([refreshPromise, refreshTimeout]);
+      console.log('VIP: Refresh completed successfully');
     } catch (error) {
       console.error('VIP: Error refreshing data:', error);
+      if (error.message === 'Refresh timeout') {
+        Alert.alert('Timeout', 'Refresh took too long. Please try again.');
+      }
     } finally {
       setRefreshing(false);
     }
   };
 
   const handleUpgradeToVIP = async () => {
+    if (upgradeLoading) return;
+    
+    setUpgradeLoading(true);
+    
     try {
       console.log('VIP: Attempting to open WhatsApp:', whatsAppSettings.url);
       
-      if (whatsAppSettings.enabled && whatsAppSettings.url) {
-        const supported = await Linking.canOpenURL(whatsAppSettings.url);
-        if (supported) {
-          await Linking.openURL(whatsAppSettings.url);
-        } else {
-          Alert.alert('Error', 'Unable to open WhatsApp. Please contact support.');
-        }
-      } else {
+      if (!whatsAppSettings.enabled) {
+        Alert.alert('Service Unavailable', 'WhatsApp support is currently disabled. Please try again later.');
+        return;
+      }
+
+      if (!whatsAppSettings.url || !whatsAppSettings.url.trim()) {
         Alert.alert('Error', 'Contact information not available. Please try again later.');
+        return;
+      }
+
+      const url = whatsAppSettings.url.trim();
+      
+      // Validate URL format
+      if (!url.startsWith('https://wa.me/') && !url.startsWith('https://api.whatsapp.com/')) {
+        console.error('VIP: Invalid WhatsApp URL format:', url);
+        Alert.alert('Configuration Error', 'Contact link is not properly configured. Please contact support.');
+        return;
+      }
+
+      console.log('VIP: Checking if URL can be opened:', url);
+      
+      // Add timeout for URL checking
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('URL check timeout')), 3000);
+      });
+
+      const canOpenPromise = Linking.canOpenURL(url);
+      const supported = await Promise.race([canOpenPromise, timeoutPromise]) as boolean;
+      
+      if (supported) {
+        console.log('VIP: Opening WhatsApp URL');
+        await Linking.openURL(url);
+      } else {
+        console.error('VIP: URL not supported by device');
+        Alert.alert(
+          'Unable to Open WhatsApp', 
+          'Please make sure WhatsApp is installed on your device, or contact support directly at +919343601863.'
+        );
       }
     } catch (error) {
       console.error('VIP: Error opening WhatsApp:', error);
-      Alert.alert('Error', 'Unable to open WhatsApp. Please contact support.');
+      const errorMessage = error instanceof Error && error.message === 'URL check timeout' 
+        ? 'Request timed out. Please try again.'
+        : 'Unable to open WhatsApp. Please contact support.';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setUpgradeLoading(false);
     }
   };
 
@@ -288,9 +378,13 @@ export default function VIPScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>VIP Membership</Text>
+          <Text style={styles.subtitle}>Loading premium features...</Text>
         </View>
         <View style={commonStyles.loading}>
-          <Text style={commonStyles.text}>Loading VIP information...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[commonStyles.text, { marginTop: spacing.md }]}>
+            Loading VIP information...
+          </Text>
         </View>
       </View>
     );
@@ -341,13 +435,13 @@ export default function VIPScreen() {
             text="Dismiss"
             onPress={dismissConnectivityError}
             variant="outline"
-            style={StyleSheet.flatten({ 
+            style={{ 
               marginTop: spacing.sm, 
               paddingHorizontal: spacing.md, 
               paddingVertical: spacing.xs,
               borderColor: colors.white,
-            })}
-            textStyle={StyleSheet.flatten({ color: colors.white, fontSize: 12 })}
+            }}
+            textStyle={{ color: colors.white, fontSize: 12 }}
           />
         </View>
       )}
@@ -376,27 +470,27 @@ export default function VIPScreen() {
           </View>
         ) : (
           <View style={[styles.vipCard, { backgroundColor: colors.primary }]}>
-            <Text style={StyleSheet.flatten([styles.vipTitle, { color: colors.white }])}>
+            <Text style={[styles.vipTitle, { color: colors.white }]}>
               Premium VIP Membership
             </Text>
             
             <View style={styles.priceContainer}>
-              <Text style={StyleSheet.flatten([styles.price, { color: colors.white }])}>
+              <Text style={[styles.price, { color: colors.white }]}>
                 ${vipSettings.monthlyPrice}
               </Text>
-              <Text style={StyleSheet.flatten([styles.priceSubtext, { color: colors.white, opacity: 0.9 }])}>
+              <Text style={[styles.priceSubtext, { color: colors.white, opacity: 0.9 }]}>
                 per month
               </Text>
             </View>
 
             <View style={styles.featuresContainer}>
-              <Text style={StyleSheet.flatten([styles.featuresTitle, { color: colors.white }])}>
+              <Text style={[styles.featuresTitle, { color: colors.white }]}>
                 Premium Features
               </Text>
               {vipSettings.features.map((feature, index) => (
                 <View key={index} style={styles.feature}>
                   <Ionicons name="checkmark-circle" size={20} color={colors.white} />
-                  <Text style={StyleSheet.flatten([styles.featureText, { color: colors.white }])}>
+                  <Text style={[styles.featureText, { color: colors.white }]}>
                     {feature}
                   </Text>
                 </View>
@@ -404,21 +498,41 @@ export default function VIPScreen() {
             </View>
 
             <Button
-              text="Upgrade to VIP"
+              text={upgradeLoading ? "Opening WhatsApp..." : "Upgrade to VIP"}
               onPress={handleUpgradeToVIP}
               variant="secondary"
               style={styles.upgradeButton}
+              loading={upgradeLoading}
+              disabled={upgradeLoading}
             />
           </View>
         )}
 
-        <Button
-          text="View All Signals"
-          onPress={handleGoToSignals}
-          variant="primary"
-          style={styles.signalsButton}
-        />
+        {/* Removed "View All Signals" button for regular users as requested */}
       </ScrollView>
     </View>
   );
+}
+
+export default function VIPScreen() {
+  try {
+    return <VIPScreenContent />;
+  } catch (error) {
+    console.error('VIP Screen Error:', error);
+    return (
+      <View style={[commonStyles.container, commonStyles.centerContent]}>
+        <Text style={[commonStyles.text, { textAlign: 'center', marginBottom: spacing.lg }]}>
+          Something went wrong loading the VIP screen.
+        </Text>
+        <Button
+          text="Retry"
+          onPress={() => {
+            // Force re-render by navigating back and forth
+            router.replace('/(tabs)/vip');
+          }}
+          variant="primary"
+        />
+      </View>
+    );
+  }
 }

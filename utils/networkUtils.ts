@@ -18,7 +18,10 @@ export const checkInternetConnectivity = async (): Promise<boolean> => {
       });
       
       // Check if we're connected and have internet access
-      const isConnected = netInfoState.isConnected === true && netInfoState.isInternetReachable === true;
+      // If isInternetReachable is null, we'll assume connection is available if isConnected is true
+      const isConnected = netInfoState.isConnected === true && 
+        (netInfoState.isInternetReachable === true || netInfoState.isInternetReachable === null);
+      
       console.log('NetworkUtils: Internet connectivity result:', isConnected);
       
       return isConnected;
@@ -36,7 +39,9 @@ export const subscribeToNetworkChanges = (callback: (isConnected: boolean) => vo
   console.log('NetworkUtils: Subscribing to network changes');
   
   return NetInfo.addEventListener(state => {
-    const isConnected = state.isConnected === true && state.isInternetReachable === true;
+    const isConnected = state.isConnected === true && 
+      (state.isInternetReachable === true || state.isInternetReachable === null);
+    
     console.log('NetworkUtils: Network state changed:', {
       isConnected: state.isConnected,
       isInternetReachable: state.isInternetReachable,
@@ -46,8 +51,20 @@ export const subscribeToNetworkChanges = (callback: (isConnected: boolean) => vo
   });
 };
 
+// Utility function to check if device is online with fallback
+export const isDeviceOnline = async (): Promise<boolean> => {
+  try {
+    const state = await NetInfo.fetch();
+    return state.isConnected === true;
+  } catch (error) {
+    console.error('NetworkUtils: Error checking device online status:', error);
+    return true; // Assume online if check fails
+  }
+};
+
 // Export default for backward compatibility
 export default {
   checkInternetConnectivity,
-  subscribeToNetworkChanges
+  subscribeToNetworkChanges,
+  isDeviceOnline
 };
