@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://qfkghlcxjswdfvgothph.supabase.co';
@@ -78,17 +79,29 @@ export const initializeSupabaseTables = async () => {
   try {
     console.log('Initializing Supabase tables...');
     
-    // Test connection first with enhanced client
-    const { data: testData, error: testError } = await supabaseAdmin
+    // Add a timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Supabase initialization timeout')), 5000);
+    });
+
+    // Test connection with timeout
+    const testPromise = supabaseAdmin
       .from('chats')
       .select('id')
       .limit(1);
+
+    const { data: testData, error: testError } = await Promise.race([
+      testPromise,
+      timeoutPromise
+    ]) as any;
 
     if (testError) {
       console.log('Supabase connection test result:', testError.message);
       
       if (testError.code === 'PGRST116' || testError.message.includes('does not exist')) {
         console.log('Tables may not exist or need setup. This is normal for first run.');
+      } else if (testError.message.includes('timeout')) {
+        console.log('Supabase connection timeout - continuing with app initialization');
       }
     } else {
       console.log('Supabase connection successful, tables exist');
@@ -97,6 +110,8 @@ export const initializeSupabaseTables = async () => {
     console.log('Supabase initialization completed');
   } catch (error) {
     console.error('Error initializing Supabase:', error);
+    // Don't throw the error - let the app continue
+    console.log('Continuing with app initialization despite Supabase error');
   }
 };
 
@@ -107,10 +122,17 @@ export const testSupabaseConnection = async (): Promise<boolean> => {
     console.log('Using URL:', supabaseUrl);
     console.log('Using key (first 20 chars):', supabaseAnonKey.substring(0, 20) + '...');
     
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Connection timeout')), 3000);
+    });
+
     // Try to access chats table first
-    const { data, error } = await supabaseAdmin
+    const testPromise = supabaseAdmin
       .from('chats')
       .select('count(*)', { count: 'exact', head: true });
+    
+    const { data, error } = await Promise.race([testPromise, timeoutPromise]);
     
     if (error) {
       console.log('Supabase connection test error:', {

@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   connectivityError: {
-    backgroundColor: colors.error,
+    backgroundColor: colors.danger,
     padding: spacing.md,
     margin: spacing.md,
     borderRadius: spacing.sm,
@@ -169,6 +169,7 @@ export default function VIPScreen() {
 
   const loadVIPSettings = async () => {
     try {
+      console.log('VIP: Loading VIP settings from Firebase');
       const settingsDoc = await getDoc(doc(db, 'settings', 'vip'));
       if (settingsDoc.exists()) {
         const data = settingsDoc.data();
@@ -176,9 +177,13 @@ export default function VIPScreen() {
           monthlyPrice: data.monthlyPrice || 99,
           features: data.features || vipSettings.features
         });
+        console.log('VIP: Settings loaded successfully');
+      } else {
+        console.log('VIP: No settings found, using defaults');
       }
     } catch (error) {
-      console.error('Error loading VIP settings:', error);
+      console.error('VIP: Error loading VIP settings:', error);
+      // Continue with default settings
     } finally {
       setLoading(false);
     }
@@ -186,36 +191,53 @@ export default function VIPScreen() {
 
   const loadWhatsAppSettings = async () => {
     try {
-      const { data, error } = await supabase
+      console.log('VIP: Loading WhatsApp settings from Supabase');
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('WhatsApp settings timeout')), 5000);
+      });
+
+      const supabasePromise = supabase
         .from('settings')
         .select('value')
-        .eq('key', 'whatsapp_link')
+        .eq('id', 'whatsapp_link')
         .single();
 
+      const { data, error } = await Promise.race([supabasePromise, timeoutPromise]) as any;
+
       if (error) {
-        console.error('Error loading WhatsApp settings:', error);
+        console.log('VIP: Error loading WhatsApp settings:', error.message);
+        // Use default settings
         return;
       }
 
       if (data?.value) {
-        const settings = JSON.parse(data.value);
+        const settings = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         setWhatsAppSettings(settings);
+        console.log('VIP: WhatsApp settings loaded successfully');
       }
     } catch (error) {
-      console.error('Error parsing WhatsApp settings:', error);
+      console.log('VIP: Error loading WhatsApp settings:', error);
+      // Continue with default settings
     }
   };
 
   const handleRefresh = async () => {
-    console.log('Pull to refresh triggered for VIP');
+    console.log('VIP: Pull to refresh triggered');
     
     // Check internet connectivity first
-    const isConnected = await checkInternetConnectivity();
-    if (!isConnected) {
-      console.log('No internet connectivity detected');
-      setShowConnectivityError(true);
-      Alert.alert('No Internet Connection', 'Please check your internet connectivity.');
-      return;
+    try {
+      const isConnected = await checkInternetConnectivity();
+      if (!isConnected) {
+        console.log('VIP: No internet connectivity detected');
+        setShowConnectivityError(true);
+        Alert.alert('No Internet Connection', 'Please check your internet connectivity.');
+        return;
+      }
+    } catch (error) {
+      console.error('VIP: Error checking connectivity:', error);
+      // Continue with refresh even if connectivity check fails
     }
 
     setRefreshing(true);
@@ -227,7 +249,7 @@ export default function VIPScreen() {
         loadWhatsAppSettings()
       ]);
     } catch (error) {
-      console.error('Error refreshing VIP data:', error);
+      console.error('VIP: Error refreshing data:', error);
     } finally {
       setRefreshing(false);
     }
@@ -235,6 +257,8 @@ export default function VIPScreen() {
 
   const handleUpgradeToVIP = async () => {
     try {
+      console.log('VIP: Attempting to open WhatsApp:', whatsAppSettings.url);
+      
       if (whatsAppSettings.enabled && whatsAppSettings.url) {
         const supported = await Linking.canOpenURL(whatsAppSettings.url);
         if (supported) {
@@ -246,7 +270,7 @@ export default function VIPScreen() {
         Alert.alert('Error', 'Contact information not available. Please try again later.');
       }
     } catch (error) {
-      console.error('Error opening WhatsApp:', error);
+      console.error('VIP: Error opening WhatsApp:', error);
       Alert.alert('Error', 'Unable to open WhatsApp. Please contact support.');
     }
   };

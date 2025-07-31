@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { 
@@ -63,21 +64,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('AuthContext: Auth state changed:', firebaseUser ? firebaseUser.uid : 'null');
       
-      if (firebaseUser) {
-        await handleUserSession(firebaseUser);
-      } else {
-        console.log('AuthContext: User signed out');
-        setUser(null);
-        setUserData(null);
+      try {
+        if (firebaseUser) {
+          await handleUserSession(firebaseUser);
+        } else {
+          console.log('AuthContext: User signed out');
+          setUser(null);
+          setUserData(null);
+          setLoading(false);
+          setInitializing(false);
+          if (!initializing) {
+            router.replace('/auth/login');
+          }
+        }
+      } catch (error) {
+        console.error('AuthContext: Error in auth state change handler:', error);
         setLoading(false);
         setInitializing(false);
-        if (!initializing) {
-          router.replace('/auth/login');
-        }
       }
     });
 
-    return unsubscribe;
+    // Set a timeout to prevent infinite loading
+    const authTimeout = setTimeout(() => {
+      console.log('AuthContext: Auth initialization timeout, setting loading to false');
+      setLoading(false);
+      setInitializing(false);
+    }, 10000); // 10 seconds timeout
+
+    return () => {
+      unsubscribe();
+      clearTimeout(authTimeout);
+    };
   }, []);
 
   const checkAndUpdateVIPStatus = async (userData: UserData, userDocRef: any) => {
@@ -88,16 +105,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (now > expiryDate) {
         console.log('AuthContext: VIP membership expired, removing VIP status');
         
-        // Update Firestore
-        await updateDoc(userDocRef, {
-          isVIP: false,
-          vipExpiryDate: null,
-          updatedAt: new Date()
-        });
-        
-        // Update local state
-        userData.isVIP = false;
-        userData.vipExpiryDate = undefined;
+        try {
+          // Update Firestore
+          await updateDoc(userDocRef, {
+            isVIP: false,
+            vipExpiryDate: null,
+            updatedAt: new Date()
+          });
+          
+          // Update local state
+          userData.isVIP = false;
+          userData.vipExpiryDate = undefined;
+        } catch (error) {
+          console.error('AuthContext: Error updating VIP status:', error);
+        }
       }
     }
     
@@ -118,9 +139,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Add timeout for Firestore operations
+      const firestoreTimeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Firestore operation timeout')), 8000);
+      });
+
       // Get or create user profile in Firestore
       const userDocRef = doc(db, 'users', firebaseUser.uid);
-      const userDoc = await getDoc(userDocRef);
+      const userDocPromise = getDoc(userDocRef);
+
+      const userDoc = await Promise.race([userDocPromise, firestoreTimeout]) as any;
 
       let userData: UserData;
 
@@ -140,17 +168,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           emailVerified: true
         };
 
-        await setDoc(userDocRef, {
-          email: userData.email,
-          displayName: userData.displayName,
-          phoneNumber: userData.phoneNumber,
-          role: userData.role,
-          isAdmin: userData.isAdmin,
-          isEditor: userData.isEditor,
-          isVIP: userData.isVIP,
-          createdAt: userData.createdAt,
-          emailVerified: userData.emailVerified
-        });
+        try {
+          const setDocPromise = setDoc(userDocRef, {
+            email: userData.email,
+            displayName: userData.displayName,
+            phoneNumber: userData.phoneNumber,
+            role: userData.role,
+            isAdmin: userData.isAdmin,
+            isEditor: userData.isEditor,
+            isVIP: userData.isVIP,
+            createdAt: userData.createdAt,
+            emailVerified: userData.emailVerified
+          });
+
+          await Promise.race([setDocPromise, firestoreTimeout]);
+        } catch (error) {
+          console.error('AuthContext: Error creating user profile:', error);
+          // Continue with local userData even if Firestore fails
+        }
       } else {
         console.log('AuthContext: Using existing profile');
         const data = userDoc.data();
@@ -170,7 +205,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
 
         // Check and update VIP status if expired
-        userData = await checkAndUpdateVIPStatus(userData, userDocRef);
+        try {
+          userData = await checkAndUpdateVIPStatus(userData, userDocRef);
+        } catch (error) {
+          console.error('AuthContext: Error checking VIP status:', error);
+          // Continue with existing userData
+        }
       }
 
       console.log('AuthContext: User data loaded:', {
@@ -195,10 +235,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     } catch (error) {
       console.error('AuthContext: Error handling user session:', error);
-      await signOut(auth);
-      setUser(null);
-      setUserData(null);
-      router.replace('/auth/login');
+      
+      // If it's a timeout or network error, still try to set basic user data
+      if (error.message?.includes('timeout') || error.message?.includes('network')) {
+        console.log('AuthContext: Setting basic user data due to timeout/network error');
+        setUser(firebaseUser);
+        setUserData({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || '',
+          phoneNumber: firebaseUser.phoneNumber || '',
+          role: 'user',
+          isAdmin: false,
+          isEditor: false,
+          isVIP: false,
+          createdAt: new Date(),
+          emailVerified: true
+        });
+        
+        if (initializing || loading) {
+          router.replace('/(tabs)/signals');
+        }
+      } else {
+        // For other errors, sign out and redirect to login
+        await signOut(auth);
+        setUser(null);
+        setUserData(null);
+        router.replace('/auth/login');
+      }
     } finally {
       setLoading(false);
       setInitializing(false);
