@@ -272,12 +272,17 @@ export default function SignalsScreen() {
     console.log('Pull to refresh triggered for signals');
     
     // Check internet connectivity first
-    const isConnected = await checkInternetConnectivity();
-    if (!isConnected) {
-      console.log('No internet connectivity detected');
-      setShowConnectivityError(true);
-      Alert.alert('No Internet Connection', 'Please check your internet connectivity.');
-      return;
+    try {
+      const isConnected = await checkInternetConnectivity();
+      if (!isConnected) {
+        console.log('No internet connectivity detected');
+        setShowConnectivityError(true);
+        Alert.alert('No Internet Connection', 'Please check your internet connectivity.');
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking connectivity:', error);
+      // Continue with refresh even if connectivity check fails
     }
 
     setRefreshing(true);
