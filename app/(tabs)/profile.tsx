@@ -1,12 +1,14 @@
+
 import React, { useState } from 'react';
-import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, Image, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/Button';
-import { commonStyles, colors, spacing } from '../../styles/commonStyles';
+import { useAuth } from '../../contexts/AuthContext';
+import { auth } from '../../firebase/config';
 import { Ionicons } from '@expo/vector-icons';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../../firebase/config';
+import { commonStyles, colors, spacing } from '../../styles/commonStyles';
+import { checkInternetConnectivity } from '../../utils/networkUtils';
 
 const styles = StyleSheet.create({
   container: {
@@ -14,11 +16,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    alignItems: 'center',
     padding: spacing.lg,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    alignItems: 'center',
   },
   logo: {
     width: 80,
@@ -33,152 +35,193 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: colors.textMuted,
     textAlign: 'center',
   },
-  scrollContainer: {
-    flexGrow: 1,
+  content: {
+    flex: 1,
     padding: spacing.lg,
   },
-  inputContainer: {
+  section: {
+    backgroundColor: colors.surface,
+    borderRadius: spacing.md,
+    padding: spacing.lg,
     marginBottom: spacing.lg,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    fontSize: 16,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  buttonContainer: {
-    marginTop: spacing.xl,
-    gap: spacing.md,
-  },
-  adminBadge: {
-    backgroundColor: colors.success,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-    marginTop: spacing.sm,
-  },
-  adminText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  passwordSection: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  passwordTitle: {
+  sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  passwordDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
     marginBottom: spacing.md,
-    lineHeight: 20,
+  },
+  userInfo: {
+    marginBottom: spacing.md,
+  },
+  userInfoLabel: {
+    fontSize: 14,
+    color: colors.textMuted,
+    marginBottom: spacing.xs,
+  },
+  userInfoValue: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: spacing.sm,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: colors.background,
+    marginBottom: spacing.md,
+  },
+  adminSection: {
+    backgroundColor: colors.primary,
+    borderRadius: spacing.md,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  adminTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.white,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  adminButtonsContainer: {
+    gap: spacing.sm,
+  },
+  vipBadge: {
+    backgroundColor: colors.success,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: spacing.sm,
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+  },
+  vipBadgeText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  editorBadge: {
+    backgroundColor: colors.warning,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: spacing.sm,
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+  },
+  editorBadgeText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  connectivityError: {
+    backgroundColor: colors.error,
+    padding: spacing.md,
+    margin: spacing.md,
+    borderRadius: spacing.sm,
+    alignItems: 'center',
+  },
+  connectivityErrorText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 
 export default function ProfileScreen() {
-  const [displayName, setDisplayName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
-  const { user, userData, updateUserProfile, logout } = useAuth();
+  const { user, userData, logout, updateUserProfile } = useAuth();
+  const [displayName, setDisplayName] = useState(userData?.displayName || '');
+  const [refreshing, setRefreshing] = useState(false);
+  const [showConnectivityError, setShowConnectivityError] = useState(false);
 
-  React.useEffect(() => {
-    if (userData?.displayName) {
-      setDisplayName(userData.displayName);
-    }
-  }, [userData]);
-
-  const handleUpdateProfile = async () => {
-    if (!displayName.trim()) {
-      Alert.alert('Error', 'Please enter your display name');
+  const handleRefresh = async () => {
+    console.log('Pull to refresh triggered for profile');
+    
+    // Check internet connectivity first
+    const isConnected = await checkInternetConnectivity();
+    if (!isConnected) {
+      console.log('No internet connectivity detected');
+      setShowConnectivityError(true);
+      Alert.alert('No Internet Connection', 'Please check your internet connectivity.');
       return;
     }
 
-    setLoading(true);
+    setRefreshing(true);
+    setShowConnectivityError(false);
+    
+    // Simulate refresh (in a real app, you might reload user data)
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!displayName.trim()) {
+      Alert.alert('Error', 'Please enter a display name');
+      return;
+    }
+
+    // Check connectivity before updating
+    const isConnected = await checkInternetConnectivity();
+    if (!isConnected) {
+      Alert.alert('No Internet Connection', 'Please check your internet connectivity.');
+      return;
+    }
+
     try {
-      await updateUserProfile(displayName);
+      await updateUserProfile(displayName.trim());
       Alert.alert('Success', 'Profile updated successfully');
-    } catch (error: any) {
-      console.error('Profile update error:', error);
-      Alert.alert('Error', error.message);
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
     }
   };
 
   const handleChangePassword = async () => {
     if (!user?.email) {
-      Alert.alert('Error', 'No email found for password reset');
+      Alert.alert('Error', 'No email address found');
       return;
     }
 
-    Alert.alert(
-      'Change Password',
-      `A password reset link will be sent to ${user.email}. Do you want to continue?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Send Reset Link', 
-          onPress: async () => {
-            setPasswordResetLoading(true);
-            try {
-              await sendPasswordResetEmail(auth, user.email);
-              Alert.alert(
-                'Password Reset Sent',
-                'Please check your email for password reset instructions.'
-              );
-            } catch (error: any) {
-              console.error('Password reset error:', error);
-              let errorMessage = 'Failed to send password reset email. Please try again.';
-              
-              if (error.code === 'auth/network-request-failed') {
-                errorMessage = 'Please check internet connectivity';
-              } else if (error.code === 'auth/user-not-found') {
-                errorMessage = 'No account found with this email address.';
-              } else if (error.code === 'auth/invalid-email') {
-                errorMessage = 'Please enter a valid email address.';
-              }
-              
-              Alert.alert('Error', errorMessage);
-            } finally {
-              setPasswordResetLoading(false);
-            }
-          }
-        }
-      ]
-    );
+    // Check connectivity before sending reset email
+    const isConnected = await checkInternetConnectivity();
+    if (!isConnected) {
+      Alert.alert('No Internet Connection', 'Please check your internet connectivity.');
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, user.email);
+      Alert.alert(
+        'Password Reset Email Sent',
+        'Please check your email for instructions to reset your password.'
+      );
+    } catch (error) {
+      console.error('Error sending password reset email:', error);
+      Alert.alert('Error', 'Failed to send password reset email. Please try again.');
+    }
   };
 
   const handleLogout = async () => {
     try {
       await logout();
-      router.replace('/auth/login');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Error logging out:', error);
       Alert.alert('Error', 'Failed to logout. Please try again.');
     }
   };
 
+  const dismissConnectivityError = () => {
+    setShowConnectivityError(false);
+  };
+
+  // Admin/Editor management functions
   const handleManageSignals = () => {
     router.push('/admin/signals');
   };
@@ -199,123 +242,136 @@ export default function ProfileScreen() {
     router.push('/admin/vip');
   };
 
-
-
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={styles.container}>
       <View style={styles.header}>
-        <Image 
+        <Image
           source={require('../../assets/images/00a46297-3f16-4e57-967e-c79ec0897b80.png')}
           style={styles.logo}
           resizeMode="contain"
         />
         <Text style={styles.title}>Profile</Text>
-        <Text style={styles.subtitle}>
-          {user?.email}
-        </Text>
-        {(userData?.role === 'admin' || userData?.isAdmin) && (
-          <View style={styles.adminBadge}>
-            <Text style={styles.adminText}>ADMIN</Text>
-          </View>
-        )}
-        {(userData?.role === 'editor' || userData?.isEditor) && (
-          <View style={[styles.adminBadge, { backgroundColor: colors.warning }]}>
-            <Text style={styles.adminText}>EDITOR</Text>
-          </View>
-        )}
+        <Text style={styles.subtitle}>Manage your account settings</Text>
       </View>
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Display Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your display name"
-            placeholderTextColor={colors.textSecondary}
-            value={displayName}
-            onChangeText={setDisplayName}
-            autoCapitalize="words"
-            autoCorrect={false}
-          />
-        </View>
-
-        <View style={styles.passwordSection}>
-          <Text style={styles.passwordTitle}>🔐 Password Settings</Text>
-          <Text style={styles.passwordDescription}>
-            Change your account password by receiving a reset link via email.
+      {/* Connectivity Error Banner */}
+      {showConnectivityError && (
+        <View style={styles.connectivityError}>
+          <Text style={styles.connectivityErrorText}>
+            Please check your internet connectivity
           </Text>
           <Button
-            text={passwordResetLoading ? "Sending..." : "Change Password"}
-            onPress={handleChangePassword}
+            text="Dismiss"
+            onPress={dismissConnectivityError}
             variant="outline"
-            loading={passwordResetLoading}
-            disabled={passwordResetLoading}
+            style={{ 
+              marginTop: spacing.sm, 
+              paddingHorizontal: spacing.md, 
+              paddingVertical: spacing.xs,
+              borderColor: colors.white,
+            }}
+            textStyle={{ color: colors.white, fontSize: 12 }}
           />
         </View>
+      )}
 
-        <View style={styles.buttonContainer}>
+      <ScrollView 
+        style={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+            title="Pull to refresh profile"
+            titleColor={colors.textMuted}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* User Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account Information</Text>
+          
+          <View style={styles.userInfo}>
+            <Text style={styles.userInfoLabel}>Email</Text>
+            <Text style={styles.userInfoValue}>{user?.email}</Text>
+            {userData?.isVIP && (
+              <View style={styles.vipBadge}>
+                <Text style={styles.vipBadgeText}>VIP MEMBER</Text>
+              </View>
+            )}
+            {userData?.isEditor && !userData?.isAdmin && (
+              <View style={styles.editorBadge}>
+                <Text style={styles.editorBadgeText}>EDITOR</Text>
+              </View>
+            )}
+          </View>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Display Name"
+            value={displayName}
+            onChangeText={setDisplayName}
+            placeholderTextColor={colors.textMuted}
+          />
+
           <Button
             text="Update Profile"
             onPress={handleUpdateProfile}
-            loading={loading}
-            disabled={loading}
+            variant="primary"
+            style={{ marginBottom: spacing.md }}
           />
 
-          {(userData?.role === 'admin' || userData?.isAdmin || userData?.role === 'editor' || userData?.isEditor) && (
-            <>
-              <Text style={[styles.label, { marginTop: spacing.lg, marginBottom: spacing.md }]}>
-                {(userData?.role === 'admin' || userData?.isAdmin) ? 'Admin Management' : 'Editor Management'}
-              </Text>
-              
+          <Button
+            text="Change Password"
+            onPress={handleChangePassword}
+            variant="outline"
+          />
+        </View>
+
+        {/* Admin/Editor Panel */}
+        {(userData?.isAdmin || userData?.isEditor) && (
+          <View style={styles.adminSection}>
+            <Text style={styles.adminTitle}>
+              {userData?.isAdmin ? 'Admin Panel' : 'Editor Panel'}
+            </Text>
+            <View style={styles.adminButtonsContainer}>
               <Button
-                text="📊 Manage Forex Signals"
+                text="Manage Signals"
                 onPress={handleManageSignals}
-                variant="primary"
-                style={{ marginBottom: spacing.sm }}
+                variant="secondary"
               />
-              
               <Button
-                text="📈 Manage Analysis"
-                onPress={handleManageAnalysis}
-                variant="primary"
-                style={{ marginBottom: spacing.sm }}
-              />
-              
-              <Button
-                text="📰 Manage News Articles"
+                text="Manage News"
                 onPress={handleManageNews}
-                variant="primary"
-                style={{ marginBottom: spacing.sm }}
+                variant="secondary"
               />
-              
-              {(userData?.role === 'admin' || userData?.isAdmin) && (
+              <Button
+                text="Manage Analysis"
+                onPress={handleManageAnalysis}
+                variant="secondary"
+              />
+              {userData?.isAdmin && (
                 <>
                   <Button
-                    text="👥 Manage Users"
+                    text="Manage Users"
                     onPress={handleManageUsers}
-                    variant="primary"
-                    style={{ marginBottom: spacing.sm }}
+                    variant="secondary"
                   />
-                  
                   <Button
-                    text="💎 VIP Settings & Data Export"
+                    text="VIP Settings & Management"
                     onPress={handleManageVIP}
-                    variant="primary"
-                    style={{ marginBottom: spacing.sm }}
+                    variant="secondary"
                   />
-                  
-
                 </>
               )}
-            </>
-          )}
-          
+            </View>
+          </View>
+        )}
+
+        {/* Logout */}
+        <View style={styles.section}>
           <Button
             text="Logout"
             onPress={handleLogout}
@@ -323,6 +379,6 @@ export default function ProfileScreen() {
           />
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }

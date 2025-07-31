@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, Alert, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,6 +8,7 @@ import AnalysisCard from '../../components/AnalysisCard';
 import Button from '../../components/Button';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import { router } from 'expo-router';
+import { checkInternetConnectivity } from '../../utils/networkUtils';
 
 interface Analysis {
   id: string;
@@ -42,6 +44,19 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     fontWeight: '600',
   },
+  connectivityError: {
+    backgroundColor: colors.error,
+    padding: spacing.md,
+    margin: spacing.md,
+    borderRadius: spacing.sm,
+    alignItems: 'center',
+  },
+  connectivityErrorText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
 });
 
 export default function AnalysisScreen() {
@@ -50,6 +65,7 @@ export default function AnalysisScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
   const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [showConnectivityError, setShowConnectivityError] = useState(false);
 
   const { user, userData } = useAuth();
 
@@ -73,6 +89,7 @@ export default function AnalysisScreen() {
       console.log('Analysis updated:', analysisData.length);
       setAnalyses(analysisData);
       setLoading(false);
+      setShowConnectivityError(false);
       
       // Complete refresh if we're refreshing
       if (refreshing) {
@@ -99,14 +116,17 @@ export default function AnalysisScreen() {
         }
       }
       
-      let errorMessage = 'Failed to load analysis';
-      if (error.message.includes('network')) {
-        errorMessage = 'Please check internet connectivity';
-      } else if (error.message.includes('permission')) {
-        errorMessage = 'Please check your credentials';
+      // Check if it's a network error
+      if (error.message.includes('network') || error.message.includes('offline') || error.code === 'unavailable') {
+        setShowConnectivityError(true);
+      } else {
+        let errorMessage = 'Failed to load analysis';
+        if (error.message.includes('permission')) {
+          errorMessage = 'Please check your credentials';
+        }
+        
+        Alert.alert('Error', errorMessage);
       }
-      
-      Alert.alert('Error', errorMessage);
     });
 
     return () => {
@@ -118,10 +138,21 @@ export default function AnalysisScreen() {
     };
   }, [user, refreshing, refreshTimeout]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     console.log('Pull to refresh triggered for analysis');
+    
+    // Check internet connectivity first
+    const isConnected = await checkInternetConnectivity();
+    if (!isConnected) {
+      console.log('No internet connectivity detected');
+      setShowConnectivityError(true);
+      Alert.alert('No Internet Connection', 'Please check your internet connectivity.');
+      return;
+    }
+
     setRefreshing(true);
     setLastRefreshTime(new Date());
+    setShowConnectivityError(false);
     
     // Clear any existing timeout
     if (refreshTimeout) {
@@ -133,13 +164,17 @@ export default function AnalysisScreen() {
       console.log('Analysis refresh timeout - completing refresh');
       setRefreshing(false);
       setRefreshTimeout(null);
-    }, 3000); // Reduced timeout to 3 seconds
+    }, 5000); // 5 seconds timeout
     
     setRefreshTimeout(timeout);
   };
 
   const handleManageAnalysis = () => {
     router.push('/admin/analysis');
+  };
+
+  const dismissConnectivityError = () => {
+    setShowConnectivityError(false);
   };
 
   // Check if user can manage analysis (admin or editor)
@@ -171,6 +206,27 @@ export default function AnalysisScreen() {
           />
         )}
       </View>
+
+      {/* Connectivity Error Banner */}
+      {showConnectivityError && (
+        <View style={styles.connectivityError}>
+          <Text style={styles.connectivityErrorText}>
+            Please check your internet connectivity
+          </Text>
+          <Button
+            text="Dismiss"
+            onPress={dismissConnectivityError}
+            variant="outline"
+            style={{ 
+              marginTop: spacing.sm, 
+              paddingHorizontal: spacing.md, 
+              paddingVertical: spacing.xs,
+              borderColor: colors.white,
+            }}
+            textStyle={{ color: colors.white, fontSize: 12 }}
+          />
+        </View>
+      )}
 
       <ScrollView
         style={commonStyles.content}

@@ -1,14 +1,16 @@
+
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions, Linking, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { commonStyles, colors, spacing, borderRadius, shadows } from '../../styles/commonStyles';
+import { View, Text, ScrollView, StyleSheet, Dimensions, Linking, Alert, RefreshControl } from 'react-native';
 import Button from '../../components/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
-import { doc, getDoc } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../firebase/config';
 import { supabase } from '../../utils/supabaseConfig';
+import { LinearGradient } from 'expo-linear-gradient';
+import { doc, getDoc } from 'firebase/firestore';
+import { commonStyles, colors, spacing, borderRadius, shadows } from '../../styles/commonStyles';
+import { checkInternetConnectivity } from '../../utils/networkUtils';
 
 interface VIPSettings {
   monthlyPrice: number;
@@ -20,8 +22,6 @@ interface WhatsAppSettings {
   enabled: boolean;
 }
 
-const { width } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -29,214 +29,153 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: spacing.lg,
-    paddingTop: spacing.xl,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    ...shadows.sm,
-  },
-  headerGradient: {
-    padding: spacing.lg,
-    paddingTop: spacing.xl,
-    borderBottomLeftRadius: borderRadius.xl,
-    borderBottomRightRadius: borderRadius.xl,
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
-    color: colors.white,
+    fontWeight: 'bold',
+    color: colors.text,
     textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    marginBottom: spacing.sm,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: colors.textMuted,
+    textAlign: 'center',
   },
   content: {
+    flex: 1,
     padding: spacing.lg,
   },
   vipCard: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.xxl,
+    borderRadius: borderRadius.lg,
     padding: spacing.xl,
     marginBottom: spacing.lg,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    ...shadows.xl,
-    overflow: 'hidden',
-  },
-  vipCardGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 80,
-    opacity: 0.1,
+    ...shadows.medium,
   },
   vipTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: 'bold',
     color: colors.primary,
-    marginBottom: spacing.lg,
     textAlign: 'center',
-    letterSpacing: 0.5,
+    marginBottom: spacing.md,
+  },
+  priceContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  price: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  priceSubtext: {
+    fontSize: 16,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  featuresContainer: {
+    marginBottom: spacing.lg,
+  },
+  featuresTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.md,
+    textAlign: 'center',
   },
   feature: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    ...shadows.sm,
-  },
-  featureIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   featureText: {
     fontSize: 16,
     color: colors.text,
+    marginLeft: spacing.sm,
     flex: 1,
-    fontWeight: '500',
-  },
-  price: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.primary,
-    textAlign: 'center',
-    marginVertical: spacing.xl,
-    letterSpacing: -1,
-  },
-  priceContainer: {
-    alignItems: 'center',
-    marginVertical: spacing.lg,
-    padding: spacing.lg,
-    backgroundColor: colors.primaryLight + '20',
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-  },
-  description: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-    lineHeight: 24,
-    paddingHorizontal: spacing.md,
   },
   upgradeButton: {
-    marginTop: spacing.lg,
-    borderRadius: borderRadius.xl,
-    ...shadows.lg,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  loadingText: {
-    textAlign: 'center',
-    color: colors.textMuted,
-    fontSize: 16,
     marginTop: spacing.md,
   },
-  glassmorphism: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: borderRadius.xxl,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
-    ...shadows.xl,
-    overflow: 'hidden',
-  },
-  shimmer: {
-    position: 'absolute',
-    top: 0,
-    left: -width,
-    width: width,
-    height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    transform: [{ skewX: '-20deg' }],
-  },
-  redirectContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
+  currentVipContainer: {
+    backgroundColor: colors.success,
+    borderRadius: borderRadius.lg,
     padding: spacing.xl,
-  },
-  redirectText: {
-    fontSize: 18,
-    color: colors.text,
-    textAlign: 'center',
     marginBottom: spacing.lg,
-    lineHeight: 26,
+    alignItems: 'center',
   },
-  redirectSubtext: {
-    fontSize: 14,
-    color: colors.textSecondary,
+  currentVipText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.white,
+    marginBottom: spacing.sm,
+  },
+  currentVipSubtext: {
+    fontSize: 16,
+    color: colors.white,
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    opacity: 0.9,
+  },
+  signalsButton: {
+    marginTop: spacing.lg,
+  },
+  connectivityError: {
+    backgroundColor: colors.error,
+    padding: spacing.md,
+    margin: spacing.md,
+    borderRadius: spacing.sm,
+    alignItems: 'center',
+  },
+  connectivityErrorText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 
 export default function VIPScreen() {
+  const { userData } = useAuth();
   const [vipSettings, setVipSettings] = useState<VIPSettings>({
     monthlyPrice: 99,
     features: [
-      'Exclusive high-accuracy signals',
+      'Premium forex signals',
+      'Real-time market analysis',
       'Priority customer support',
-      'Advanced market analysis',
-      'Real-time notifications',
-      'Weekly market reports',
-      '1-on-1 trading consultation',
-      'Direct WhatsApp support'
+      'Advanced trading strategies',
+      'Risk management guidance'
     ]
   });
-  const [whatsappSettings, setWhatsappSettings] = useState<WhatsAppSettings>({
+  const [whatsAppSettings, setWhatsAppSettings] = useState<WhatsAppSettings>({
     url: 'https://wa.me/+919343601863',
     enabled: true
   });
   const [loading, setLoading] = useState(true);
-  const { userData } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
+  const [showConnectivityError, setShowConnectivityError] = useState(false);
 
   // Check if user is admin or editor
-  const isAdminOrEditor = userData && (
-    userData.isAdmin === true || 
-    userData.role === 'admin' || 
-    userData.isEditor === true || 
-    userData.role === 'editor'
-  );
+  const isAdminOrEditor = userData?.isAdmin || userData?.isEditor;
 
   useEffect(() => {
-    console.log('VIP Screen: User data check:', {
-      uid: userData?.uid,
-      role: userData?.role,
-      isAdmin: userData?.isAdmin,
-      isEditor: userData?.isEditor,
-      isAdminOrEditor
-    });
-
-    // If admin or editor, show redirect message instead of redirecting immediately
-    if (!isAdminOrEditor) {
-      loadVIPSettings();
-      loadWhatsAppSettings();
-    } else {
-      setLoading(false);
-    }
+    loadVIPSettings();
+    loadWhatsAppSettings();
   }, [userData, isAdminOrEditor]);
 
   const loadVIPSettings = async () => {
     try {
       const settingsDoc = await getDoc(doc(db, 'settings', 'vip'));
       if (settingsDoc.exists()) {
-        const settings = settingsDoc.data() as VIPSettings;
-        setVipSettings(settings);
+        const data = settingsDoc.data();
+        setVipSettings({
+          monthlyPrice: data.monthlyPrice || 99,
+          features: data.features || vipSettings.features
+        });
       }
     } catch (error) {
       console.error('Error loading VIP settings:', error);
@@ -247,11 +186,10 @@ export default function VIPScreen() {
 
   const loadWhatsAppSettings = async () => {
     try {
-      console.log('Loading WhatsApp settings from Supabase...');
       const { data, error } = await supabase
         .from('settings')
         .select('value')
-        .eq('id', 'whatsapp_link')
+        .eq('key', 'whatsapp_link')
         .single();
 
       if (error) {
@@ -260,95 +198,103 @@ export default function VIPScreen() {
       }
 
       if (data?.value) {
-        console.log('WhatsApp settings loaded:', data.value);
-        setWhatsappSettings(data.value as WhatsAppSettings);
+        const settings = JSON.parse(data.value);
+        setWhatsAppSettings(settings);
       }
     } catch (error) {
-      console.error('Error loading WhatsApp settings:', error);
+      console.error('Error parsing WhatsApp settings:', error);
+    }
+  };
+
+  const handleRefresh = async () => {
+    console.log('Pull to refresh triggered for VIP');
+    
+    // Check internet connectivity first
+    const isConnected = await checkInternetConnectivity();
+    if (!isConnected) {
+      console.log('No internet connectivity detected');
+      setShowConnectivityError(true);
+      Alert.alert('No Internet Connection', 'Please check your internet connectivity.');
+      return;
+    }
+
+    setRefreshing(true);
+    setShowConnectivityError(false);
+    
+    try {
+      await Promise.all([
+        loadVIPSettings(),
+        loadWhatsAppSettings()
+      ]);
+    } catch (error) {
+      console.error('Error refreshing VIP data:', error);
+    } finally {
+      setRefreshing(false);
     }
   };
 
   const handleUpgradeToVIP = async () => {
     try {
-      console.log('Opening WhatsApp with URL:', whatsappSettings.url);
-      
-      if (!whatsappSettings.enabled) {
-        Alert.alert('Service Unavailable', 'WhatsApp support is currently unavailable. Please try again later.');
-        return;
-      }
-
-      const supported = await Linking.canOpenURL(whatsappSettings.url);
-      
-      if (supported) {
-        await Linking.openURL(whatsappSettings.url);
+      if (whatsAppSettings.enabled && whatsAppSettings.url) {
+        const supported = await Linking.canOpenURL(whatsAppSettings.url);
+        if (supported) {
+          await Linking.openURL(whatsAppSettings.url);
+        } else {
+          Alert.alert('Error', 'Unable to open WhatsApp. Please contact support.');
+        }
       } else {
-        Alert.alert(
-          'WhatsApp Not Available',
-          'WhatsApp is not installed on your device. Please install WhatsApp or contact support via email.',
-          [
-            { text: 'OK', style: 'default' }
-          ]
-        );
+        Alert.alert('Error', 'Contact information not available. Please try again later.');
       }
     } catch (error) {
       console.error('Error opening WhatsApp:', error);
-      Alert.alert(
-        'Error',
-        'Unable to open WhatsApp. Please try again or contact support directly.',
-        [
-          { text: 'OK', style: 'default' }
-        ]
-      );
+      Alert.alert('Error', 'Unable to open WhatsApp. Please contact support.');
     }
   };
 
   const handleGoToSignals = () => {
-    router.replace('/(tabs)/signals');
+    router.push('/(tabs)/signals');
   };
 
-  // Show redirect screen for admin/editor users
-  if (isAdminOrEditor) {
+  const dismissConnectivityError = () => {
+    setShowConnectivityError(false);
+  };
+
+  if (loading) {
     return (
       <View style={styles.container}>
-        <LinearGradient
-          colors={[colors.gradientStart, colors.gradientEnd]}
-          style={styles.headerGradient}
-        >
-          <Text style={styles.title}>Access Restricted</Text>
-        </LinearGradient>
-        
-        <View style={styles.redirectContainer}>
-          <Ionicons name="shield-checkmark-outline" size={64} color={colors.primary} />
-          <Text style={styles.redirectText}>
-            VIP membership is not available for admin and editor accounts.
-          </Text>
-          <Text style={styles.redirectSubtext}>
-            As a team member, you already have access to all premium features and administrative tools.
-          </Text>
-          <Button
-            text="Go to Signals"
-            onPress={handleGoToSignals}
-            variant="primary"
-            size="large"
-          />
+        <View style={styles.header}>
+          <Text style={styles.title}>VIP Membership</Text>
+        </View>
+        <View style={commonStyles.loading}>
+          <Text style={commonStyles.text}>Loading VIP information...</Text>
         </View>
       </View>
     );
   }
 
-  if (loading) {
+  // Don't show VIP tab for admin or editor
+  if (isAdminOrEditor) {
     return (
       <View style={styles.container}>
-        <LinearGradient
-          colors={[colors.gradientStart, colors.gradientEnd]}
-          style={styles.headerGradient}
-        >
-          <Text style={styles.title}>VIP Membership</Text>
-        </LinearGradient>
-        
-        <View style={styles.loadingContainer}>
-          <Ionicons name="diamond-outline" size={48} color={colors.primary} />
-          <Text style={styles.loadingText}>Loading VIP information...</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>Admin/Editor Access</Text>
+          <Text style={styles.subtitle}>You have full access to all features</Text>
+        </View>
+        <View style={styles.content}>
+          <View style={styles.currentVipContainer}>
+            <Ionicons name="shield-checkmark" size={48} color={colors.white} />
+            <Text style={styles.currentVipText}>Full Access Granted</Text>
+            <Text style={styles.currentVipSubtext}>
+              As an {userData?.isAdmin ? 'admin' : 'editor'}, you have access to all premium features and management tools.
+            </Text>
+          </View>
+          
+          <Button
+            text="View All Signals"
+            onPress={handleGoToSignals}
+            variant="primary"
+            style={styles.signalsButton}
+          />
         </View>
       </View>
     );
@@ -356,48 +302,101 @@ export default function VIPScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        style={styles.headerGradient}
-      >
+      <View style={styles.header}>
         <Text style={styles.title}>VIP Membership</Text>
-      </LinearGradient>
+        <Text style={styles.subtitle}>Unlock premium trading signals and analysis</Text>
+      </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.description}>
-          Unlock premium trading signals and exclusive features with our VIP membership.
-          Get access to high-accuracy signals and direct support from our trading experts.
-        </Text>
-
-        <View style={[styles.vipCard, styles.glassmorphism]}>
-          <LinearGradient
-            colors={[colors.primary + '10', colors.primaryLight + '10']}
-            style={styles.vipCardGradient}
-          />
-          
-          <Text style={styles.vipTitle}>💎 VIP Premium Signals</Text>
-          
-          {vipSettings.features.map((feature, index) => (
-            <View key={index} style={styles.feature}>
-              <View style={styles.featureIcon}>
-                <Ionicons name="checkmark" size={14} color={colors.white} />
-              </View>
-              <Text style={styles.featureText}>{feature}</Text>
-            </View>
-          ))}
-
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>${vipSettings.monthlyPrice}/month</Text>
-          </View>
-
+      {/* Connectivity Error Banner */}
+      {showConnectivityError && (
+        <View style={styles.connectivityError}>
+          <Text style={styles.connectivityErrorText}>
+            Please check your internet connectivity
+          </Text>
           <Button
-            text="Upgrade to VIP ✨"
-            onPress={handleUpgradeToVIP}
-            variant="primary"
-            style={styles.upgradeButton}
-            size="large"
+            text="Dismiss"
+            onPress={dismissConnectivityError}
+            variant="outline"
+            style={{ 
+              marginTop: spacing.sm, 
+              paddingHorizontal: spacing.md, 
+              paddingVertical: spacing.xs,
+              borderColor: colors.white,
+            }}
+            textStyle={{ color: colors.white, fontSize: 12 }}
           />
         </View>
+      )}
+
+      <ScrollView 
+        style={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+            title="Pull to refresh VIP info"
+            titleColor={colors.textMuted}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {userData?.isVIP ? (
+          <View style={styles.currentVipContainer}>
+            <Ionicons name="star" size={48} color={colors.white} />
+            <Text style={styles.currentVipText}>VIP Member</Text>
+            <Text style={styles.currentVipSubtext}>
+              You have access to all premium signals and analysis. Enjoy exclusive trading insights!
+            </Text>
+          </View>
+        ) : (
+          <LinearGradient
+            colors={[colors.primary, colors.secondary]}
+            style={styles.vipCard}
+          >
+            <Text style={[styles.vipTitle, { color: colors.white }]}>
+              Premium VIP Membership
+            </Text>
+            
+            <View style={styles.priceContainer}>
+              <Text style={[styles.price, { color: colors.white }]}>
+                ${vipSettings.monthlyPrice}
+              </Text>
+              <Text style={[styles.priceSubtext, { color: colors.white, opacity: 0.9 }]}>
+                per month
+              </Text>
+            </View>
+
+            <View style={styles.featuresContainer}>
+              <Text style={[styles.featuresTitle, { color: colors.white }]}>
+                Premium Features
+              </Text>
+              {vipSettings.features.map((feature, index) => (
+                <View key={index} style={styles.feature}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.white} />
+                  <Text style={[styles.featureText, { color: colors.white }]}>
+                    {feature}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            <Button
+              text="Upgrade to VIP"
+              onPress={handleUpgradeToVIP}
+              variant="secondary"
+              style={styles.upgradeButton}
+            />
+          </LinearGradient>
+        )}
+
+        <Button
+          text="View All Signals"
+          onPress={handleGoToSignals}
+          variant="primary"
+          style={styles.signalsButton}
+        />
       </ScrollView>
     </View>
   );

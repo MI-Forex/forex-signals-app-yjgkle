@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, Alert, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
@@ -8,6 +9,7 @@ import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import SignalCard from '../../components/SignalCard';
 import FilterModal from '../../components/FilterModal';
 import Button from '../../components/Button';
+import { checkInternetConnectivity } from '../../utils/networkUtils';
 
 interface Signal {
   id: string;
@@ -104,6 +106,19 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     fontWeight: '600',
   },
+  connectivityError: {
+    backgroundColor: colors.error,
+    padding: spacing.md,
+    margin: spacing.md,
+    borderRadius: spacing.sm,
+    alignItems: 'center',
+  },
+  connectivityErrorText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
 });
 
 export default function SignalsScreen() {
@@ -115,6 +130,7 @@ export default function SignalsScreen() {
   const [signalTypeFilter, setSignalTypeFilter] = useState<'all' | 'normal' | 'vip'>('all');
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
   const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [showConnectivityError, setShowConnectivityError] = useState(false);
   const [filters, setFilters] = useState({
     pair: '',
     type: '',
@@ -144,6 +160,7 @@ export default function SignalsScreen() {
       console.log('Signals updated:', signalsData.length);
       setSignals(signalsData);
       setLoading(false);
+      setShowConnectivityError(false);
       
       // Complete refresh if we're refreshing
       if (refreshing) {
@@ -170,15 +187,18 @@ export default function SignalsScreen() {
         }
       }
       
-      // Generic error messages for security
-      let errorMessage = 'Failed to load signals';
-      if (error.message.includes('network')) {
-        errorMessage = 'Please check internet connectivity';
-      } else if (error.message.includes('permission')) {
-        errorMessage = 'Please check your credentials';
+      // Check if it's a network error
+      if (error.message.includes('network') || error.message.includes('offline') || error.code === 'unavailable') {
+        setShowConnectivityError(true);
+      } else {
+        // Generic error messages for security
+        let errorMessage = 'Failed to load signals';
+        if (error.message.includes('permission')) {
+          errorMessage = 'Please check your credentials';
+        }
+        
+        Alert.alert('Error', errorMessage);
       }
-      
-      Alert.alert('Error', errorMessage);
     });
 
     return () => {
@@ -248,10 +268,21 @@ export default function SignalsScreen() {
     return signalsToFilter;
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     console.log('Pull to refresh triggered for signals');
+    
+    // Check internet connectivity first
+    const isConnected = await checkInternetConnectivity();
+    if (!isConnected) {
+      console.log('No internet connectivity detected');
+      setShowConnectivityError(true);
+      Alert.alert('No Internet Connection', 'Please check your internet connectivity.');
+      return;
+    }
+
     setRefreshing(true);
     setLastRefreshTime(new Date());
+    setShowConnectivityError(false);
     
     // Clear any existing timeout
     if (refreshTimeout) {
@@ -263,7 +294,7 @@ export default function SignalsScreen() {
       console.log('Signals refresh timeout - completing refresh');
       setRefreshing(false);
       setRefreshTimeout(null);
-    }, 3000); // Reduced timeout to 3 seconds
+    }, 5000); // 5 seconds timeout
     
     setRefreshTimeout(timeout);
   };
@@ -279,6 +310,10 @@ export default function SignalsScreen() {
 
   const handleSignalTypeFilter = (type: 'all' | 'normal' | 'vip') => {
     setSignalTypeFilter(type);
+  };
+
+  const dismissConnectivityError = () => {
+    setShowConnectivityError(false);
   };
 
   // Check if user can manage signals (admin or editor)
@@ -318,6 +353,27 @@ export default function SignalsScreen() {
           )}
         </View>
       </View>
+
+      {/* Connectivity Error Banner */}
+      {showConnectivityError && (
+        <View style={styles.connectivityError}>
+          <Text style={styles.connectivityErrorText}>
+            Please check your internet connectivity
+          </Text>
+          <Button
+            text="Dismiss"
+            onPress={dismissConnectivityError}
+            variant="outline"
+            style={{ 
+              marginTop: spacing.sm, 
+              paddingHorizontal: spacing.md, 
+              paddingVertical: spacing.xs,
+              borderColor: colors.white,
+            }}
+            textStyle={{ color: colors.white, fontSize: 12 }}
+          />
+        </View>
+      )}
 
       {/* Signal Type Filter */}
       <View style={styles.filterContainer}>
