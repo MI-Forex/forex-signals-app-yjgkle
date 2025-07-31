@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Dimensions, Linking, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { commonStyles, colors, spacing, borderRadius, shadows } from '../../styles/commonStyles';
 import Button from '../../components/Button';
-import ChatModal from '../../components/ChatModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import { supabase } from '../../utils/supabaseConfig';
 
 interface VIPSettings {
   monthlyPrice: number;
   features: string[];
+}
+
+interface WhatsAppSettings {
+  url: string;
+  enabled: boolean;
 }
 
 const { width } = Dimensions.get('window');
@@ -181,7 +186,6 @@ const styles = StyleSheet.create({
 });
 
 export default function VIPScreen() {
-  const [chatModalVisible, setChatModalVisible] = useState(false);
   const [vipSettings, setVipSettings] = useState<VIPSettings>({
     monthlyPrice: 99,
     features: [
@@ -191,8 +195,12 @@ export default function VIPScreen() {
       'Real-time notifications',
       'Weekly market reports',
       '1-on-1 trading consultation',
-      'Direct chat with admin'
+      'Direct WhatsApp support'
     ]
+  });
+  const [whatsappSettings, setWhatsappSettings] = useState<WhatsAppSettings>({
+    url: 'https://wa.me/+919343601863',
+    enabled: true
   });
   const [loading, setLoading] = useState(true);
   const { userData } = useAuth();
@@ -217,6 +225,7 @@ export default function VIPScreen() {
     // If admin or editor, show redirect message instead of redirecting immediately
     if (!isAdminOrEditor) {
       loadVIPSettings();
+      loadWhatsAppSettings();
     } else {
       setLoading(false);
     }
@@ -236,8 +245,61 @@ export default function VIPScreen() {
     }
   };
 
-  const handleUpgradeToVIP = () => {
-    setChatModalVisible(true);
+  const loadWhatsAppSettings = async () => {
+    try {
+      console.log('Loading WhatsApp settings from Supabase...');
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('id', 'whatsapp_link')
+        .single();
+
+      if (error) {
+        console.error('Error loading WhatsApp settings:', error);
+        return;
+      }
+
+      if (data?.value) {
+        console.log('WhatsApp settings loaded:', data.value);
+        setWhatsappSettings(data.value as WhatsAppSettings);
+      }
+    } catch (error) {
+      console.error('Error loading WhatsApp settings:', error);
+    }
+  };
+
+  const handleUpgradeToVIP = async () => {
+    try {
+      console.log('Opening WhatsApp with URL:', whatsappSettings.url);
+      
+      if (!whatsappSettings.enabled) {
+        Alert.alert('Service Unavailable', 'WhatsApp support is currently unavailable. Please try again later.');
+        return;
+      }
+
+      const supported = await Linking.canOpenURL(whatsappSettings.url);
+      
+      if (supported) {
+        await Linking.openURL(whatsappSettings.url);
+      } else {
+        Alert.alert(
+          'WhatsApp Not Available',
+          'WhatsApp is not installed on your device. Please install WhatsApp or contact support via email.',
+          [
+            { text: 'OK', style: 'default' }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error opening WhatsApp:', error);
+      Alert.alert(
+        'Error',
+        'Unable to open WhatsApp. Please try again or contact support directly.',
+        [
+          { text: 'OK', style: 'default' }
+        ]
+      );
+    }
   };
 
   const handleGoToSignals = () => {
@@ -337,11 +399,6 @@ export default function VIPScreen() {
           />
         </View>
       </ScrollView>
-
-      <ChatModal
-        visible={chatModalVisible}
-        onClose={() => setChatModalVisible(false)}
-      />
     </View>
   );
 }

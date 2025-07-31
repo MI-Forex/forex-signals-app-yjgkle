@@ -199,9 +199,7 @@ export default function ProfileScreen() {
     router.push('/admin/vip');
   };
 
-  const handleManageChats = () => {
-    router.push('/admin/chats');
-  };
+
 
   return (
     <KeyboardAvoidingView 
@@ -312,12 +310,7 @@ export default function ProfileScreen() {
                     style={{ marginBottom: spacing.sm }}
                   />
                   
-                  <Button
-                    text="💬 User Chats & Support"
-                    onPress={handleManageChats}
-                    variant="success"
-                    style={{ marginBottom: spacing.sm }}
-                  />
+
                 </>
               )}
             </>

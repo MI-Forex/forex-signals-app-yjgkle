@@ -4,12 +4,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
 import Button from '../../components/Button';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../../firebase/config';
+
+
 
 export default function AdminScreen() {
   const { userData } = useAuth();
-  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   const handleBack = () => {
     // Navigate to profile tab instead of using router.back()
@@ -36,27 +35,9 @@ export default function AdminScreen() {
     router.push('/admin/vip');
   };
 
-  const handleManageChats = () => {
-    router.push('/admin/chats');
-  };
 
-  useEffect(() => {
-    if (userData?.isAdmin) {
-      // Listen for unread messages from users
-      const unreadQuery = query(
-        collection(db, 'messages'),
-        where('sender', '==', 'user'),
-        where('read', '==', false)
-      );
 
-      const unsubscribe = onSnapshot(unreadQuery, (snapshot) => {
-        setUnreadMessageCount(snapshot.size);
-        console.log('Unread messages count:', snapshot.size);
-      });
 
-      return unsubscribe;
-    }
-  }, [userData?.isAdmin]);
 
   if (!userData?.isAdmin) {
     return (
@@ -125,22 +106,7 @@ export default function AdminScreen() {
           />
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Communication</Text>
-          
-          <View style={styles.chatButtonContainer}>
-            <Button
-              text={`User Chats & Support${unreadMessageCount > 0 ? ` (${unreadMessageCount})` : ''}`}
-              onPress={handleManageChats}
-              style={[styles.menuButton, unreadMessageCount > 0 && styles.unreadButton]}
-            />
-            {unreadMessageCount > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>{unreadMessageCount}</Text>
-              </View>
-            )}
-          </View>
-        </View>
+
 
         <View style={styles.infoSection}>
           <Text style={styles.infoTitle}>Admin Panel Features</Text>
@@ -160,7 +126,7 @@ export default function AdminScreen() {
             • Export user and signal data (CSV)
           </Text>
           <Text style={styles.infoText}>
-            • Chat support and user communication
+            • WhatsApp support integration
           </Text>
           <Text style={styles.infoText}>
             • VIP pricing management
@@ -237,27 +203,5 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     lineHeight: 18,
   },
-  chatButtonContainer: {
-    position: 'relative',
-  },
-  unreadButton: {
-    borderColor: colors.error,
-    borderWidth: 2,
-  },
-  unreadBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: colors.error,
-    borderRadius: 12,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    minWidth: 24,
-    alignItems: 'center',
-  },
-  unreadBadgeText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
+
 });

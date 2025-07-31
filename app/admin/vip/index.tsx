@@ -8,10 +8,16 @@ import { commonStyles, colors, spacing, borderRadius } from '../../../styles/com
 import Button from '../../../components/Button';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Platform } from 'react-native';
+import { supabase } from '../../../utils/supabaseConfig';
 
 interface VIPSettings {
   monthlyPrice: number;
   features: string[];
+}
+
+interface WhatsAppSettings {
+  url: string;
+  enabled: boolean;
 }
 
 interface User {
@@ -48,6 +54,10 @@ export default function AdminVIPScreen() {
     monthlyPrice: 99,
     features: ['Premium Signals', 'Priority Support', 'Advanced Analysis']
   });
+  const [whatsappSettings, setWhatsappSettings] = useState<WhatsAppSettings>({
+    url: 'https://wa.me/+919343601863',
+    enabled: true
+  });
   const [users, setUsers] = useState<User[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [signalStats, setSignalStats] = useState<SignalStats>({
@@ -56,6 +66,7 @@ export default function AdminVIPScreen() {
     vipSignals: 0
   });
   const [loading, setLoading] = useState(false);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [dateFrom, setDateFrom] = useState<Date>(new Date());
@@ -68,6 +79,7 @@ export default function AdminVIPScreen() {
   useEffect(() => {
     if (userData?.isAdmin) {
       loadVIPSettings();
+      loadWhatsAppSettings();
       loadUsers();
       loadSignalStats();
     }
@@ -98,6 +110,29 @@ export default function AdminVIPScreen() {
       }
     } catch (error) {
       console.error('Error loading VIP settings:', error);
+    }
+  };
+
+  const loadWhatsAppSettings = async () => {
+    try {
+      console.log('Loading WhatsApp settings from Supabase...');
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('id', 'whatsapp_link')
+        .single();
+
+      if (error) {
+        console.error('Error loading WhatsApp settings:', error);
+        return;
+      }
+
+      if (data?.value) {
+        console.log('WhatsApp settings loaded:', data.value);
+        setWhatsappSettings(data.value as WhatsAppSettings);
+      }
+    } catch (error) {
+      console.error('Error loading WhatsApp settings:', error);
     }
   };
 
@@ -155,6 +190,34 @@ export default function AdminVIPScreen() {
       Alert.alert('Error', 'Failed to update VIP settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveWhatsAppSettings = async () => {
+    setWhatsappLoading(true);
+    try {
+      console.log('Saving WhatsApp settings to Supabase:', whatsappSettings);
+      
+      const { error } = await supabase
+        .from('settings')
+        .upsert({
+          id: 'whatsapp_link',
+          value: whatsappSettings,
+          updated_at: new Date().toISOString(),
+          updated_by: userData?.uid || 'admin'
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      Alert.alert('Success', 'WhatsApp link updated successfully');
+      console.log('WhatsApp settings saved successfully');
+    } catch (error) {
+      console.error('Error saving WhatsApp settings:', error);
+      Alert.alert('Error', 'Failed to update WhatsApp link');
+    } finally {
+      setWhatsappLoading(false);
     }
   };
 
@@ -352,6 +415,36 @@ export default function AdminVIPScreen() {
           text={loading ? "Saving..." : "Save Pricing"}
           onPress={saveVIPSettings}
           loading={loading}
+          style={styles.saveButton}
+        />
+      </View>
+
+      {/* WhatsApp Link Settings */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>WhatsApp Support Settings</Text>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>WhatsApp Link</Text>
+          <TextInput
+            style={styles.input}
+            value={whatsappSettings.url}
+            onChangeText={(text) => setWhatsappSettings(prev => ({ ...prev, url: text }))}
+            placeholder="https://wa.me/+919343601863"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+        <View style={styles.checkboxContainer}>
+          <Button
+            text={whatsappSettings.enabled ? "✓ Enabled" : "✗ Disabled"}
+            onPress={() => setWhatsappSettings(prev => ({ ...prev, enabled: !prev.enabled }))}
+            variant={whatsappSettings.enabled ? "success" : "outline"}
+            style={styles.toggleButton}
+          />
+        </View>
+        <Button
+          text={whatsappLoading ? "Saving..." : "Save WhatsApp Settings"}
+          onPress={saveWhatsAppSettings}
+          loading={whatsappLoading}
           style={styles.saveButton}
         />
       </View>
@@ -599,5 +692,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     minWidth: 80,
+  },
+  checkboxContainer: {
+    marginBottom: spacing.md,
+  },
+  toggleButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.lg,
   },
 });

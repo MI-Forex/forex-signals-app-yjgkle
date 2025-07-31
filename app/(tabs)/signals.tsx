@@ -114,6 +114,7 @@ export default function SignalsScreen() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [signalTypeFilter, setSignalTypeFilter] = useState<'all' | 'normal' | 'vip'>('all');
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+  const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(null);
   const [filters, setFilters] = useState({
     pair: '',
     type: '',
@@ -146,16 +147,28 @@ export default function SignalsScreen() {
       
       // Complete refresh if we're refreshing
       if (refreshing) {
-        setTimeout(() => {
-          setRefreshing(false);
-          setLastRefreshTime(new Date());
-          console.log('Signals refresh completed');
-        }, 1000); // Show refresh completed for 1 second
+        console.log('Signals refresh completed via listener');
+        setRefreshing(false);
+        setLastRefreshTime(new Date());
+        
+        // Clear any existing timeout
+        if (refreshTimeout) {
+          clearTimeout(refreshTimeout);
+          setRefreshTimeout(null);
+        }
       }
     }, (error) => {
       console.error('Error fetching signals:', error);
       setLoading(false);
-      setRefreshing(false);
+      
+      // Stop refreshing on error
+      if (refreshing) {
+        setRefreshing(false);
+        if (refreshTimeout) {
+          clearTimeout(refreshTimeout);
+          setRefreshTimeout(null);
+        }
+      }
       
       // Generic error messages for security
       let errorMessage = 'Failed to load signals';
@@ -168,8 +181,14 @@ export default function SignalsScreen() {
       Alert.alert('Error', errorMessage);
     });
 
-    return unsubscribe;
-  }, [user, filters]);
+    return () => {
+      unsubscribe();
+      // Clear timeout on cleanup
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+    };
+  }, [user, filters, refreshTimeout]);
 
   useEffect(() => {
     // Apply filters whenever signals or filters change
@@ -229,21 +248,24 @@ export default function SignalsScreen() {
     return signalsToFilter;
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = () => {
     console.log('Pull to refresh triggered for signals');
     setRefreshing(true);
     setLastRefreshTime(new Date());
     
-    // The onSnapshot listener will automatically update the data
-    // and set refreshing to false when new data arrives
+    // Clear any existing timeout
+    if (refreshTimeout) {
+      clearTimeout(refreshTimeout);
+    }
     
-    // Fallback timeout in case the listener doesn't fire
-    setTimeout(() => {
-      if (refreshing) {
-        console.log('Signals refresh timeout - completing refresh');
-        setRefreshing(false);
-      }
-    }, 5000);
+    // Fallback timeout to ensure refresh completes
+    const timeout = setTimeout(() => {
+      console.log('Signals refresh timeout - completing refresh');
+      setRefreshing(false);
+      setRefreshTimeout(null);
+    }, 3000); // Reduced timeout to 3 seconds
+    
+    setRefreshTimeout(timeout);
   };
 
   const applyFilters = (newFilters: typeof filters) => {
