@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getAnalytics, isSupported } from 'firebase/analytics';
+// Analytics removed - using Google Analytics 4 directly for web
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
@@ -45,20 +45,6 @@ console.log('Firebase: Firestore initialized successfully');
 export const storage = getStorage(app);
 console.log('Firebase: Storage initialized successfully');
 
-// Initialize Analytics (only for web, native will use @react-native-firebase/analytics)
-let analytics = null;
-if (Platform.OS === 'web') {
-  isSupported().then((supported) => {
-    if (supported) {
-      analytics = getAnalytics(app);
-      console.log('Firebase: Analytics initialized successfully for web');
-    } else {
-      console.log('Firebase: Analytics not supported on this browser');
-    }
-  }).catch((error) => {
-    console.error('Firebase: Error checking analytics support:', error);
-  });
-}
-
-export { auth, analytics };
+// Analytics removed - using Google Analytics 4 directly for better performance
+export { auth };
 export default app;
