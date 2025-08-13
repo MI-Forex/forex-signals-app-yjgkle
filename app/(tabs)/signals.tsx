@@ -8,7 +8,7 @@ import { db } from '../../firebase/config';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import Button from '../../components/Button';
 import SignalCard from '../../components/SignalCard';
-import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from '@firebase/firestore';
 import { router } from 'expo-router';
 import { logScreenView, logSignalView, logEvent, ANALYTICS_EVENTS } from '../../utils/analyticsUtils';
 

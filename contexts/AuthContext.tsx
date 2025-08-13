@@ -9,8 +9,8 @@ import {
   updateProfile,
   onAuthStateChanged,
   User as FirebaseUser
-} from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+} from '@firebase/auth';
+import { doc, getDoc, setDoc, updateDoc } from '@firebase/firestore';
 import { auth, db } from '../firebase/config';
 import { router } from 'expo-router';
 import { setUserId, setUserProperties, logLogin, logSignUp, logEvent, ANALYTICS_EVENTS } from '../utils/analyticsUtils';

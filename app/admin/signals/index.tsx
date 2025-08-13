@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert, RefreshControl, StyleSheet, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../contexts/AuthContext';
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from '@firebase/firestore';
 import { db } from '../../../firebase/config';
 import Button from '../../../components/Button';
 import AdminSignalCard from '../../../components/AdminSignalCard';

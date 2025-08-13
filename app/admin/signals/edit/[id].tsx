@@ -3,7 +3,7 @@ import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platfor
 import { router, useLocalSearchParams } from 'expo-router';
 import { commonStyles, colors, spacing, borderRadius } from '../../../../styles/commonStyles';
 import { db } from '../../../../firebase/config';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from '@firebase/firestore';
 import Button from '../../../../components/Button';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { Picker } from '@react-native-picker/picker';
