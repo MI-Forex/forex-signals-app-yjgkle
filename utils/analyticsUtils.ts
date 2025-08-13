@@ -2,18 +2,16 @@
 import { Platform } from 'react-native';
 import { analytics } from '../firebase/config';
 
-/**
- * Analytics Utils for Expo Managed Workflow
- * 
- * This implementation provides analytics tracking that works with Expo managed workflow.
- * - Web: Uses Firebase Analytics
- * - Native (iOS/Android): Uses console logging for development
- * 
- * For production native analytics, consider:
- * 1. Ejecting to bare workflow and using @react-native-firebase/analytics
- * 2. Using Expo's built-in analytics when available
- * 3. Implementing a custom analytics service
- */
+// Import React Native Firebase Analytics for native platforms
+let nativeAnalytics: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    nativeAnalytics = require('@react-native-firebase/analytics').default;
+    console.log('Analytics: React Native Firebase Analytics loaded');
+  } catch (error) {
+    console.warn('Analytics: React Native Firebase Analytics not available:', error);
+  }
+}
 
 // Analytics event types
 export interface AnalyticsEvent {
@@ -81,10 +79,14 @@ class AnalyticsService {
         this.isInitialized = !!analytics;
         console.log('Analytics: Web analytics initialized:', this.isInitialized);
       } else {
-        // For native platforms, we'll use a simple logging approach
-        // since @react-native-firebase/analytics is not compatible with Expo managed workflow
-        this.isInitialized = true;
-        console.log('Analytics: Native analytics simulation initialized (logging only)');
+        // Native analytics
+        if (nativeAnalytics) {
+          await nativeAnalytics().setAnalyticsCollectionEnabled(true);
+          this.isInitialized = true;
+          console.log('Analytics: Native analytics initialized successfully');
+        } else {
+          console.warn('Analytics: Native analytics not available');
+        }
       }
     } catch (error) {
       console.error('Analytics: Initialization error:', error);
@@ -108,9 +110,10 @@ class AnalyticsService {
           console.log('Analytics: Web event logged:', eventName, sanitizedParams);
         }
       } else {
-        // For native platforms, log to console for debugging
-        // In a production app, you could send these to your own analytics service
-        console.log('Analytics: Native event (logged):', eventName, sanitizedParams);
+        if (nativeAnalytics) {
+          await nativeAnalytics().logEvent(eventName, sanitizedParams);
+          console.log('Analytics: Native event logged:', eventName, sanitizedParams);
+        }
       }
     } catch (error) {
       console.error('Analytics: Error logging event:', eventName, error);
@@ -132,8 +135,12 @@ class AnalyticsService {
           console.log('Analytics: Web user properties set:', properties);
         }
       } else {
-        // For native platforms, log to console for debugging
-        console.log('Analytics: Native user properties (logged):', properties);
+        if (nativeAnalytics) {
+          for (const [key, value] of Object.entries(properties)) {
+            await nativeAnalytics().setUserProperty(key, value);
+          }
+          console.log('Analytics: Native user properties set:', properties);
+        }
       }
     } catch (error) {
       console.error('Analytics: Error setting user properties:', error);
@@ -155,8 +162,10 @@ class AnalyticsService {
           console.log('Analytics: Web user ID set:', userId);
         }
       } else {
-        // For native platforms, log to console for debugging
-        console.log('Analytics: Native user ID (logged):', userId);
+        if (nativeAnalytics) {
+          await nativeAnalytics().setUserId(userId);
+          console.log('Analytics: Native user ID set:', userId);
+        }
       }
     } catch (error) {
       console.error('Analytics: Error setting user ID:', error);
