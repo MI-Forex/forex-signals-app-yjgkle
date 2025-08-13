@@ -45,7 +45,7 @@ console.log('Firebase: Firestore initialized successfully');
 export const storage = getStorage(app);
 console.log('Firebase: Storage initialized successfully');
 
-// Initialize Analytics (only for web, native will use @react-native-firebase/analytics)
+// Initialize Analytics (only for web)
 let analytics = null;
 if (Platform.OS === 'web') {
   isSupported().then((supported) => {
@@ -58,6 +58,8 @@ if (Platform.OS === 'web') {
   }).catch((error) => {
     console.error('Firebase: Error checking analytics support:', error);
   });
+} else {
+  console.log('Firebase: Analytics not available on native platforms in Expo managed workflow');
 }
 
 export { auth, analytics };
