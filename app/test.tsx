@@ -1,9 +1,12 @@
+
 import React, { useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text, Alert, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import Button from '../components/Button';
 import { commonStyles } from '../styles/commonStyles';
 import { useAuth } from '../contexts/AuthContext';
+import { testAnalytics } from '../utils/analyticsTest';
+import { logEvent, ANALYTICS_EVENTS, analyticsService } from '../utils/analyticsUtils';
 
 export default function TestScreen() {
   const [loading, setLoading] = useState(false);
@@ -67,12 +70,53 @@ export default function TestScreen() {
     }
   };
 
+  const runAnalyticsTest = async () => {
+    setLoading(true);
+    try {
+      console.log('Running analytics test...');
+      const success = await testAnalytics();
+      if (success) {
+        Alert.alert('Success', 'Analytics test completed successfully! Check console for details.');
+      } else {
+        Alert.alert('Error', 'Analytics test failed. Check console for details.');
+      }
+    } catch (error: any) {
+      console.error('Error running analytics test:', error);
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const testCustomEvent = async () => {
+    try {
+      await logEvent('test_custom_event', {
+        test_param: 'custom_value',
+        timestamp: new Date().toISOString(),
+        screen: 'test_screen'
+      });
+      Alert.alert('Success', 'Custom event logged! Check console for details.');
+    } catch (error: any) {
+      console.error('Error logging custom event:', error);
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const showAnalyticsState = () => {
+    const state = analyticsService.getAnalyticsState();
+    Alert.alert('Analytics State', JSON.stringify(state, null, 2));
+  };
+
   return (
-    <View style={commonStyles.centerContent}>
+    <ScrollView style={commonStyles.container} contentContainerStyle={commonStyles.centerContent}>
       <Text style={commonStyles.title}>Test Screen</Text>
-      <Text style={commonStyles.text}>Create and test user accounts</Text>
+      <Text style={commonStyles.text}>Create and test user accounts & analytics</Text>
       
       <View style={{ gap: 16, marginTop: 32, width: '100%', maxWidth: 300 }}>
+        <Text style={[commonStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
+          User Testing
+        </Text>
+        
         <Button
           text="Create Test Admin"
           onPress={createTestAdmin}
@@ -102,6 +146,36 @@ export default function TestScreen() {
           disabled={loading}
           variant="outline"
         />
+
+        <Text style={[commonStyles.subtitle, { textAlign: 'center', marginTop: 24, marginBottom: 8 }]}>
+          Analytics Testing
+        </Text>
+        
+        <Button
+          text="Run Analytics Test"
+          onPress={runAnalyticsTest}
+          loading={loading}
+          disabled={loading}
+          variant="success"
+        />
+        
+        <Button
+          text="Test Custom Event"
+          onPress={testCustomEvent}
+          disabled={loading}
+          variant="outline"
+        />
+        
+        <Button
+          text="Show Analytics State"
+          onPress={showAnalyticsState}
+          disabled={loading}
+          variant="outline"
+        />
+
+        <Text style={[commonStyles.subtitle, { textAlign: 'center', marginTop: 24, marginBottom: 8 }]}>
+          Navigation
+        </Text>
         
         <Button
           text="Go to Login"
@@ -114,6 +188,6 @@ export default function TestScreen() {
           variant="outline"
         />
       </View>
-    </View>
+    </ScrollView>
   );
 }

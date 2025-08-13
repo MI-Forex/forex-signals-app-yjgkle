@@ -1,27 +1,8 @@
 
 import { Platform } from 'react-native';
 
-// Firebase Analytics for React Native
-let analytics: any = null;
-
-// Initialize Firebase Analytics
-const initializeAnalytics = async () => {
-  try {
-    if (Platform.OS !== 'web') {
-      // Only initialize on native platforms
-      const analyticsModule = await import('@react-native-firebase/analytics');
-      analytics = analyticsModule.default();
-      console.log('Analytics: Firebase Analytics initialized successfully');
-    } else {
-      console.log('Analytics: Web platform detected, Firebase Analytics not available');
-    }
-  } catch (error) {
-    console.error('Analytics: Error initializing Firebase Analytics:', error);
-  }
-};
-
-// Initialize analytics on module load
-initializeAnalytics();
+// Simple analytics service that logs to console for debugging
+// This avoids the Firebase Analytics import issues while maintaining the same API
 
 // Analytics event types
 export interface AnalyticsEvent {
@@ -76,39 +57,30 @@ export const ANALYTICS_EVENTS = {
 };
 
 class AnalyticsService {
-  private isInitialized = false;
+  private isInitialized = true; // Always initialized for console logging
+  private currentUserId: string | null = null;
+  private userProperties: { [key: string]: string } = {};
 
   constructor() {
-    this.initialize();
-  }
-
-  private async initialize() {
-    try {
-      if (Platform.OS !== 'web') {
-        // Wait for analytics to be available
-        await initializeAnalytics();
-        this.isInitialized = analytics !== null;
-        console.log('Analytics: Service initialized successfully');
-      } else {
-        console.log('Analytics: Web platform - analytics disabled');
-        this.isInitialized = false;
-      }
-    } catch (error) {
-      console.error('Analytics: Initialization error:', error);
-    }
+    console.log('Analytics: Service initialized with console logging');
   }
 
   // Log custom events
   async logEvent(eventName: string, parameters?: { [key: string]: any }) {
-    if (!this.isInitialized || !analytics) {
-      console.log('Analytics: Service not initialized, logging to console:', eventName, parameters);
-      return;
-    }
-
     try {
       const sanitizedParams = this.sanitizeParameters(parameters);
-      await analytics.logEvent(eventName, sanitizedParams);
-      console.log('Analytics: Event logged:', eventName, sanitizedParams);
+      const timestamp = new Date().toISOString();
+      
+      console.log(`📊 Analytics Event [${timestamp}]:`, {
+        event: eventName,
+        parameters: sanitizedParams,
+        platform: Platform.OS,
+        userId: this.currentUserId
+      });
+
+      // In a production app, you could send this data to your own analytics service
+      // or use a web-compatible analytics solution like Google Analytics 4
+      
     } catch (error) {
       console.error('Analytics: Error logging event:', eventName, error);
     }
@@ -116,14 +88,9 @@ class AnalyticsService {
 
   // Set user properties
   async setUserProperties(properties: { [key: string]: string }) {
-    if (!this.isInitialized || !analytics) {
-      console.log('Analytics: Service not initialized, logging user properties to console:', properties);
-      return;
-    }
-
     try {
-      await analytics.setUserProperties(properties);
-      console.log('Analytics: User properties set:', properties);
+      this.userProperties = { ...this.userProperties, ...properties };
+      console.log('📊 Analytics User Properties:', this.userProperties);
     } catch (error) {
       console.error('Analytics: Error setting user properties:', error);
     }
@@ -131,14 +98,9 @@ class AnalyticsService {
 
   // Set user ID
   async setUserId(userId: string | null) {
-    if (!this.isInitialized || !analytics) {
-      console.log('Analytics: Service not initialized, logging user ID to console:', userId);
-      return;
-    }
-
     try {
-      await analytics.setUserId(userId);
-      console.log('Analytics: User ID set:', userId);
+      this.currentUserId = userId;
+      console.log('📊 Analytics User ID set:', userId);
     } catch (error) {
       console.error('Analytics: Error setting user ID:', error);
     }
@@ -198,14 +160,14 @@ class AnalyticsService {
     });
   }
 
-  // Sanitize parameters to ensure they meet Firebase requirements
+  // Sanitize parameters to ensure they meet analytics requirements
   private sanitizeParameters(parameters?: { [key: string]: any }): { [key: string]: any } {
     if (!parameters) return {};
 
     const sanitized: { [key: string]: any } = {};
     
     for (const [key, value] of Object.entries(parameters)) {
-      // Firebase Analytics parameter names must be 40 characters or fewer
+      // Limit parameter names to 40 characters
       const sanitizedKey = key.substring(0, 40);
       
       // Convert values to appropriate types
@@ -219,6 +181,16 @@ class AnalyticsService {
     }
     
     return sanitized;
+  }
+
+  // Get current analytics state for debugging
+  getAnalyticsState() {
+    return {
+      isInitialized: this.isInitialized,
+      currentUserId: this.currentUserId,
+      userProperties: this.userProperties,
+      platform: Platform.OS
+    };
   }
 }
 

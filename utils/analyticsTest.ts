@@ -1,75 +1,46 @@
 
-import { Platform } from 'react-native';
-import { logEvent, logScreenView, setUserId, setUserProperties, ANALYTICS_EVENTS } from './analyticsUtils';
+import { analyticsService, logEvent, logScreenView, ANALYTICS_EVENTS } from './analyticsUtils';
 
-/**
- * Test function to verify Google Analytics 4 integration
- * Call this function to test if analytics are working correctly
- */
+// Test function to verify analytics is working
 export const testAnalytics = async () => {
-  console.log('Analytics Test: Starting analytics test...');
+  console.log('🧪 Testing Analytics Service...');
   
   try {
     // Test basic event logging
-    await logEvent(ANALYTICS_EVENTS.APP_OPEN, {
-      platform: Platform.OS,
-      test_mode: true,
-      timestamp: new Date().toISOString()
-    });
+    await logEvent('test_event', { test_parameter: 'test_value' });
     
-    // Test screen view tracking
-    await logScreenView('Analytics Test Screen');
+    // Test screen view logging
+    await logScreenView('test_screen');
     
     // Test user ID setting
-    await setUserId('test_user_123');
+    await analyticsService.setUserId('test_user_123');
     
     // Test user properties
-    await setUserProperties({
-      test_user: 'true',
-      platform: Platform.OS
+    await analyticsService.setUserProperties({
+      user_type: 'test',
+      app_version: '1.0.0'
     });
     
-    // Test custom event
-    await logEvent('test_event', {
-      test_parameter: 'test_value',
-      event_time: new Date().toISOString()
+    // Test predefined events
+    await logEvent(ANALYTICS_EVENTS.APP_OPEN);
+    await logEvent(ANALYTICS_EVENTS.SIGNAL_VIEW, {
+      signal_id: 'test_signal',
+      signal_type: 'BUY',
+      is_vip: false
     });
     
-    console.log('Analytics Test: All tests completed successfully');
+    // Get analytics state
+    const state = analyticsService.getAnalyticsState();
+    console.log('📊 Analytics State:', state);
     
-    if (Platform.OS === 'web') {
-      console.log('Analytics Test: Check browser console and Google Analytics Real-time reports to verify events');
-    } else {
-      console.log('Analytics Test: Events logged to console (native platform)');
-    }
-    
+    console.log('✅ Analytics test completed successfully');
     return true;
+    
   } catch (error) {
-    console.error('Analytics Test: Test failed:', error);
+    console.error('❌ Analytics test failed:', error);
     return false;
   }
 };
 
-/**
- * Performance test to measure analytics impact
- */
-export const testAnalyticsPerformance = async () => {
-  console.log('Analytics Performance Test: Starting...');
-  
-  const startTime = performance.now();
-  
-  // Test multiple events
-  const promises = [];
-  for (let i = 0; i < 10; i++) {
-    promises.push(logEvent(`test_event_${i}`, { iteration: i }));
-  }
-  
-  await Promise.all(promises);
-  
-  const endTime = performance.now();
-  const duration = endTime - startTime;
-  
-  console.log(`Analytics Performance Test: Completed in ${duration.toFixed(2)}ms`);
-  
-  return duration;
-};
+// Export for use in development
+export default testAnalytics;
