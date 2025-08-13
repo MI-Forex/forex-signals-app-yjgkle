@@ -1,9 +1,7 @@
-
 import { initializeApp } from 'firebase/app';
 import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getAnalytics, isSupported } from 'firebase/analytics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
@@ -45,22 +43,5 @@ console.log('Firebase: Firestore initialized successfully');
 export const storage = getStorage(app);
 console.log('Firebase: Storage initialized successfully');
 
-// Initialize Analytics (only for web)
-let analytics = null;
-if (Platform.OS === 'web') {
-  isSupported().then((supported) => {
-    if (supported) {
-      analytics = getAnalytics(app);
-      console.log('Firebase: Analytics initialized successfully for web');
-    } else {
-      console.log('Firebase: Analytics not supported on this browser');
-    }
-  }).catch((error) => {
-    console.error('Firebase: Error checking analytics support:', error);
-  });
-} else {
-  console.log('Firebase: Analytics not available on native platforms in Expo managed workflow');
-}
-
-export { auth, analytics };
+export { auth };
 export default app;

@@ -1,4 +1,3 @@
-
 {
   "expo": {
     "name": "CNC Forex Signals",
@@ -19,16 +18,14 @@
       "displayName": "CNC Forex Signals",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "googleServicesFile": "./GoogleService-Info.plist"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/1cf58509-969a-4fb1-9889-114ad9df58ce.png",
         "backgroundColor": "#000000"
       },
-      "package": "com.cncforexsignals.app",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.cncforexsignals.app"
     },
     "web": {
       "favicon": "./assets/images/1cf58509-969a-4fb1-9889-114ad9df58ce.png",
