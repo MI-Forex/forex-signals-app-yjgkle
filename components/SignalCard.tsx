@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
@@ -10,17 +11,20 @@ interface Signal {
   stopLoss: number;
   takeProfit: number;
   notes?: string;
-  status: 'active' | 'closed' | 'hit_tp' | 'hit_sl';
+  status: 'active' | 'closed' | 'hit_tp' | 'hit_sl' | 'inprogress' | 'pending';
   createdAt: Date;
   signalId?: string;
   segment?: string;
+  isVip?: boolean;
+  targetUsers?: 'normal' | 'vip';
 }
 
 interface SignalCardProps {
   signal: Signal;
+  onPress?: (signal: Signal) => void;
 }
 
-export default function SignalCard({ signal }: SignalCardProps) {
+export default function SignalCard({ signal, onPress }: SignalCardProps) {
   const [notesExpanded, setNotesExpanded] = useState(false);
 
   const getStatusColor = () => {
@@ -29,6 +33,8 @@ export default function SignalCard({ signal }: SignalCardProps) {
       case 'closed': return colors.textMuted;
       case 'hit_tp': return colors.success;
       case 'hit_sl': return colors.danger;
+      case 'inprogress': return colors.warning;
+      case 'pending': return colors.secondary;
       default: return colors.textMuted;
     }
   };
@@ -39,6 +45,8 @@ export default function SignalCard({ signal }: SignalCardProps) {
       case 'closed': return 'Closed';
       case 'hit_tp': return 'Hit TP';
       case 'hit_sl': return 'Hit SL';
+      case 'inprogress': return 'In Progress';
+      case 'pending': return 'Pending';
       default: return signal.status;
     }
   };
@@ -52,7 +60,12 @@ export default function SignalCard({ signal }: SignalCardProps) {
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    try {
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+      console.error('SignalCard: Error formatting time:', error);
+      return 'Invalid Date';
+    }
   };
 
   const getDisplayNotes = () => {
@@ -76,11 +89,30 @@ export default function SignalCard({ signal }: SignalCardProps) {
     return segment.replace(/_/g, ' & ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  const handlePress = () => {
+    if (onPress) {
+      onPress(signal);
+    }
+  };
+
+  const isVipSignal = signal.isVip || signal.targetUsers === 'vip';
+
   return (
-    <View style={styles.container}>
+    <TouchableOpacity 
+      style={styles.container} 
+      onPress={handlePress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.pair}>{signal.pair}</Text>
+          <View style={styles.pairContainer}>
+            <Text style={styles.pair}>{signal.pair}</Text>
+            {isVipSignal && (
+              <View style={styles.vipBadge}>
+                <Text style={styles.vipText}>VIP</Text>
+              </View>
+            )}
+          </View>
           {signal.signalId && (
             <Text style={styles.signalId}>#{signal.signalId}</Text>
           )}
@@ -136,7 +168,7 @@ export default function SignalCard({ signal }: SignalCardProps) {
 
         <Text style={styles.timestamp}>{formatTime(signal.createdAt)}</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -164,10 +196,26 @@ const styles = StyleSheet.create({
   headerRight: {
     alignItems: 'flex-end',
   },
+  pairContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   pair: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
+  },
+  vipBadge: {
+    backgroundColor: colors.warning,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: borderRadius.xs,
+  },
+  vipText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.white,
   },
   signalId: {
     fontSize: 12,

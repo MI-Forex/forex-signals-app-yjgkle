@@ -1,15 +1,15 @@
 
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, Platform } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
-import { commonStyles, colors, spacing } from '../styles/commonStyles';
+import { colors, spacing } from '../styles/commonStyles';
 
 export default function IndexScreen() {
   const { user, loading } = useAuth();
   const [initializing, setInitializing] = useState(true);
   const [showLoadingMessage, setShowLoadingMessage] = useState(false);
-  const [hasStyleError, setHasStyleError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const initialize = async () => {
@@ -21,8 +21,8 @@ export default function IndexScreen() {
           setShowLoadingMessage(true);
         }, 2000);
 
-        // Simple initialization without Supabase dependency
-        console.log('IndexScreen: Skipping Supabase initialization to prevent hanging');
+        // Simple initialization without complex dependencies
+        console.log('IndexScreen: Basic initialization complete');
         
         // Clear the loading message timer
         clearTimeout(loadingTimer);
@@ -35,6 +35,7 @@ export default function IndexScreen() {
         }, 500);
       } catch (error) {
         console.error('IndexScreen: Error initializing app:', error);
+        setError('Failed to initialize app. Please try again.');
         setInitializing(false);
         setShowLoadingMessage(false);
       }
@@ -45,13 +46,14 @@ export default function IndexScreen() {
       initialize();
     } catch (error) {
       console.error('IndexScreen: Error in initialization wrapper:', error);
+      setError('App initialization failed');
       setInitializing(false);
       setShowLoadingMessage(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!loading && !initializing) {
+    if (!loading && !initializing && !error) {
       // Add a small delay to ensure proper navigation
       setTimeout(() => {
         try {
@@ -65,67 +67,74 @@ export default function IndexScreen() {
         } catch (navError) {
           console.error('IndexScreen: Navigation error:', navError);
           // Fallback navigation
-          if (user) {
-            router.push('/(tabs)/signals');
-          } else {
-            router.push('/auth/login');
+          try {
+            if (user) {
+              router.push('/(tabs)/signals');
+            } else {
+              router.push('/auth/login');
+            }
+          } catch (fallbackError) {
+            console.error('IndexScreen: Fallback navigation also failed:', fallbackError);
+            setError('Navigation failed. Please refresh the app.');
           }
         }
       }, 100);
     }
-  }, [user, loading, initializing]);
+  }, [user, loading, initializing, error]);
 
-  if (loading || initializing) {
-    try {
-      const loadingStyle = {
-        flex: 1,
-        justifyContent: 'center' as const,
-        alignItems: 'center' as const,
-        backgroundColor: colors.background,
-      };
-
-      const loadingTextStyle = {
-        fontSize: 16,
-        color: colors.textMuted,
-        marginTop: spacing.md,
-        textAlign: 'center' as const,
-      };
-
-      return (
-        <View style={loadingStyle}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          {showLoadingMessage && (
-            <Text style={loadingTextStyle}>
-              Loading App...
-            </Text>
-          )}
-        </View>
-      );
-    } catch (styleError) {
-      console.error('IndexScreen: Style error caught:', styleError);
-      setHasStyleError(true);
-      return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={{ fontSize: 16, color: '#64748b', marginTop: 16, textAlign: 'center' }}>
-            Loading App...
-          </Text>
-        </View>
-      );
-    }
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Text style={styles.subText}>Please refresh the app to try again.</Text>
+      </View>
+    );
   }
 
-  // Fallback for style errors
-  if (hasStyleError) {
+  if (loading || initializing) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-        <Text style={{ fontSize: 18, color: '#1e293b', textAlign: 'center', marginBottom: 16 }}>
-          Loading...
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        {showLoadingMessage && (
+          <Text style={styles.loadingText}>
+            Loading App...
+          </Text>
+        )}
+        <Text style={styles.subText}>
+          Platform: {Platform.OS}
         </Text>
-        <ActivityIndicator size="large" color="#3b82f6" />
       </View>
     );
   }
 
   return null;
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.textMuted,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 18,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    fontWeight: '600',
+  },
+  subText: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+});

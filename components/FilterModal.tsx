@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -8,8 +9,8 @@ import { commonStyles, colors, spacing, borderRadius } from '../styles/commonSty
 interface FilterModalProps {
   visible: boolean;
   onClose: () => void;
-  onApply: (filters: { pair: string; type: string; dateFrom?: Date; dateTo?: Date }) => void;
-  currentFilters: { pair: string; type: string; dateFrom?: Date; dateTo?: Date };
+  onApply: (filters: { pair: string; type: string; status: string; segment: string }) => void;
+  currentFilters: { pair: string; type: string; status: string; segment: string };
 }
 
 const CURRENCY_PAIRS = [
@@ -29,10 +30,26 @@ const SIGNAL_TYPES = [
   { label: 'SELL STOP LIMIT', value: 'SELL_STOP_LIMIT' }
 ];
 
+const STATUS_OPTIONS = [
+  { label: 'All Status', value: '' },
+  { label: 'Active', value: 'active' },
+  { label: 'Closed', value: 'closed' },
+  { label: 'Hit TP', value: 'hit_tp' },
+  { label: 'Hit SL', value: 'hit_sl' },
+  { label: 'In Progress', value: 'inprogress' },
+  { label: 'Pending', value: 'pending' }
+];
+
+const SEGMENTS = [
+  { label: 'All Segments', value: '' },
+  { label: 'Scalping', value: 'scalping' },
+  { label: 'Day Trading', value: 'day_trading' },
+  { label: 'Swing Trading', value: 'swing_trading' },
+  { label: 'Position Trading', value: 'position_trading' }
+];
+
 export default function FilterModal({ visible, onClose, onApply, currentFilters }: FilterModalProps) {
   const [filters, setFilters] = useState(currentFilters);
-  const [showDateFromPicker, setShowDateFromPicker] = useState(false);
-  const [showDateToPicker, setShowDateToPicker] = useState(false);
 
   const handleApply = () => {
     onApply(filters);
@@ -40,27 +57,8 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
   };
 
   const handleReset = () => {
-    const resetFilters = { pair: '', type: '', dateFrom: undefined, dateTo: undefined };
+    const resetFilters = { pair: '', type: '', status: '', segment: '' };
     setFilters(resetFilters);
-  };
-
-  const formatDate = (date?: Date) => {
-    if (!date) return 'Select Date';
-    return date.toLocaleDateString();
-  };
-
-  const onDateFromChange = (event: any, selectedDate?: Date) => {
-    setShowDateFromPicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setFilters(prev => ({ ...prev, dateFrom: selectedDate }));
-    }
-  };
-
-  const onDateToChange = (event: any, selectedDate?: Date) => {
-    setShowDateToPicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setFilters(prev => ({ ...prev, dateTo: selectedDate }));
-    }
   };
 
   return (
@@ -124,58 +122,65 @@ export default function FilterModal({ visible, onClose, onApply, currentFilters 
           </View>
 
           <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>Date Range</Text>
-            <View style={styles.dateContainer}>
-              <TouchableOpacity 
-                style={styles.dateButton}
-                onPress={() => setShowDateFromPicker(true)}
+            <Text style={styles.filterLabel}>Status</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={filters.status}
+                onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+                style={styles.picker}
+                dropdownIconColor={colors.text}
+                itemStyle={styles.pickerItem}
               >
-                <Text style={styles.dateButtonText}>From: {formatDate(filters.dateFrom)}</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.dateButton}
-                onPress={() => setShowDateToPicker(true)}
+                {STATUS_OPTIONS.map(status => (
+                  <Picker.Item 
+                    key={status.value} 
+                    label={status.label} 
+                    value={status.value}
+                    color={colors.text}
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Segment</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={filters.segment}
+                onValueChange={(value) => setFilters(prev => ({ ...prev, segment: value }))}
+                style={styles.picker}
+                dropdownIconColor={colors.text}
+                itemStyle={styles.pickerItem}
               >
-                <Text style={styles.dateButtonText}>To: {formatDate(filters.dateTo)}</Text>
-              </TouchableOpacity>
+                {SEGMENTS.map(segment => (
+                  <Picker.Item 
+                    key={segment.value} 
+                    label={segment.label} 
+                    value={segment.value}
+                    color={colors.text}
+                  />
+                ))}
+              </Picker>
             </View>
           </View>
 
           <View style={styles.buttonContainer}>
             <Button
-              text="Reset"
+              title="Reset"
               onPress={handleReset}
               variant="outline"
               style={styles.resetButton}
               textStyle={styles.resetButtonText}
             />
             <Button
-              text="Apply"
+              title="Apply"
               onPress={handleApply}
               style={styles.applyButton}
             />
           </View>
         </View>
       </View>
-
-      {showDateFromPicker && (
-        <DateTimePicker
-          value={filters.dateFrom || new Date()}
-          mode="date"
-          display="default"
-          onChange={onDateFromChange}
-        />
-      )}
-
-      {showDateToPicker && (
-        <DateTimePicker
-          value={filters.dateTo || new Date()}
-          mode="date"
-          display="default"
-          onChange={onDateToChange}
-        />
-      )}
     </Modal>
   );
 }
@@ -253,24 +258,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.background,
     fontSize: 16,
-  },
-  dateContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  dateButton: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  dateButtonText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '500',
   },
   buttonContainer: {
     flexDirection: 'row',

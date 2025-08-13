@@ -1,8 +1,8 @@
 
 import { Platform } from 'react-native';
 
-// Simple analytics service that logs to console for debugging
-// This avoids the Firebase Analytics import issues while maintaining the same API
+// Google Analytics 4 configuration
+const GA_MEASUREMENT_ID = 'G-N7VHTSM9QK';
 
 // Analytics event types
 export interface AnalyticsEvent {
@@ -13,76 +13,173 @@ export interface AnalyticsEvent {
 // Common analytics events for the Forex app
 export const ANALYTICS_EVENTS = {
   // User events
-  USER_LOGIN: 'user_login',
-  USER_REGISTER: 'user_register',
-  USER_LOGOUT: 'user_logout',
+  USER_LOGIN: 'login',
+  USER_REGISTER: 'sign_up',
+  USER_LOGOUT: 'logout',
   
   // Signal events
-  SIGNAL_VIEW: 'signal_view',
-  SIGNAL_FILTER: 'signal_filter',
-  SIGNAL_REFRESH: 'signal_refresh',
+  SIGNAL_VIEW: 'view_item',
+  SIGNAL_FILTER: 'search',
+  SIGNAL_REFRESH: 'refresh',
   
   // VIP events
-  VIP_UPGRADE_ATTEMPT: 'vip_upgrade_attempt',
-  VIP_WHATSAPP_OPEN: 'vip_whatsapp_open',
-  VIP_FEATURES_VIEW: 'vip_features_view',
+  VIP_UPGRADE_ATTEMPT: 'begin_checkout',
+  VIP_WHATSAPP_OPEN: 'contact_support',
+  VIP_FEATURES_VIEW: 'view_promotion',
   
   // News events
-  NEWS_VIEW: 'news_view',
-  NEWS_READ: 'news_read',
-  NEWS_REFRESH: 'news_refresh',
+  NEWS_VIEW: 'select_content',
+  NEWS_READ: 'view_item',
+  NEWS_REFRESH: 'refresh',
   
   // Analysis events
-  ANALYSIS_VIEW: 'analysis_view',
-  ANALYSIS_READ: 'analysis_read',
-  ANALYSIS_REFRESH: 'analysis_refresh',
+  ANALYSIS_VIEW: 'select_content',
+  ANALYSIS_READ: 'view_item',
+  ANALYSIS_REFRESH: 'refresh',
   
   // Admin events
-  ADMIN_SIGNAL_CREATE: 'admin_signal_create',
-  ADMIN_SIGNAL_EDIT: 'admin_signal_edit',
-  ADMIN_SIGNAL_DELETE: 'admin_signal_delete',
-  ADMIN_NEWS_CREATE: 'admin_news_create',
-  ADMIN_NEWS_EDIT: 'admin_news_edit',
-  ADMIN_NEWS_DELETE: 'admin_news_delete',
-  ADMIN_USER_MANAGE: 'admin_user_manage',
+  ADMIN_SIGNAL_CREATE: 'create_content',
+  ADMIN_SIGNAL_EDIT: 'edit_content',
+  ADMIN_SIGNAL_DELETE: 'delete_content',
+  ADMIN_NEWS_CREATE: 'create_content',
+  ADMIN_NEWS_EDIT: 'edit_content',
+  ADMIN_NEWS_DELETE: 'delete_content',
+  ADMIN_USER_MANAGE: 'manage_users',
   
   // Chat events
-  CHAT_OPEN: 'chat_open',
-  CHAT_MESSAGE_SEND: 'chat_message_send',
+  CHAT_OPEN: 'open_chat',
+  CHAT_MESSAGE_SEND: 'send_message',
   
   // App events
   APP_OPEN: 'app_open',
   SCREEN_VIEW: 'screen_view',
-  ERROR_OCCURRED: 'error_occurred'
+  ERROR_OCCURRED: 'exception'
 };
 
+// Global gtag function declaration
+declare global {
+  interface Window {
+    gtag: (...args: any[]) => void;
+    dataLayer: any[];
+  }
+}
+
 class AnalyticsService {
-  private isInitialized = true; // Always initialized for console logging
+  private isInitialized = false;
   private currentUserId: string | null = null;
   private userProperties: { [key: string]: string } = {};
+  private eventQueue: Array<{ eventName: string; parameters?: any }> = [];
 
   constructor() {
-    console.log('Analytics: Service initialized with console logging');
+    this.initializeAnalytics();
+  }
+
+  private async initializeAnalytics() {
+    if (Platform.OS === 'web') {
+      try {
+        await this.loadGoogleAnalytics();
+        this.isInitialized = true;
+        console.log('📊 Google Analytics 4 initialized successfully');
+        
+        // Process queued events
+        this.processEventQueue();
+      } catch (error) {
+        console.error('📊 Failed to initialize Google Analytics:', error);
+        this.fallbackToConsoleLogging();
+      }
+    } else {
+      console.log('📊 Analytics: Using console logging for native platform');
+      this.fallbackToConsoleLogging();
+    }
+  }
+
+  private async loadGoogleAnalytics(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        // Initialize dataLayer
+        window.dataLayer = window.dataLayer || [];
+        
+        // Define gtag function
+        window.gtag = function() {
+          window.dataLayer.push(arguments);
+        };
+        
+        // Configure GA4
+        window.gtag('js', new Date());
+        window.gtag('config', GA_MEASUREMENT_ID, {
+          send_page_view: false, // We'll handle page views manually
+          transport_type: 'beacon',
+          anonymize_ip: true
+        });
+
+        // Load GA4 script
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+        
+        script.onload = () => {
+          console.log('📊 Google Analytics script loaded');
+          resolve();
+        };
+        
+        script.onerror = () => {
+          reject(new Error('Failed to load Google Analytics script'));
+        };
+        
+        document.head.appendChild(script);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  private fallbackToConsoleLogging() {
+    this.isInitialized = true;
+    console.log('📊 Analytics: Using console logging fallback');
+    this.processEventQueue();
+  }
+
+  private processEventQueue() {
+    while (this.eventQueue.length > 0) {
+      const { eventName, parameters } = this.eventQueue.shift()!;
+      this.logEvent(eventName, parameters);
+    }
   }
 
   // Log custom events
   async logEvent(eventName: string, parameters?: { [key: string]: any }) {
+    if (!this.isInitialized) {
+      this.eventQueue.push({ eventName, parameters });
+      return;
+    }
+
     try {
       const sanitizedParams = this.sanitizeParameters(parameters);
       const timestamp = new Date().toISOString();
       
-      console.log(`📊 Analytics Event [${timestamp}]:`, {
-        event: eventName,
-        parameters: sanitizedParams,
-        platform: Platform.OS,
-        userId: this.currentUserId
-      });
-
-      // In a production app, you could send this data to your own analytics service
-      // or use a web-compatible analytics solution like Google Analytics 4
-      
+      if (Platform.OS === 'web' && window.gtag) {
+        // Send to Google Analytics
+        window.gtag('event', eventName, {
+          ...sanitizedParams,
+          custom_parameter_user_id: this.currentUserId,
+          custom_parameter_platform: Platform.OS
+        });
+        
+        console.log(`📊 GA4 Event [${timestamp}]:`, {
+          event: eventName,
+          parameters: sanitizedParams
+        });
+      } else {
+        // Console logging for native platforms
+        console.log(`📊 Analytics Event [${timestamp}]:`, {
+          event: eventName,
+          parameters: sanitizedParams,
+          platform: Platform.OS,
+          userId: this.currentUserId
+        });
+      }
     } catch (error) {
-      console.error('Analytics: Error logging event:', eventName, error);
+      console.error('📊 Error logging event:', eventName, error);
     }
   }
 
@@ -90,9 +187,16 @@ class AnalyticsService {
   async setUserProperties(properties: { [key: string]: string }) {
     try {
       this.userProperties = { ...this.userProperties, ...properties };
+      
+      if (Platform.OS === 'web' && window.gtag) {
+        window.gtag('config', GA_MEASUREMENT_ID, {
+          custom_map: properties
+        });
+      }
+      
       console.log('📊 Analytics User Properties:', this.userProperties);
     } catch (error) {
-      console.error('Analytics: Error setting user properties:', error);
+      console.error('📊 Error setting user properties:', error);
     }
   }
 
@@ -100,14 +204,28 @@ class AnalyticsService {
   async setUserId(userId: string | null) {
     try {
       this.currentUserId = userId;
+      
+      if (Platform.OS === 'web' && window.gtag) {
+        window.gtag('config', GA_MEASUREMENT_ID, {
+          user_id: userId
+        });
+      }
+      
       console.log('📊 Analytics User ID set:', userId);
     } catch (error) {
-      console.error('Analytics: Error setting user ID:', error);
+      console.error('📊 Error setting user ID:', error);
     }
   }
 
   // Log screen view
   async logScreenView(screenName: string, screenClass?: string) {
+    if (Platform.OS === 'web' && window.gtag) {
+      window.gtag('config', GA_MEASUREMENT_ID, {
+        page_title: screenName,
+        page_location: window.location.href
+      });
+    }
+    
     await this.logEvent(ANALYTICS_EVENTS.SCREEN_VIEW, {
       screen_name: screenName,
       screen_class: screenClass || screenName
@@ -131,6 +249,8 @@ class AnalyticsService {
   // Log VIP upgrade attempt
   async logVIPUpgradeAttempt(source: string = 'vip_screen') {
     await this.logEvent(ANALYTICS_EVENTS.VIP_UPGRADE_ATTEMPT, {
+      currency: 'USD',
+      value: 0, // Will be set based on VIP pricing
       source: source
     });
   }
@@ -138,24 +258,27 @@ class AnalyticsService {
   // Log signal interactions
   async logSignalView(signalId: string, signalType: string, isVip: boolean = false) {
     await this.logEvent(ANALYTICS_EVENTS.SIGNAL_VIEW, {
-      signal_id: signalId,
-      signal_type: signalType,
-      is_vip: isVip
+      item_id: signalId,
+      item_name: `${signalType} Signal`,
+      item_category: 'forex_signal',
+      item_variant: isVip ? 'vip' : 'normal'
     });
   }
 
   // Log news interactions
   async logNewsView(newsId: string, newsTitle: string) {
     await this.logEvent(ANALYTICS_EVENTS.NEWS_VIEW, {
-      news_id: newsId,
-      news_title: newsTitle
+      content_type: 'news',
+      content_id: newsId,
+      content_title: newsTitle
     });
   }
 
   // Log errors
   async logError(error: string, context?: string) {
     await this.logEvent(ANALYTICS_EVENTS.ERROR_OCCURRED, {
-      error_message: error,
+      description: error,
+      fatal: false,
       context: context || 'unknown'
     });
   }
@@ -167,8 +290,8 @@ class AnalyticsService {
     const sanitized: { [key: string]: any } = {};
     
     for (const [key, value] of Object.entries(parameters)) {
-      // Limit parameter names to 40 characters
-      const sanitizedKey = key.substring(0, 40);
+      // Limit parameter names to 40 characters and ensure valid format
+      const sanitizedKey = key.replace(/[^a-zA-Z0-9_]/g, '_').substring(0, 40);
       
       // Convert values to appropriate types
       if (typeof value === 'string') {
@@ -189,7 +312,9 @@ class AnalyticsService {
       isInitialized: this.isInitialized,
       currentUserId: this.currentUserId,
       userProperties: this.userProperties,
-      platform: Platform.OS
+      platform: Platform.OS,
+      measurementId: GA_MEASUREMENT_ID,
+      queuedEvents: this.eventQueue.length
     };
   }
 }

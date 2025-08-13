@@ -1,10 +1,12 @@
+
 import React from 'react';
 import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, ActivityIndicator, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, buttonStyles, spacing, borderRadius, shadows, typography } from '../styles/commonStyles';
 
 interface ButtonProps {
-  text: string;
+  title?: string;
+  text?: string;
   onPress: () => void;
   style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle;
@@ -37,6 +39,7 @@ const styles = StyleSheet.create({
 });
 
 export default function Button({
+  title,
   text,
   onPress,
   style,
@@ -48,6 +51,9 @@ export default function Button({
   gradient,
   children
 }: ButtonProps) {
+  // Support both title and text props for backward compatibility
+  const buttonText = title || text || '';
+
   const getButtonStyle = (): ViewStyle => {
     const baseStyles: ViewStyle[] = [buttonStyles.base];
     
@@ -117,7 +123,7 @@ export default function Button({
           style={styles.loadingIndicator}
         />
       )}
-      {children || <Text style={getTextStyle()}>{text}</Text>}
+      {children || <Text style={getTextStyle()}>{buttonText}</Text>}
     </View>
   );
 
@@ -185,7 +191,7 @@ export default function Button({
         activeOpacity={0.8}
       >
         <Text style={{ color: colors.white, fontSize: 16, fontWeight: '600' }}>
-          {text}
+          {buttonText}
         </Text>
       </TouchableOpacity>
     );

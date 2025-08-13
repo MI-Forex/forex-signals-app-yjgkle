@@ -30,7 +30,12 @@
     },
     "web": {
       "favicon": "./assets/images/1cf58509-969a-4fb1-9889-114ad9df58ce.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "config": {
+        "googleAnalytics": {
+          "measurementId": "G-N7VHTSM9QK"
+        }
+      }
     },
     "plugins": [
       "expo-font",
@@ -41,7 +46,10 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "googleAnalytics": {
+        "measurementId": "G-N7VHTSM9QK"
+      }
     }
   }
 }

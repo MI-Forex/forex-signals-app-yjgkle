@@ -1,3 +1,4 @@
+
 import { StyleSheet, ViewStyle, TextStyle, Platform } from 'react-native';
 
 export const colors = {
@@ -24,6 +25,7 @@ export const colors = {
   white: '#ffffff',
   black: '#000000',
   overlay: 'rgba(0, 0, 0, 0.5)',
+  error: '#ef4444', // Add error color for consistency
   
   // Modern gradient colors
   gradientStart: '#667eea',
