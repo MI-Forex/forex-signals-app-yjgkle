@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, RefreshControl, Alert, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
@@ -70,6 +70,13 @@ export default function NewsScreen() {
 
   const { user, userData } = useAuth();
 
+  const clearRefreshTimeout = useCallback(() => {
+    if (refreshTimeout) {
+      clearTimeout(refreshTimeout);
+      setRefreshTimeout(null);
+    }
+  }, [refreshTimeout]);
+
   useEffect(() => {
     if (!user) return;
 
@@ -97,12 +104,7 @@ export default function NewsScreen() {
         console.log('News refresh completed via listener');
         setRefreshing(false);
         setLastRefreshTime(new Date());
-        
-        // Clear any existing timeout
-        if (refreshTimeout) {
-          clearTimeout(refreshTimeout);
-          setRefreshTimeout(null);
-        }
+        clearRefreshTimeout();
       }
     }, (error) => {
       console.error('Error fetching news:', error);
@@ -111,10 +113,7 @@ export default function NewsScreen() {
       // Stop refreshing on error
       if (refreshing) {
         setRefreshing(false);
-        if (refreshTimeout) {
-          clearTimeout(refreshTimeout);
-          setRefreshTimeout(null);
-        }
+        clearRefreshTimeout();
       }
       
       // Check if it's a network error
@@ -132,12 +131,9 @@ export default function NewsScreen() {
 
     return () => {
       unsubscribe();
-      // Clear timeout on cleanup
-      if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-      }
+      clearRefreshTimeout();
     };
-  }, [user, refreshTimeout]);
+  }, [user, refreshing, clearRefreshTimeout]);
 
   const handleRefresh = async () => {
     console.log('Pull to refresh triggered for news');
@@ -156,9 +152,7 @@ export default function NewsScreen() {
     setShowConnectivityError(false);
     
     // Clear any existing timeout
-    if (refreshTimeout) {
-      clearTimeout(refreshTimeout);
-    }
+    clearRefreshTimeout();
     
     // Fallback timeout to ensure refresh completes
     const timeout = setTimeout(() => {

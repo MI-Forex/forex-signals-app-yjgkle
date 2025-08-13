@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -116,13 +117,7 @@ export default function EditAnalysisScreen() {
     }
   }, [userData]);
 
-  useEffect(() => {
-    if (id) {
-      loadAnalysis();
-    }
-  }, [id]);
-
-  const loadAnalysis = async () => {
+  const loadAnalysis = useCallback(async () => {
     try {
       console.log('Loading analysis with ID:', id);
       const analysisDoc = await getDoc(doc(db, 'analysis', id as string));
@@ -146,7 +141,13 @@ export default function EditAnalysisScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      loadAnalysis();
+    }
+  }, [id, loadAnalysis]);
 
   const validateForm = () => {
     if (!formData.title.trim()) {

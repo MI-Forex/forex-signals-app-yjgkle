@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -34,31 +35,7 @@ export default function AdminChatScreen() {
   const { userId, userName } = useLocalSearchParams();
   const { userData } = useAuth();
 
-  useEffect(() => {
-    if (userData?.isAdmin && userId) {
-      loadChatMessages();
-    } else {
-      router.replace('/admin');
-    }
-
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-    };
-  }, [userId, userData]);
-
-  useEffect(() => {
-    // Scroll to bottom when new messages are added
-    if (messages.length > 0) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
-  }, [messages]);
-
-  const loadChatMessages = async () => {
+  const loadChatMessages = useCallback(async () => {
     try {
       console.log('AdminChat: Loading messages for user:', userId);
       setLoading(true);
@@ -100,7 +77,31 @@ export default function AdminChatScreen() {
       setError('Failed to load messages');
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (userData?.isAdmin && userId) {
+      loadChatMessages();
+    } else {
+      router.replace('/admin');
+    }
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [userId, userData, loadChatMessages]);
+
+  useEffect(() => {
+    // Scroll to bottom when new messages are added
+    if (messages.length > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages]);
 
   const sendMessage = async () => {
     const messageText = newMessage.trim();

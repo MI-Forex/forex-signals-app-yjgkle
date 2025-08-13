@@ -68,7 +68,7 @@ class AnalyticsService {
   private isInitialized = false;
   private currentUserId: string | null = null;
   private userProperties: { [key: string]: string } = {};
-  private eventQueue: Array<{ eventName: string; parameters?: any }> = [];
+  private eventQueue: { eventName: string; parameters?: any }[] = [];
 
   constructor() {
     this.initializeAnalytics();
@@ -100,8 +100,8 @@ class AnalyticsService {
         window.dataLayer = window.dataLayer || [];
         
         // Define gtag function
-        window.gtag = function() {
-          window.dataLayer.push(arguments);
+        window.gtag = function(...args: any[]) {
+          window.dataLayer.push(args);
         };
         
         // Configure GA4

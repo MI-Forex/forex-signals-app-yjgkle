@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, RefreshControl, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -15,19 +16,22 @@ export default function AdminChatsScreen() {
   const [error, setError] = useState<string>('');
   const { userData } = useAuth();
 
-  useEffect(() => {
-    if (userData?.isAdmin) {
-      loadChatUsers();
-    } else {
-      router.replace('/(tabs)/signals');
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setFilteredChatUsers(chatUsers);
+      return;
     }
-  }, [userData]);
 
-  useEffect(() => {
-    handleSearch(searchQuery);
+    const filtered = chatUsers.filter(user =>
+      user.userName.toLowerCase().includes(query.toLowerCase()) ||
+      user.userEmail.toLowerCase().includes(query.toLowerCase()) ||
+      user.lastMessage.toLowerCase().includes(query.toLowerCase())
+    );
+    setFilteredChatUsers(filtered);
   }, [chatUsers]);
 
-  const loadChatUsers = async () => {
+  const loadChatUsers = useCallback(async () => {
     try {
       console.log('AdminChats: Loading user chats...');
       setError('');
@@ -45,7 +49,19 @@ export default function AdminChatsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (userData?.isAdmin) {
+      loadChatUsers();
+    } else {
+      router.replace('/(tabs)/signals');
+    }
+  }, [userData, loadChatUsers]);
+
+  useEffect(() => {
+    handleSearch(searchQuery);
+  }, [chatUsers, searchQuery, handleSearch]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -55,21 +71,6 @@ export default function AdminChatsScreen() {
   const openChat = (userId: string, userName: string) => {
     console.log('AdminChats: Opening chat for user:', userId, userName);
     router.push(`/admin/chats/${userId}?userName=${encodeURIComponent(userName)}`);
-  };
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    if (!query.trim()) {
-      setFilteredChatUsers(chatUsers);
-      return;
-    }
-
-    const filtered = chatUsers.filter(user =>
-      user.userName.toLowerCase().includes(query.toLowerCase()) ||
-      user.userEmail.toLowerCase().includes(query.toLowerCase()) ||
-      user.lastMessage.toLowerCase().includes(query.toLowerCase())
-    );
-    setFilteredChatUsers(filtered);
   };
 
   const getTotalUnreadCount = () => {

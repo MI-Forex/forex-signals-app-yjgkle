@@ -3,7 +3,7 @@ import FilterModal from '../../components/FilterModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { View, Text, ScrollView, RefreshControl, Alert, StyleSheet } from 'react-native';
 import { checkInternetConnectivity } from '../../utils/networkUtils';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../../firebase/config';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import Button from '../../components/Button';
@@ -108,15 +108,52 @@ export default function SignalsScreen() {
 
   const { user, userData } = useAuth();
 
+  const applySignalTypeFilter = useCallback((signalsToFilter: Signal[], typeFilter: 'all' | 'normal' | 'vip'): Signal[] => {
+    let filtered = signalsToFilter;
+
+    // Apply signal type filter
+    if (typeFilter === 'normal') {
+      filtered = filtered.filter(signal => !signal.isVip && signal.targetUsers !== 'vip');
+    } else if (typeFilter === 'vip') {
+      filtered = filtered.filter(signal => signal.isVip || signal.targetUsers === 'vip');
+    }
+
+    // Apply other filters
+    if (filters.pair) {
+      filtered = filtered.filter(signal => 
+        signal.pair.toLowerCase().includes(filters.pair.toLowerCase())
+      );
+    }
+
+    if (filters.type) {
+      filtered = filtered.filter(signal => signal.type === filters.type);
+    }
+
+    if (filters.status) {
+      filtered = filtered.filter(signal => signal.status === filters.status);
+    }
+
+    if (filters.segment) {
+      filtered = filtered.filter(signal => signal.segment === filters.segment);
+    }
+
+    return filtered;
+  }, [filters]);
+
+  const clearRefreshTimeout = useCallback(() => {
+    if (refreshTimeout) {
+      clearTimeout(refreshTimeout);
+      setRefreshTimeout(null);
+    }
+  }, [refreshTimeout]);
+
   useEffect(() => {
     logScreenView('Signals Screen');
     
     return () => {
-      if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-      }
+      clearRefreshTimeout();
     };
-  }, []);
+  }, [clearRefreshTimeout]);
 
   useEffect(() => {
     const filtered = applySignalTypeFilter(signals, signalTypeFilter);
@@ -129,7 +166,7 @@ export default function SignalsScreen() {
         filter_value: signalTypeFilter
       });
     }
-  }, [signals, filters, signalTypeFilter, userData]);
+  }, [signals, filters, signalTypeFilter, userData, applySignalTypeFilter]);
 
   useEffect(() => {
     if (!user) {
@@ -184,9 +221,7 @@ export default function SignalsScreen() {
             setRefreshing(false);
 
             // Clear any existing timeout
-            if (refreshTimeout) {
-              clearTimeout(refreshTimeout);
-            }
+            clearRefreshTimeout();
 
             console.log(`Signals: Loaded ${signalsData.length} signals`);
           },
@@ -217,43 +252,9 @@ export default function SignalsScreen() {
       if (unsubscribe) {
         unsubscribe();
       }
-      if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-      }
+      clearRefreshTimeout();
     };
-  }, [user, filters, refreshTimeout]);
-
-  const applySignalTypeFilter = (signalsToFilter: Signal[], typeFilter: 'all' | 'normal' | 'vip'): Signal[] => {
-    let filtered = signalsToFilter;
-
-    // Apply signal type filter
-    if (typeFilter === 'normal') {
-      filtered = filtered.filter(signal => !signal.isVip && signal.targetUsers !== 'vip');
-    } else if (typeFilter === 'vip') {
-      filtered = filtered.filter(signal => signal.isVip || signal.targetUsers === 'vip');
-    }
-
-    // Apply other filters
-    if (filters.pair) {
-      filtered = filtered.filter(signal => 
-        signal.pair.toLowerCase().includes(filters.pair.toLowerCase())
-      );
-    }
-
-    if (filters.type) {
-      filtered = filtered.filter(signal => signal.type === filters.type);
-    }
-
-    if (filters.status) {
-      filtered = filtered.filter(signal => signal.status === filters.status);
-    }
-
-    if (filters.segment) {
-      filtered = filtered.filter(signal => signal.segment === filters.segment);
-    }
-
-    return filtered;
-  };
+  }, [user, filters, userData?.isVIP, clearRefreshTimeout]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
