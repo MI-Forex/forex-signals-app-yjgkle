@@ -3,7 +3,6 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-// Analytics removed - using Google Analytics 4 directly for web
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
@@ -45,6 +44,5 @@ console.log('Firebase: Firestore initialized successfully');
 export const storage = getStorage(app);
 console.log('Firebase: Storage initialized successfully');
 
-// Analytics removed - using Google Analytics 4 directly for better performance
 export { auth };
 export default app;

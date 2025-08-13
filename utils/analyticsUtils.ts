@@ -1,74 +1,27 @@
 
 import { Platform } from 'react-native';
 
-// Google Analytics 4 Web Configuration
-const GA_MEASUREMENT_ID = 'G-N7VHTSM9QK';
+// Firebase Analytics for React Native
+let analytics: any = null;
 
-// Web Analytics State
-let gtag: any = null;
-let isWebAnalyticsLoaded = false;
-let analyticsQueue: Array<() => void> = [];
-
-// Optimized async initialization for better performance
-const initializeWebAnalytics = async () => {
-  if (Platform.OS === 'web' && typeof window !== 'undefined' && !isWebAnalyticsLoaded) {
-    try {
-      // Initialize dataLayer first
-      (window as any).dataLayer = (window as any).dataLayer || [];
-      gtag = function(...args: any[]) {
-        (window as any).dataLayer.push(args);
-      };
-
-      // Load script asynchronously without blocking
-      const script = document.createElement('script');
-      script.async = true;
-      script.defer = true;
-      script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
-      
-      script.onload = () => {
-        try {
-          gtag('js', new Date());
-          gtag('config', GA_MEASUREMENT_ID, {
-            page_title: document.title,
-            page_location: window.location.href,
-            send_page_view: true,
-            // Optimize for performance
-            transport_type: 'beacon',
-            custom_map: {},
-            // Additional performance optimizations
-            allow_google_signals: false,
-            allow_ad_personalization_signals: false
-          });
-          
-          isWebAnalyticsLoaded = true;
-          console.log('Analytics: Google Analytics 4 loaded successfully with ID:', GA_MEASUREMENT_ID);
-          
-          // Process queued events
-          analyticsQueue.forEach(fn => {
-            try {
-              fn();
-            } catch (error) {
-              console.warn('Analytics: Error processing queued event:', error);
-            }
-          });
-          analyticsQueue = [];
-        } catch (error) {
-          console.error('Analytics: Error configuring Google Analytics:', error);
-        }
-      };
-
-      script.onerror = () => {
-        console.warn('Analytics: Failed to load Google Analytics script');
-        // Clear the queue if script fails to load
-        analyticsQueue = [];
-      };
-
-      document.head.appendChild(script);
-    } catch (error) {
-      console.error('Analytics: Error initializing web analytics:', error);
+// Initialize Firebase Analytics
+const initializeAnalytics = async () => {
+  try {
+    if (Platform.OS !== 'web') {
+      // Only initialize on native platforms
+      const analyticsModule = await import('@react-native-firebase/analytics');
+      analytics = analyticsModule.default();
+      console.log('Analytics: Firebase Analytics initialized successfully');
+    } else {
+      console.log('Analytics: Web platform detected, Firebase Analytics not available');
     }
+  } catch (error) {
+    console.error('Analytics: Error initializing Firebase Analytics:', error);
   }
 };
+
+// Initialize analytics on module load
+initializeAnalytics();
 
 // Analytics event types
 export interface AnalyticsEvent {
@@ -131,14 +84,13 @@ class AnalyticsService {
 
   private async initialize() {
     try {
-      if (Platform.OS === 'web') {
-        // Initialize web analytics asynchronously
-        initializeWebAnalytics();
-        this.isInitialized = true; // Set to true immediately for web
-        console.log('Analytics: Web analytics initialization started');
+      if (Platform.OS !== 'web') {
+        // Wait for analytics to be available
+        await initializeAnalytics();
+        this.isInitialized = analytics !== null;
+        console.log('Analytics: Service initialized successfully');
       } else {
-        // For native platforms, disable analytics for better performance
-        console.log('Analytics: Native analytics disabled for optimal performance');
+        console.log('Analytics: Web platform - analytics disabled');
         this.isInitialized = false;
       }
     } catch (error) {
@@ -148,32 +100,15 @@ class AnalyticsService {
 
   // Log custom events
   async logEvent(eventName: string, parameters?: { [key: string]: any }) {
-    if (!this.isInitialized) {
-      console.warn('Analytics: Service not initialized, skipping event:', eventName);
+    if (!this.isInitialized || !analytics) {
+      console.log('Analytics: Service not initialized, logging to console:', eventName, parameters);
       return;
     }
 
     try {
       const sanitizedParams = this.sanitizeParameters(parameters);
-      
-      if (Platform.OS === 'web') {
-        const executeEvent = () => {
-          if (gtag && isWebAnalyticsLoaded) {
-            gtag('event', eventName, sanitizedParams);
-            console.log('Analytics: Web event logged:', eventName, sanitizedParams);
-          }
-        };
-
-        if (isWebAnalyticsLoaded) {
-          executeEvent();
-        } else {
-          // Queue event if analytics not loaded yet
-          analyticsQueue.push(executeEvent);
-        }
-      } else {
-        // For native platforms, just log to console for debugging
-        console.log('Analytics: Event (native - console only):', eventName, sanitizedParams);
-      }
+      await analytics.logEvent(eventName, sanitizedParams);
+      console.log('Analytics: Event logged:', eventName, sanitizedParams);
     } catch (error) {
       console.error('Analytics: Error logging event:', eventName, error);
     }
@@ -181,33 +116,14 @@ class AnalyticsService {
 
   // Set user properties
   async setUserProperties(properties: { [key: string]: string }) {
-    if (!this.isInitialized) {
-      console.warn('Analytics: Service not initialized, skipping user properties');
+    if (!this.isInitialized || !analytics) {
+      console.log('Analytics: Service not initialized, logging user properties to console:', properties);
       return;
     }
 
     try {
-      if (Platform.OS === 'web') {
-        const executeUserProperties = () => {
-          if (gtag && isWebAnalyticsLoaded) {
-            // Set user properties using gtag
-            Object.entries(properties).forEach(([key, value]) => {
-              gtag('config', GA_MEASUREMENT_ID, {
-                [`custom_parameter_${key}`]: value
-              });
-            });
-            console.log('Analytics: Web user properties set:', properties);
-          }
-        };
-
-        if (isWebAnalyticsLoaded) {
-          executeUserProperties();
-        } else {
-          analyticsQueue.push(executeUserProperties);
-        }
-      } else {
-        console.log('Analytics: User properties (native - console only):', properties);
-      }
+      await analytics.setUserProperties(properties);
+      console.log('Analytics: User properties set:', properties);
     } catch (error) {
       console.error('Analytics: Error setting user properties:', error);
     }
@@ -215,30 +131,14 @@ class AnalyticsService {
 
   // Set user ID
   async setUserId(userId: string | null) {
-    if (!this.isInitialized) {
-      console.warn('Analytics: Service not initialized, skipping user ID');
+    if (!this.isInitialized || !analytics) {
+      console.log('Analytics: Service not initialized, logging user ID to console:', userId);
       return;
     }
 
     try {
-      if (Platform.OS === 'web') {
-        const executeUserId = () => {
-          if (gtag && isWebAnalyticsLoaded) {
-            gtag('config', GA_MEASUREMENT_ID, {
-              user_id: userId
-            });
-            console.log('Analytics: Web user ID set:', userId);
-          }
-        };
-
-        if (isWebAnalyticsLoaded) {
-          executeUserId();
-        } else {
-          analyticsQueue.push(executeUserId);
-        }
-      } else {
-        console.log('Analytics: User ID (native - console only):', userId);
-      }
+      await analytics.setUserId(userId);
+      console.log('Analytics: User ID set:', userId);
     } catch (error) {
       console.error('Analytics: Error setting user ID:', error);
     }

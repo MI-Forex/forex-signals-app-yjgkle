@@ -36,7 +36,9 @@
     },
     "plugins": [
       "expo-font",
-      "expo-router"
+      "expo-router",
+      "@react-native-firebase/app",
+      "@react-native-firebase/analytics"
     ],
     "scheme": "cnc-forex-signals",
     "experiments": {

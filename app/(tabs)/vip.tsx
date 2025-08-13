@@ -111,6 +111,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     lineHeight: 24,
+    fontWeight: '500',
   },
   upgradeButton: {
     marginTop: spacing.md,
@@ -244,12 +245,8 @@ function VIPScreenContent() {
         source: 'vip_screen'
       });
 
-      const canOpen = await Linking.canOpenURL(whatsAppSettings.url);
-      if (canOpen) {
-        await Linking.openURL(whatsAppSettings.url);
-      } else {
-        Alert.alert('Error', 'Unable to open WhatsApp. Please contact support.');
-      }
+      // Open WhatsApp directly without showing notification
+      await Linking.openURL(whatsAppSettings.url);
     } catch (error) {
       console.error('Error opening WhatsApp:', error);
       await logEvent(ANALYTICS_EVENTS.ERROR_OCCURRED, {
