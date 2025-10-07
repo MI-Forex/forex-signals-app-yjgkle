@@ -1,29 +1,19 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  Alert, 
-  ScrollView, 
-  KeyboardAvoidingView, 
-  Platform, 
-  StyleSheet, 
-  Image 
-} from 'react-native';
-import { commonStyles, colors, spacing, borderRadius } from '../../../../styles/commonStyles';
-import { useAuth } from '../../../../contexts/AuthContext';
-import Button from '../../../../components/Button';
-import { uploadImageToCloudinary } from '../../../../utils/cloudinaryUtils';
 import { db } from '../../../../firebase/config';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import * as ImagePicker from 'expo-image-picker';
+import { commonStyles, colors, spacing, borderRadius } from '../../../../styles/commonStyles';
+import { doc, getDoc, updateDoc, serverTimestamp } from '@firebase/firestore';
 import { router, useLocalSearchParams } from 'expo-router';
+import Button from '../../../../components/Button';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadImageToCloudinary } from '../../../../utils/cloudinaryUtils';
 
 interface AnalysisData {
   title: string;
   content: string;
-  imageUrl?: string;
+  imageUrl: string;
 }
 
 const styles = StyleSheet.create({
@@ -35,7 +25,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: spacing.lg,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -48,6 +38,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
   },
   inputContainer: {
     marginBottom: spacing.lg,
@@ -60,7 +51,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     fontSize: 16,
     color: colors.text,
@@ -69,27 +60,20 @@ const styles = StyleSheet.create({
   },
   textArea: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
-    minHeight: 120,
+    minHeight: 200,
     textAlignVertical: 'top',
-  },
-  imageContainer: {
-    marginBottom: spacing.md,
   },
   imagePreview: {
     width: '100%',
     height: 200,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
-  },
-  imageButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.sm,
   },
   buttonContainer: {
     marginTop: spacing.xl,
@@ -104,50 +88,52 @@ export default function EditAnalysisScreen() {
     content: '',
     imageUrl: '',
   });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
   const { userData } = useAuth();
 
-  // Check if user has permission to edit analysis
-  React.useEffect(() => {
-    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
-      Alert.alert('Access Denied', 'You do not have permission to edit analysis');
-      router.back();
-    }
-  }, [userData]);
-
   const loadAnalysis = useCallback(async () => {
+    if (!id || typeof id !== 'string') {
+      Alert.alert('Error', 'Invalid analysis ID');
+      router.back();
+      return;
+    }
+
     try {
-      console.log('Loading analysis with ID:', id);
-      const analysisDoc = await getDoc(doc(db, 'analysis', id as string));
+      const analysisDoc = await getDoc(doc(db, 'analysis', id));
       
-      if (analysisDoc.exists()) {
-        const data = analysisDoc.data();
-        setFormData({
-          title: data.title || '',
-          content: data.content || '',
-          imageUrl: data.imageUrl || '',
-        });
-        console.log('Analysis loaded successfully');
-      } else {
+      if (!analysisDoc.exists()) {
         Alert.alert('Error', 'Analysis not found');
         router.back();
+        return;
       }
-    } catch (error) {
+
+      const data = analysisDoc.data();
+      setFormData({
+        title: data.title || '',
+        content: data.content || '',
+        imageUrl: data.imageUrl || '',
+      });
+    } catch (error: any) {
       console.error('Error loading analysis:', error);
       Alert.alert('Error', 'Failed to load analysis');
       router.back();
     } finally {
-      setLoading(false);
+      setLoadingAnalysis(false);
     }
   }, [id]);
 
   useEffect(() => {
-    if (id) {
-      loadAnalysis();
+    // Check if user has permission to edit analysis
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
+      Alert.alert('Access Denied', 'You do not have permission to edit analysis');
+      router.back();
+      return;
     }
-  }, [id, loadAnalysis]);
+
+    loadAnalysis();
+  }, [userData, loadAnalysis]);
 
   const validateForm = () => {
     if (!formData.title.trim()) {
@@ -155,7 +141,7 @@ export default function EditAnalysisScreen() {
       return false;
     }
     if (!formData.content.trim()) {
-      Alert.alert('Error', 'Please enter content');
+      Alert.alert('Error', 'Please enter the content');
       return false;
     }
     return true;
@@ -174,19 +160,11 @@ export default function EditAnalysisScreen() {
         setUploadingImage(true);
         const imageUrl = await uploadImageToCloudinary(result.assets[0].uri);
         setFormData(prev => ({ ...prev, imageUrl }));
-        console.log('Image uploaded successfully:', imageUrl);
+        setUploadingImage(false);
       }
     } catch (error: any) {
-      console.error('Error picking/uploading image:', error);
-      
-      // Generic error messages for security
-      let errorMessage = 'Failed to upload image. Please try again.';
-      if (error.message.includes('network')) {
-        errorMessage = 'Please check internet connectivity';
-      }
-      
-      Alert.alert('Error', errorMessage);
-    } finally {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to upload image');
       setUploadingImage(false);
     }
   };
@@ -194,37 +172,26 @@ export default function EditAnalysisScreen() {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    setSaving(true);
+    setLoading(true);
     try {
-      const updateData = {
+      const analysisData = {
         title: formData.title.trim(),
         content: formData.content.trim(),
-        imageUrl: formData.imageUrl || '',
+        imageUrl: formData.imageUrl.trim() || null,
         updatedAt: serverTimestamp(),
         updatedBy: userData?.uid || '',
-        updatedByName: userData?.displayName || 'Admin'
       };
 
-      console.log('Updating analysis with data:', updateData);
-      await updateDoc(doc(db, 'analysis', id as string), updateData);
+      await updateDoc(doc(db, 'analysis', id as string), analysisData);
       
       Alert.alert('Success', 'Analysis updated successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
       console.error('Error updating analysis:', error);
-      
-      // Generic error messages for security
-      let errorMessage = 'Failed to update analysis. Please try again.';
-      if (error.message.includes('network')) {
-        errorMessage = 'Please check internet connectivity';
-      } else if (error.message.includes('permission')) {
-        errorMessage = 'Please check your credentials';
-      }
-      
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Error', 'Failed to update analysis. Please try again.');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -236,10 +203,10 @@ export default function EditAnalysisScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  if (loading) {
+  if (loadingAnalysis) {
     return (
-      <View style={commonStyles.loading}>
-        <Text style={commonStyles.text}>Loading analysis...</Text>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: colors.text }}>Loading analysis...</Text>
       </View>
     );
   }
@@ -248,6 +215,7 @@ export default function EditAnalysisScreen() {
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <View style={styles.header}>
         <Text style={styles.title}>Edit Analysis</Text>
@@ -255,13 +223,14 @@ export default function EditAnalysisScreen() {
           text="Cancel"
           onPress={handleBack}
           variant="outline"
-          style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+          size="small"
         />
       </View>
 
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Title *</Text>
@@ -279,54 +248,39 @@ export default function EditAnalysisScreen() {
           <Text style={styles.label}>Content *</Text>
           <TextInput
             style={styles.textArea}
-            placeholder="Enter detailed analysis content..."
+            placeholder="Enter the full analysis content..."
             placeholderTextColor={colors.textSecondary}
             value={formData.content}
             onChangeText={(value) => updateFormData('content', value)}
             multiline
-            numberOfLines={6}
+            numberOfLines={10}
           />
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Analysis Image (Optional)</Text>
-          <View style={styles.imageContainer}>
-            {formData.imageUrl ? (
-              <Image 
-                source={{ uri: formData.imageUrl }} 
-                style={styles.imagePreview}
-                resizeMode="cover"
-              />
-            ) : null}
-            
-            <View style={styles.imageButtons}>
-              <Button
-                text={formData.imageUrl ? "Change Image" : "Add Image"}
-                onPress={pickImage}
-                loading={uploadingImage}
-                disabled={uploadingImage}
-                variant="outline"
-                style={{ flex: 1 }}
-              />
-              
-              {formData.imageUrl && (
-                <Button
-                  text="Remove"
-                  onPress={() => updateFormData('imageUrl', '')}
-                  variant="danger"
-                  style={{ flex: 1 }}
-                />
-              )}
-            </View>
-          </View>
+          <Text style={styles.label}>Image (Optional)</Text>
+          <Button
+            text={uploadingImage ? "Uploading..." : "Pick Image"}
+            onPress={pickImage}
+            variant="outline"
+            disabled={uploadingImage}
+          />
+          {formData.imageUrl ? (
+            <Image 
+              source={{ uri: formData.imageUrl }} 
+              style={styles.imagePreview}
+              resizeMode="cover"
+            />
+          ) : null}
         </View>
 
         <View style={styles.buttonContainer}>
           <Button
             text="Update Analysis"
             onPress={handleSubmit}
-            loading={saving}
-            disabled={saving}
+            loading={loading}
+            disabled={loading || uploadingImage}
+            size="large"
           />
         </View>
       </ScrollView>

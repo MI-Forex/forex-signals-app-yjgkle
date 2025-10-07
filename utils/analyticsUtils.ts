@@ -1,8 +1,11 @@
 
 import { Platform } from 'react-native';
 
-// Google Analytics 4 configuration
+// Google Analytics 4 configuration with the correct measurement ID
 const GA_MEASUREMENT_ID = 'G-N7VHTSM9QK';
+
+console.log('📊 Analytics: Initializing with Measurement ID:', GA_MEASUREMENT_ID);
+console.log('📊 Analytics: Platform:', Platform.OS);
 
 // Analytics event types
 export interface AnalyticsEvent {
@@ -68,23 +71,28 @@ class AnalyticsService {
   private isInitialized = false;
   private currentUserId: string | null = null;
   private userProperties: { [key: string]: string } = {};
-  private eventQueue: { eventName: string; parameters?: any }[] = [];
+  private eventQueue: Array<{ eventName: string; parameters?: any }> = [];
 
   constructor() {
+    console.log('📊 Analytics: Creating AnalyticsService instance');
     this.initializeAnalytics();
   }
 
   private async initializeAnalytics() {
+    console.log('📊 Analytics: Starting initialization for platform:', Platform.OS);
+    
     if (Platform.OS === 'web') {
       try {
+        console.log('📊 Analytics: Loading Google Analytics for web...');
         await this.loadGoogleAnalytics();
         this.isInitialized = true;
-        console.log('📊 Google Analytics 4 initialized successfully');
+        console.log('✅ Analytics: Google Analytics 4 initialized successfully');
+        console.log('📊 Analytics: Measurement ID:', GA_MEASUREMENT_ID);
         
         // Process queued events
         this.processEventQueue();
       } catch (error) {
-        console.error('📊 Failed to initialize Google Analytics:', error);
+        console.error('❌ Analytics: Failed to initialize Google Analytics:', error);
         this.fallbackToConsoleLogging();
       }
     } else {
@@ -96,12 +104,14 @@ class AnalyticsService {
   private async loadGoogleAnalytics(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        console.log('📊 Analytics: Setting up dataLayer and gtag...');
+        
         // Initialize dataLayer
         window.dataLayer = window.dataLayer || [];
         
         // Define gtag function
         window.gtag = function(...args: any[]) {
-          window.dataLayer.push(args);
+          window.dataLayer.push(arguments);
         };
         
         // Configure GA4
@@ -112,22 +122,26 @@ class AnalyticsService {
           anonymize_ip: true
         });
 
+        console.log('📊 Analytics: Loading GA4 script...');
+        
         // Load GA4 script
         const script = document.createElement('script');
         script.async = true;
         script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
         
         script.onload = () => {
-          console.log('📊 Google Analytics script loaded');
+          console.log('✅ Analytics: Google Analytics script loaded successfully');
           resolve();
         };
         
-        script.onerror = () => {
+        script.onerror = (error) => {
+          console.error('❌ Analytics: Failed to load Google Analytics script:', error);
           reject(new Error('Failed to load Google Analytics script'));
         };
         
         document.head.appendChild(script);
       } catch (error) {
+        console.error('❌ Analytics: Error in loadGoogleAnalytics:', error);
         reject(error);
       }
     });
@@ -140,15 +154,20 @@ class AnalyticsService {
   }
 
   private processEventQueue() {
+    console.log('📊 Analytics: Processing event queue, items:', this.eventQueue.length);
+    
     while (this.eventQueue.length > 0) {
-      const { eventName, parameters } = this.eventQueue.shift()!;
-      this.logEvent(eventName, parameters);
+      const event = this.eventQueue.shift();
+      if (event) {
+        this.logEvent(event.eventName, event.parameters);
+      }
     }
   }
 
   // Log custom events
   async logEvent(eventName: string, parameters?: { [key: string]: any }) {
     if (!this.isInitialized) {
+      console.log('📊 Analytics: Queueing event (not initialized yet):', eventName);
       this.eventQueue.push({ eventName, parameters });
       return;
     }
@@ -157,7 +176,7 @@ class AnalyticsService {
       const sanitizedParams = this.sanitizeParameters(parameters);
       const timestamp = new Date().toISOString();
       
-      if (Platform.OS === 'web' && window.gtag) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.gtag) {
         // Send to Google Analytics
         window.gtag('event', eventName, {
           ...sanitizedParams,
@@ -165,9 +184,10 @@ class AnalyticsService {
           custom_parameter_platform: Platform.OS
         });
         
-        console.log(`📊 GA4 Event [${timestamp}]:`, {
+        console.log(`✅ GA4 Event [${timestamp}]:`, {
           event: eventName,
-          parameters: sanitizedParams
+          parameters: sanitizedParams,
+          measurementId: GA_MEASUREMENT_ID
         });
       } else {
         // Console logging for native platforms
@@ -179,7 +199,7 @@ class AnalyticsService {
         });
       }
     } catch (error) {
-      console.error('📊 Error logging event:', eventName, error);
+      console.error('❌ Analytics: Error logging event:', eventName, error);
     }
   }
 
@@ -188,15 +208,15 @@ class AnalyticsService {
     try {
       this.userProperties = { ...this.userProperties, ...properties };
       
-      if (Platform.OS === 'web' && window.gtag) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.gtag) {
         window.gtag('config', GA_MEASUREMENT_ID, {
           custom_map: properties
         });
       }
       
-      console.log('📊 Analytics User Properties:', this.userProperties);
+      console.log('✅ Analytics: User Properties set:', this.userProperties);
     } catch (error) {
-      console.error('📊 Error setting user properties:', error);
+      console.error('❌ Analytics: Error setting user properties:', error);
     }
   }
 
@@ -205,21 +225,21 @@ class AnalyticsService {
     try {
       this.currentUserId = userId;
       
-      if (Platform.OS === 'web' && window.gtag) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.gtag) {
         window.gtag('config', GA_MEASUREMENT_ID, {
           user_id: userId
         });
       }
       
-      console.log('📊 Analytics User ID set:', userId);
+      console.log('✅ Analytics: User ID set:', userId);
     } catch (error) {
-      console.error('📊 Error setting user ID:', error);
+      console.error('❌ Analytics: Error setting user ID:', error);
     }
   }
 
   // Log screen view
   async logScreenView(screenName: string, screenClass?: string) {
-    if (Platform.OS === 'web' && window.gtag) {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.gtag) {
       window.gtag('config', GA_MEASUREMENT_ID, {
         page_title: screenName,
         page_location: window.location.href
@@ -354,3 +374,7 @@ export const logError = (error: string, context?: string) =>
   analyticsService.logError(error, context);
 
 export default analyticsService;
+
+// Log initialization complete
+console.log('📊 Analytics: Module loaded successfully');
+console.log('📊 Analytics: Measurement ID:', GA_MEASUREMENT_ID);

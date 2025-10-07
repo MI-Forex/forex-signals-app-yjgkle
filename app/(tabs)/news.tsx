@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, RefreshControl, Alert, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot } from '@firebase/firestore';
 import { db } from '../../firebase/config';
 import NewsCard from '../../components/NewsCard';
 import Button from '../../components/Button';
@@ -65,17 +65,17 @@ export default function NewsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
-  const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showConnectivityError, setShowConnectivityError] = useState(false);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { user, userData } = useAuth();
 
   const clearRefreshTimeout = useCallback(() => {
-    if (refreshTimeout) {
-      clearTimeout(refreshTimeout);
-      setRefreshTimeout(null);
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
     }
-  }, [refreshTimeout]);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -135,6 +135,12 @@ export default function NewsScreen() {
     };
   }, [user, refreshing, clearRefreshTimeout]);
 
+  useEffect(() => {
+    return () => {
+      clearRefreshTimeout();
+    };
+  }, [clearRefreshTimeout]);
+
   const handleRefresh = async () => {
     console.log('Pull to refresh triggered for news');
     
@@ -155,13 +161,11 @@ export default function NewsScreen() {
     clearRefreshTimeout();
     
     // Fallback timeout to ensure refresh completes
-    const timeout = setTimeout(() => {
+    refreshTimeoutRef.current = setTimeout(() => {
       console.log('News refresh timeout - completing refresh');
       setRefreshing(false);
-      setRefreshTimeout(null);
+      refreshTimeoutRef.current = null;
     }, 5000); // 5 seconds timeout
-    
-    setRefreshTimeout(timeout);
   };
 
   const handleManageNews = () => {

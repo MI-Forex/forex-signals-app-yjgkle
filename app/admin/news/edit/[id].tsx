@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
-import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../../styles/commonStyles';
-import Button from '../../../../components/Button';
-import { useAuth } from '../../../../contexts/AuthContext';
+
 import { db } from '../../../../firebase/config';
+import { commonStyles, colors, spacing, borderRadius } from '../../../../styles/commonStyles';
+import { doc, getDoc, updateDoc, serverTimestamp } from '@firebase/firestore';
 import { router, useLocalSearchParams } from 'expo-router';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import Button from '../../../../components/Button';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 
 interface NewsData {
   title: string;
@@ -27,7 +28,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    ...shadows.sm,
   },
   title: {
     fontSize: 24,
@@ -56,11 +56,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
-    ...shadows.sm,
-  },
-  inputFocused: {
-    borderColor: colors.primary,
-    borderWidth: 2,
   },
   textArea: {
     backgroundColor: colors.surface,
@@ -72,7 +67,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     minHeight: 120,
     textAlignVertical: 'top',
-    ...shadows.sm,
   },
   contentArea: {
     minHeight: 200,
@@ -91,43 +85,52 @@ export default function EditNewsScreen() {
     content: '',
     imageUrl: '',
   });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingNews, setLoadingNews] = useState(true);
   const { userData } = useAuth();
 
-  useEffect(() => {
-    if (id) {
-      loadNews();
+  const loadNews = useCallback(async () => {
+    if (!id || typeof id !== 'string') {
+      Alert.alert('Error', 'Invalid news ID');
+      router.back();
+      return;
     }
-  }, [id]);
 
-  const loadNews = async () => {
     try {
-      console.log('Loading news with ID:', id);
-      const newsDoc = await getDoc(doc(db, 'news', id as string));
+      const newsDoc = await getDoc(doc(db, 'news', id));
       
-      if (newsDoc.exists()) {
-        const data = newsDoc.data();
-        setFormData({
-          title: data.title || '',
-          summary: data.summary || '',
-          content: data.content || '',
-          imageUrl: data.imageUrl || '',
-        });
-        console.log('News loaded successfully');
-      } else {
+      if (!newsDoc.exists()) {
         Alert.alert('Error', 'News article not found');
         router.back();
+        return;
       }
-    } catch (error) {
+
+      const data = newsDoc.data();
+      setFormData({
+        title: data.title || '',
+        summary: data.summary || '',
+        content: data.content || '',
+        imageUrl: data.imageUrl || '',
+      });
+    } catch (error: any) {
       console.error('Error loading news:', error);
       Alert.alert('Error', 'Failed to load news article');
       router.back();
     } finally {
-      setLoading(false);
+      setLoadingNews(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    // Check if user has permission to edit news
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
+      Alert.alert('Access Denied', 'You do not have permission to edit news');
+      router.back();
+      return;
+    }
+
+    loadNews();
+  }, [userData, loadNews]);
 
   const validateForm = () => {
     if (!formData.title.trim()) {
@@ -148,38 +151,27 @@ export default function EditNewsScreen() {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    setSaving(true);
+    setLoading(true);
     try {
-      const updateData = {
+      const newsData = {
         title: formData.title.trim(),
         summary: formData.summary.trim(),
         content: formData.content.trim(),
         imageUrl: formData.imageUrl.trim() || null,
         updatedAt: serverTimestamp(),
         updatedBy: userData?.uid || '',
-        updatedByName: userData?.displayName || 'Admin'
       };
 
-      console.log('Updating news with data:', updateData);
-      await updateDoc(doc(db, 'news', id as string), updateData);
+      await updateDoc(doc(db, 'news', id as string), newsData);
       
       Alert.alert('Success', 'News article updated successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
       console.error('Error updating news:', error);
-      
-      // Generic error messages for security
-      let errorMessage = 'Failed to update news article. Please try again.';
-      if (error.message.includes('network')) {
-        errorMessage = 'Please check internet connectivity';
-      } else if (error.message.includes('permission')) {
-        errorMessage = 'Please check your credentials';
-      }
-      
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Error', 'Failed to update news article. Please try again.');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -191,18 +183,10 @@ export default function EditNewsScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleInputFocus = (inputName: string) => {
-    setFocusedInput(inputName);
-  };
-
-  const handleInputBlur = () => {
-    setFocusedInput(null);
-  };
-
-  if (loading) {
+  if (loadingNews) {
     return (
-      <View style={commonStyles.loading}>
-        <Text style={commonStyles.text}>Loading news article...</Text>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: colors.text }}>Loading news article...</Text>
       </View>
     );
   }
@@ -231,16 +215,11 @@ export default function EditNewsScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Title *</Text>
           <TextInput
-            style={[
-              styles.input,
-              focusedInput === 'title' && styles.inputFocused
-            ]}
+            style={styles.input}
             placeholder="Enter news title"
             placeholderTextColor={colors.textSecondary}
             value={formData.title}
             onChangeText={(value) => updateFormData('title', value)}
-            onFocus={() => handleInputFocus('title')}
-            onBlur={handleInputBlur}
             autoCapitalize="words"
           />
         </View>
@@ -248,16 +227,11 @@ export default function EditNewsScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Summary *</Text>
           <TextInput
-            style={[
-              styles.textArea,
-              focusedInput === 'summary' && styles.inputFocused
-            ]}
+            style={styles.textArea}
             placeholder="Enter a brief summary of the news..."
             placeholderTextColor={colors.textSecondary}
             value={formData.summary}
             onChangeText={(value) => updateFormData('summary', value)}
-            onFocus={() => handleInputFocus('summary')}
-            onBlur={handleInputBlur}
             multiline
             numberOfLines={4}
           />
@@ -266,17 +240,11 @@ export default function EditNewsScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Full Content *</Text>
           <TextInput
-            style={[
-              styles.textArea, 
-              styles.contentArea,
-              focusedInput === 'content' && styles.inputFocused
-            ]}
+            style={[styles.textArea, styles.contentArea]}
             placeholder="Enter the full news content..."
             placeholderTextColor={colors.textSecondary}
             value={formData.content}
             onChangeText={(value) => updateFormData('content', value)}
-            onFocus={() => handleInputFocus('content')}
-            onBlur={handleInputBlur}
             multiline
             numberOfLines={8}
           />
@@ -285,16 +253,11 @@ export default function EditNewsScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Image URL (Optional)</Text>
           <TextInput
-            style={[
-              styles.input,
-              focusedInput === 'imageUrl' && styles.inputFocused
-            ]}
+            style={styles.input}
             placeholder="https://example.com/image.jpg"
             placeholderTextColor={colors.textSecondary}
             value={formData.imageUrl}
             onChangeText={(value) => updateFormData('imageUrl', value)}
-            onFocus={() => handleInputFocus('imageUrl')}
-            onBlur={handleInputBlur}
             keyboardType="url"
             autoCapitalize="none"
             autoCorrect={false}
@@ -305,8 +268,8 @@ export default function EditNewsScreen() {
           <Button
             text="Update Article"
             onPress={handleSubmit}
-            loading={saving}
-            disabled={saving}
+            loading={loading}
+            disabled={loading}
             size="large"
           />
         </View>
