@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot } from '@firebase/firestore';
 import { db } from '../../firebase/config';
 import NewsCard from '../../components/NewsCard';
 import Button from '../../components/Button';

@@ -4,7 +4,7 @@ import { View, Text, TextInput, Alert, ScrollView, StyleSheet } from 'react-nati
 import { router } from 'expo-router';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../firebase/config';
-import { doc, getDoc, setDoc, collection, query, getDocs, updateDoc, deleteDoc, where, orderBy, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, getDocs, updateDoc, deleteDoc, where, orderBy, Timestamp } from '@firebase/firestore';
 import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';
 import Button from '../../../components/Button';
 import DateTimePicker from '@react-native-community/datetimepicker';

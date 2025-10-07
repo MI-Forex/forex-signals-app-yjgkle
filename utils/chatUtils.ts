@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   query, 
@@ -11,7 +12,7 @@ import {
   addDoc,
   getDoc,
   increment
-} from 'firebase/firestore';
+} from '@firebase/firestore';
 import { db } from '../firebase/config';
 
 export interface ChatMessage {

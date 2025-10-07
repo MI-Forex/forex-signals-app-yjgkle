@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, Alert, Image, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { collection, query, orderBy, limit, onSnapshot, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, where } from '@firebase/firestore';
 import { db } from '../../firebase/config';
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import SignalCard from '../../components/SignalCard';

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';
@@ -5,7 +6,7 @@ import Button from '../../../components/Button';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../firebase/config';
 import { router } from 'expo-router';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from '@firebase/firestore';
 
 const styles = StyleSheet.create({
   container: {

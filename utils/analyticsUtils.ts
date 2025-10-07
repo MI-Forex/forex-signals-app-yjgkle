@@ -71,7 +71,7 @@ class AnalyticsService {
   private isInitialized = false;
   private currentUserId: string | null = null;
   private userProperties: { [key: string]: string } = {};
-  private eventQueue: Array<{ eventName: string; parameters?: any }> = [];
+  private eventQueue: Array<{ eventName: string; parameters?: any }>[] = [];
 
   constructor() {
     console.log('📊 Analytics: Creating AnalyticsService instance');
@@ -165,7 +165,9 @@ class AnalyticsService {
   }
 
   // Log custom events
-  async logEvent(eventName: string, parameters?: { [key: string]: any }) {
+  async logEvent(eventName: string, ...params: any[]) {
+    const parameters = params.length > 0 ? params[0] : undefined;
+    
     if (!this.isInitialized) {
       console.log('📊 Analytics: Queueing event (not initialized yet):', eventName);
       this.eventQueue.push({ eventName, parameters });

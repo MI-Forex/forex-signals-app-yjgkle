@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert, RefreshControl, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../firebase/config';
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from '@firebase/firestore';
 import Button from '../../../components/Button';
 import AdminAnalysisCard from '../../../components/AdminAnalysisCard';
 import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';

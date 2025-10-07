@@ -2,7 +2,7 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { checkInternetConnectivity } from '../../utils/networkUtils';
 import { supabase } from '../../utils/supabaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from '@firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
 import { View, Text, ScrollView, StyleSheet, Dimensions, Linking, Alert, RefreshControl, ActivityIndicator } from 'react-native';
