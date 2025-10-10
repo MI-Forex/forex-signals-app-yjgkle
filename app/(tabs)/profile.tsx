@@ -6,7 +6,11 @@ import Button from '../../components/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth } from '../../firebase/config';
 import { Ionicons } from '@expo/vector-icons';
+<<<<<<< HEAD
 import { sendPasswordResetEmail } from 'firebase/auth';
+=======
+import { sendPasswordResetEmail } from '@firebase/auth';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import { commonStyles, colors, spacing } from '../../styles/commonStyles';
 import { checkInternetConnectivity } from '../../utils/networkUtils';
 

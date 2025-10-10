@@ -1,4 +1,19 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+=======
+
+import Button from '../../../components/Button';
+import { router, useLocalSearchParams } from 'expo-router';
+import { 
+  ensureChatExists, 
+  sendChatMessage, 
+  createChatId, 
+  subscribeToMessages,
+  getChatMessages,
+  markMessagesAsRead,
+  ChatMessage
+} from '../../../utils/supabaseChatUtils';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import { 
   View, 
   Text, 
@@ -9,6 +24,7 @@ import {
   StyleSheet,
   Alert 
 } from 'react-native';
+<<<<<<< HEAD
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../contexts/AuthContext';
 import { commonStyles, colors, spacing, borderRadius } from '../../../styles/commonStyles';
@@ -95,6 +111,164 @@ export default function AdminChatScreen() {
 
   useEffect(() => {
     // Scroll to bottom when new messages are added
+=======
+import { commonStyles, colors, spacing, borderRadius } from '../../../styles/commonStyles';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useAuth } from '../../../contexts/AuthContext';
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  messagesContainer: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  messageWrapper: {
+    marginBottom: spacing.md,
+    maxWidth: '80%',
+  },
+  userMessageWrapper: {
+    alignSelf: 'flex-end',
+  },
+  adminMessageWrapper: {
+    alignSelf: 'flex-start',
+  },
+  messageBubble: {
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+  },
+  userMessage: {
+    backgroundColor: colors.primary,
+  },
+  adminMessage: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  messageText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  userMessageText: {
+    color: colors.white,
+  },
+  messageTime: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    maxHeight: 100,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+});
+
+export default function AdminChatScreen() {
+  const { userId } = useLocalSearchParams();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const { userData } = useAuth();
+
+  const loadChatMessages = useCallback(async () => {
+    if (!userId || typeof userId !== 'string' || !userData?.uid) {
+      console.log('Missing userId or userData');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      console.log('Loading chat messages for user:', userId);
+      const chatId = createChatId(userId, userData.uid);
+      
+      // Ensure chat exists
+      await ensureChatExists(userId, userData.email || '', userData.displayName || 'Admin');
+      
+      // Get initial messages
+      const initialMessages = await getChatMessages(chatId);
+      setMessages(initialMessages);
+      
+      // Mark messages as read
+      await markMessagesAsRead(chatId, userData.uid);
+      
+      // Subscribe to new messages
+      const unsubscribe = subscribeToMessages(chatId, (newMessages) => {
+        setMessages(newMessages);
+        // Mark new messages as read
+        markMessagesAsRead(chatId, userData.uid);
+      });
+      
+      setLoading(false);
+      
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error loading chat messages:', error);
+      Alert.alert('Error', 'Failed to load chat messages');
+      setLoading(false);
+    }
+  }, [userId, userData?.uid, userData?.email, userData?.displayName]);
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
+    const setupChat = async () => {
+      unsubscribe = await loadChatMessages();
+    };
+
+    setupChat();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [loadChatMessages]);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     if (messages.length > 0) {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -103,6 +277,7 @@ export default function AdminChatScreen() {
   }, [messages]);
 
   const sendMessage = async () => {
+<<<<<<< HEAD
     const messageText = newMessage.trim();
     
     if (!messageText || !userId || !userData?.uid) {
@@ -131,10 +306,20 @@ export default function AdminChatScreen() {
 
       // Add optimistic message to UI immediately
       setMessages(prev => [...prev, optimisticMessage]);
+=======
+    if (!newMessage.trim() || !userId || typeof userId !== 'string' || !userData?.uid) {
+      return;
+    }
+
+    setSending(true);
+    try {
+      const chatId = createChatId(userId, userData.uid);
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       
       await sendChatMessage(
         chatId,
         userData.uid,
+<<<<<<< HEAD
         messageText,
         'admin',
         'Admin'
@@ -160,6 +345,17 @@ export default function AdminChatScreen() {
       
       Alert.alert('Error', 'Failed to send message. Please try again.');
       setNewMessage(messageText); // Restore message on error
+=======
+        newMessage.trim(),
+        'admin',
+        userData.displayName || 'Admin'
+      );
+      
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message');
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     } finally {
       setSending(false);
     }
@@ -173,6 +369,7 @@ export default function AdminChatScreen() {
   };
 
   const formatTime = (date: Date) => {
+<<<<<<< HEAD
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
@@ -184,6 +381,50 @@ export default function AdminChatScreen() {
     return (
       <View style={[commonStyles.container, commonStyles.centered]}>
         <Text style={commonStyles.text}>Access denied</Text>
+=======
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    const today = new Date();
+    const messageDate = new Date(date);
+    
+    if (messageDate.toDateString() === today.toDateString()) {
+      return 'Today';
+    }
+    
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (messageDate.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    }
+    
+    return messageDate.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Chat</Text>
+          <Button
+            text="Back"
+            onPress={() => router.back()}
+            variant="outline"
+            size="small"
+          />
+        </View>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>Loading messages...</Text>
+        </View>
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       </View>
     );
   }
@@ -192,15 +433,23 @@ export default function AdminChatScreen() {
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+<<<<<<< HEAD
     >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
           Chat with {userName || 'User'}
         </Text>
+=======
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <View style={styles.header}>
+        <Text style={styles.title}>Chat with User</Text>
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
         <Button
           text="Back"
           onPress={() => router.back()}
           variant="outline"
+<<<<<<< HEAD
           style={styles.backButton}
         />
       </View>
@@ -251,6 +500,54 @@ export default function AdminChatScreen() {
                     message.senderType === 'admin' ? styles.adminMessageText : styles.userMessageText
                   ]}>
                     {message.message}
+=======
+          size="small"
+        />
+      </View>
+
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.messagesContainer}
+        contentContainerStyle={{ paddingBottom: spacing.lg }}
+        showsVerticalScrollIndicator={false}
+      >
+        {messages.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>
+              No messages yet. Start the conversation!
+            </Text>
+          </View>
+        ) : (
+          messages.map((message, index) => {
+            const isAdmin = message.sender_type === 'admin';
+            const showDate = index === 0 || 
+              formatDate(new Date(messages[index - 1].created_at)) !== formatDate(new Date(message.created_at));
+
+            return (
+              <View key={message.id}>
+                {showDate && (
+                  <Text style={[styles.messageTime, { textAlign: 'center', marginVertical: spacing.md }]}>
+                    {formatDate(new Date(message.created_at))}
+                  </Text>
+                )}
+                <View style={[
+                  styles.messageWrapper,
+                  isAdmin ? styles.adminMessageWrapper : styles.userMessageWrapper
+                ]}>
+                  <View style={[
+                    styles.messageBubble,
+                    isAdmin ? styles.adminMessage : styles.userMessage
+                  ]}>
+                    <Text style={[
+                      styles.messageText,
+                      !isAdmin && styles.userMessageText
+                    ]}>
+                      {message.message}
+                    </Text>
+                  </View>
+                  <Text style={styles.messageTime}>
+                    {formatTime(new Date(message.created_at))}
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
                   </Text>
                 </View>
               </View>
@@ -260,6 +557,7 @@ export default function AdminChatScreen() {
       </ScrollView>
 
       <View style={styles.inputContainer}>
+<<<<<<< HEAD
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.textInput}
@@ -280,10 +578,30 @@ export default function AdminChatScreen() {
             style={styles.sendButton}
           />
         </View>
+=======
+        <TextInput
+          style={styles.input}
+          placeholder="Type a message..."
+          placeholderTextColor={colors.textMuted}
+          value={newMessage}
+          onChangeText={setNewMessage}
+          onKeyPress={handleKeyPress}
+          multiline
+          maxLength={1000}
+        />
+        <Button
+          text="Send"
+          onPress={sendMessage}
+          disabled={!newMessage.trim() || sending}
+          loading={sending}
+          size="small"
+        />
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       </View>
     </KeyboardAvoidingView>
   );
 }
+<<<<<<< HEAD
 
 const styles = StyleSheet.create({
   container: {
@@ -442,3 +760,5 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+=======
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62

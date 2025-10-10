@@ -1,9 +1,17 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Alert, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../firebase/config';
+<<<<<<< HEAD
 import { doc, getDoc, setDoc, collection, query, getDocs, updateDoc, deleteDoc, where, orderBy, Timestamp } from 'firebase/firestore';
+=======
+import { doc, getDoc, setDoc, collection, query, getDocs, updateDoc, deleteDoc, where, orderBy, Timestamp } from '@firebase/firestore';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';
 import Button from '../../../components/Button';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -771,4 +779,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     ...shadows.sm,
   },
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62

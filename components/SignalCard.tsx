@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
@@ -10,17 +14,33 @@ interface Signal {
   stopLoss: number;
   takeProfit: number;
   notes?: string;
+<<<<<<< HEAD
   status: 'active' | 'closed' | 'hit_tp' | 'hit_sl';
   createdAt: Date;
   signalId?: string;
   segment?: string;
+=======
+  status: 'active' | 'closed' | 'hit_tp' | 'hit_sl' | 'inprogress' | 'pending';
+  createdAt: Date;
+  signalId?: string;
+  segment?: string;
+  isVip?: boolean;
+  targetUsers?: 'normal' | 'vip';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 }
 
 interface SignalCardProps {
   signal: Signal;
+<<<<<<< HEAD
 }
 
 export default function SignalCard({ signal }: SignalCardProps) {
+=======
+  onPress?: (signal: Signal) => void;
+}
+
+export default function SignalCard({ signal, onPress }: SignalCardProps) {
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   const [notesExpanded, setNotesExpanded] = useState(false);
 
   const getStatusColor = () => {
@@ -29,6 +49,11 @@ export default function SignalCard({ signal }: SignalCardProps) {
       case 'closed': return colors.textMuted;
       case 'hit_tp': return colors.success;
       case 'hit_sl': return colors.danger;
+<<<<<<< HEAD
+=======
+      case 'inprogress': return colors.warning;
+      case 'pending': return colors.secondary;
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       default: return colors.textMuted;
     }
   };
@@ -39,6 +64,11 @@ export default function SignalCard({ signal }: SignalCardProps) {
       case 'closed': return 'Closed';
       case 'hit_tp': return 'Hit TP';
       case 'hit_sl': return 'Hit SL';
+<<<<<<< HEAD
+=======
+      case 'inprogress': return 'In Progress';
+      case 'pending': return 'Pending';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       default: return signal.status;
     }
   };
@@ -52,7 +82,16 @@ export default function SignalCard({ signal }: SignalCardProps) {
   };
 
   const formatTime = (date: Date) => {
+<<<<<<< HEAD
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+=======
+    try {
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+      console.error('SignalCard: Error formatting time:', error);
+      return 'Invalid Date';
+    }
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   };
 
   const getDisplayNotes = () => {
@@ -76,11 +115,38 @@ export default function SignalCard({ signal }: SignalCardProps) {
     return segment.replace(/_/g, ' & ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+<<<<<<< HEAD
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.pair}>{signal.pair}</Text>
+=======
+  const handlePress = () => {
+    if (onPress) {
+      onPress(signal);
+    }
+  };
+
+  const isVipSignal = signal.isVip || signal.targetUsers === 'vip';
+
+  return (
+    <TouchableOpacity 
+      style={styles.container} 
+      onPress={handlePress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.pairContainer}>
+            <Text style={styles.pair}>{signal.pair}</Text>
+            {isVipSignal && (
+              <View style={styles.vipBadge}>
+                <Text style={styles.vipText}>VIP</Text>
+              </View>
+            )}
+          </View>
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
           {signal.signalId && (
             <Text style={styles.signalId}>#{signal.signalId}</Text>
           )}
@@ -136,7 +202,11 @@ export default function SignalCard({ signal }: SignalCardProps) {
 
         <Text style={styles.timestamp}>{formatTime(signal.createdAt)}</Text>
       </View>
+<<<<<<< HEAD
     </View>
+=======
+    </TouchableOpacity>
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   );
 }
 
@@ -164,11 +234,33 @@ const styles = StyleSheet.create({
   headerRight: {
     alignItems: 'flex-end',
   },
+<<<<<<< HEAD
+=======
+  pairContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   pair: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
   },
+<<<<<<< HEAD
+=======
+  vipBadge: {
+    backgroundColor: colors.warning,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: borderRadius.xs,
+  },
+  vipText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.white,
+  },
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   signalId: {
     fontSize: 12,
     fontWeight: '600',
@@ -260,4 +352,8 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'right',
   },
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62

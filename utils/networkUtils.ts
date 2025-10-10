@@ -1,5 +1,6 @@
 
 import NetInfo from '@react-native-community/netinfo';
+<<<<<<< HEAD
 
 export const checkInternetConnectivity = async (): Promise<boolean> => {
   try {
@@ -31,11 +32,28 @@ export const checkInternetConnectivity = async (): Promise<boolean> => {
   } catch (error) {
     console.error('NetworkUtils: Error checking network connectivity:', error);
     // Return true by default to avoid blocking the app
+=======
+import { Platform } from 'react-native';
+
+export const checkInternetConnectivity = async (): Promise<boolean> => {
+  try {
+    if (Platform.OS === 'web') {
+      // For web, check if navigator.onLine is available and true
+      return typeof navigator !== 'undefined' ? navigator.onLine : true;
+    }
+    
+    const netInfoState = await NetInfo.fetch();
+    return netInfoState.isConnected === true && netInfoState.isInternetReachable !== false;
+  } catch (error) {
+    console.error('NetworkUtils: Error checking connectivity:', error);
+    // Return true as fallback to avoid blocking the app
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     return true;
   }
 };
 
 export const subscribeToNetworkChanges = (callback: (isConnected: boolean) => void) => {
+<<<<<<< HEAD
   console.log('NetworkUtils: Subscribing to network changes');
   
   return NetInfo.addEventListener(state => {
@@ -68,3 +86,30 @@ export default {
   subscribeToNetworkChanges,
   isDeviceOnline
 };
+=======
+  try {
+    if (Platform.OS === 'web') {
+      // For web, listen to online/offline events
+      const handleOnline = () => callback(true);
+      const handleOffline = () => callback(false);
+      
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    }
+    
+    return NetInfo.addEventListener(state => {
+      const isConnected = state.isConnected === true && state.isInternetReachable !== false;
+      callback(isConnected);
+    });
+  } catch (error) {
+    console.error('NetworkUtils: Error subscribing to network changes:', error);
+    // Return a no-op function as fallback
+    return () => {};
+  }
+};
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62

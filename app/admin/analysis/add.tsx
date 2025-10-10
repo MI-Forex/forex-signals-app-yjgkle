@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import React, { useState } from 'react';
 import { 
   View, 
@@ -13,7 +17,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+<<<<<<< HEAD
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+=======
+import { collection, addDoc, serverTimestamp } from '@firebase/firestore';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import * as ImagePicker from 'expo-image-picker';
 import Button from '../../../components/Button';
 import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';
@@ -362,4 +370,8 @@ const styles = StyleSheet.create({
   buttonContainer: {
     marginTop: spacing.lg,
   },
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62

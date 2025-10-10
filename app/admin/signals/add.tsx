@@ -8,7 +8,11 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../firebase/config';
 import { router } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
+<<<<<<< HEAD
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+=======
+import { collection, addDoc, serverTimestamp } from '@firebase/firestore';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 
 const SIGNAL_TYPES = [
   { label: 'BUY', value: 'BUY' },

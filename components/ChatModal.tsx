@@ -1,4 +1,21 @@
+<<<<<<< HEAD
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+=======
+
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import Button from './Button';
+import { useAuth } from '../contexts/AuthContext';
+import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
+import { 
+  ensureChatExists, 
+  sendChatMessage, 
+  createChatId, 
+  subscribeToMessages,
+  getChatMessages,
+  testSupabaseConnection,
+  ChatMessage
+} from '../utils/supabaseChatUtils';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import { 
   View, 
   Text, 
@@ -11,6 +28,7 @@ import {
   Platform,
   Alert 
 } from 'react-native';
+<<<<<<< HEAD
 import { useAuth } from '../contexts/AuthContext';
 import { commonStyles, colors, spacing, borderRadius } from '../styles/commonStyles';
 import Button from './Button';
@@ -23,12 +41,15 @@ import {
   testSupabaseConnection,
   ChatMessage
 } from '../utils/supabaseChatUtils';
+=======
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 
 interface ChatModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
+<<<<<<< HEAD
 export default function ChatModal({ visible, onClose }: ChatModalProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -79,6 +100,190 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
 
   useEffect(() => {
     // Scroll to bottom when new messages are added
+=======
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    maxHeight: '80%',
+    minHeight: '50%',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  messagesContainer: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  messageWrapper: {
+    marginBottom: spacing.md,
+    maxWidth: '80%',
+  },
+  userMessageWrapper: {
+    alignSelf: 'flex-end',
+  },
+  adminMessageWrapper: {
+    alignSelf: 'flex-start',
+  },
+  messageBubble: {
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+  },
+  userMessage: {
+    backgroundColor: colors.primary,
+  },
+  adminMessage: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  messageText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  userMessageText: {
+    color: colors.white,
+  },
+  messageTime: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    maxHeight: 100,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  errorState: {
+    backgroundColor: colors.error,
+    padding: spacing.md,
+    margin: spacing.md,
+    borderRadius: borderRadius.lg,
+  },
+  errorText: {
+    color: colors.white,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+});
+
+export default function ChatModal({ visible, onClose }: ChatModalProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const { userData } = useAuth();
+
+  const loadChatMessages = useCallback(async () => {
+    if (!userData?.uid) {
+      console.log('No user data available');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      console.log('Testing Supabase connection...');
+      const isConnected = await testSupabaseConnection();
+      
+      if (!isConnected) {
+        console.log('Supabase connection failed');
+        setConnectionError(true);
+        setLoading(false);
+        return;
+      }
+
+      console.log('Loading chat messages...');
+      const adminId = 'admin'; // Default admin ID
+      const chatId = createChatId(userData.uid, adminId);
+      
+      // Ensure chat exists
+      await ensureChatExists(
+        userData.uid,
+        userData.email || '',
+        userData.displayName || 'User'
+      );
+      
+      // Get initial messages
+      const initialMessages = await getChatMessages(chatId);
+      setMessages(initialMessages);
+      setConnectionError(false);
+      
+      // Subscribe to new messages
+      const unsubscribe = subscribeToMessages(chatId, (newMessages) => {
+        setMessages(newMessages);
+      });
+      
+      setLoading(false);
+      
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error loading chat messages:', error);
+      setConnectionError(true);
+      setLoading(false);
+    }
+  }, [userData?.uid, userData?.email, userData?.displayName]);
+
+  useEffect(() => {
+    if (visible && userData?.uid) {
+      let unsubscribe: (() => void) | undefined;
+
+      const setupChat = async () => {
+        unsubscribe = await loadChatMessages();
+      };
+
+      setupChat();
+
+      return () => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      };
+    }
+  }, [visible, userData?.uid, loadChatMessages]);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     if (messages.length > 0) {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -86,6 +291,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
     }
   }, [messages]);
 
+<<<<<<< HEAD
   const loadChatMessages = useCallback(async () => {
     try {
       console.log('ChatModal: Loading Supabase chat messages... (attempt:', retryCount + 1, ')');
@@ -214,10 +420,22 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
 
       // Add optimistic message to UI immediately
       setMessages(prev => [...prev, optimisticMessage]);
+=======
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !userData?.uid) {
+      return;
+    }
+
+    setSending(true);
+    try {
+      const adminId = 'admin';
+      const chatId = createChatId(userData.uid, adminId);
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       
       await sendChatMessage(
         chatId,
         userData.uid,
+<<<<<<< HEAD
         messageText,
         userData.isAdmin ? 'admin' : 'user',
         senderName
@@ -272,27 +490,58 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
         ]
       );
       setNewMessage(messageText); // Restore message on error
+=======
+        newMessage.trim(),
+        'user',
+        userData.displayName || 'User'
+      );
+      
+      setNewMessage('');
+      setConnectionError(false);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setConnectionError(true);
+      Alert.alert('Error', 'Failed to send message. Please check your connection.');
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     } finally {
       setSending(false);
     }
   };
 
   const handleSendPress = () => {
+<<<<<<< HEAD
     console.log('ChatModal: Send button pressed');
+=======
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     sendMessage();
   };
 
   const handleTextChange = (text: string) => {
+<<<<<<< HEAD
     console.log('ChatModal: Text changed, length:', text.length);
+=======
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     setNewMessage(text);
   };
 
   const formatTime = (date: Date) => {
+<<<<<<< HEAD
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const retryConnection = () => {
     setRetryCount(0);
+=======
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  const retryConnection = () => {
+    setLoading(true);
+    setConnectionError(false);
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     loadChatMessages();
   };
 
@@ -300,6 +549,7 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
     <Modal
       visible={visible}
       animationType="slide"
+<<<<<<< HEAD
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
@@ -444,12 +694,123 @@ export default function ChatModal({ visible, onClose }: ChatModalProps) {
             <Text style={styles.footerError}>
               {connectionStatus === 'connecting' ? 'Connecting...' : 'Connection issue detected'}
             </Text>
+=======
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView 
+        style={styles.modalOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <TouchableOpacity 
+          style={{ flex: 1 }} 
+          activeOpacity={1} 
+          onPress={onClose}
+        />
+        
+        <View style={styles.modalContent}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Chat with Admin</Text>
+            <Button
+              text="Close"
+              onPress={onClose}
+              variant="outline"
+              size="small"
+            />
+          </View>
+
+          {connectionError && (
+            <View style={styles.errorState}>
+              <Text style={styles.errorText}>
+                Connection error. Please check your internet connection.
+              </Text>
+              <Button
+                text="Retry"
+                onPress={retryConnection}
+                variant="outline"
+                size="small"
+                style={{ marginTop: spacing.sm }}
+                textStyle={{ color: colors.white }}
+              />
+            </View>
+          )}
+
+          {loading ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>Loading messages...</Text>
+            </View>
+          ) : (
+            <>
+              <ScrollView
+                ref={scrollViewRef}
+                style={styles.messagesContainer}
+                contentContainerStyle={{ paddingBottom: spacing.lg }}
+                showsVerticalScrollIndicator={false}
+              >
+                {messages.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateText}>
+                      No messages yet. Start the conversation!
+                    </Text>
+                  </View>
+                ) : (
+                  messages.map((message) => {
+                    const isUser = message.sender_type === 'user';
+                    return (
+                      <View 
+                        key={message.id}
+                        style={[
+                          styles.messageWrapper,
+                          isUser ? styles.userMessageWrapper : styles.adminMessageWrapper
+                        ]}
+                      >
+                        <View style={[
+                          styles.messageBubble,
+                          isUser ? styles.userMessage : styles.adminMessage
+                        ]}>
+                          <Text style={[
+                            styles.messageText,
+                            isUser && styles.userMessageText
+                          ]}>
+                            {message.message}
+                          </Text>
+                        </View>
+                        <Text style={styles.messageTime}>
+                          {formatTime(new Date(message.created_at))}
+                        </Text>
+                      </View>
+                    );
+                  })
+                )}
+              </ScrollView>
+
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Type a message..."
+                  placeholderTextColor={colors.textMuted}
+                  value={newMessage}
+                  onChangeText={handleTextChange}
+                  multiline
+                  maxLength={1000}
+                />
+                <Button
+                  text="Send"
+                  onPress={handleSendPress}
+                  disabled={!newMessage.trim() || sending || connectionError}
+                  loading={sending}
+                  size="small"
+                />
+              </View>
+            </>
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
           )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
+<<<<<<< HEAD
 
 const styles = StyleSheet.create({
   container: {
@@ -663,3 +1024,5 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
+=======
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62

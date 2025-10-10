@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import { 
   collection, 
   query, 
@@ -11,7 +15,11 @@ import {
   addDoc,
   getDoc,
   increment
+<<<<<<< HEAD
 } from 'firebase/firestore';
+=======
+} from '@firebase/firestore';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import { db } from '../firebase/config';
 
 export interface ChatMessage {
@@ -238,4 +246,8 @@ export const getAllUserChats = async (): Promise<ChatUser[]> => {
     console.error('ChatUtils: Error getting user chats:', error);
     return [];
   }
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62

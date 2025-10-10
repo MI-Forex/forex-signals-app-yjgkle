@@ -1,8 +1,15 @@
 
+<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, Alert, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+=======
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, ScrollView, RefreshControl, Alert, StyleSheet } from 'react-native';
+import { useAuth } from '../../contexts/AuthContext';
+import { collection, query, orderBy, limit, onSnapshot } from '@firebase/firestore';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import { db } from '../../firebase/config';
 import NewsCard from '../../components/NewsCard';
 import Button from '../../components/Button';
@@ -65,11 +72,26 @@ export default function NewsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+<<<<<<< HEAD
   const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showConnectivityError, setShowConnectivityError] = useState(false);
 
   const { user, userData } = useAuth();
 
+=======
+  const [showConnectivityError, setShowConnectivityError] = useState(false);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const { user, userData } = useAuth();
+
+  const clearRefreshTimeout = useCallback(() => {
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
+    }
+  }, []);
+
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   useEffect(() => {
     if (!user) return;
 
@@ -97,12 +119,16 @@ export default function NewsScreen() {
         console.log('News refresh completed via listener');
         setRefreshing(false);
         setLastRefreshTime(new Date());
+<<<<<<< HEAD
         
         // Clear any existing timeout
         if (refreshTimeout) {
           clearTimeout(refreshTimeout);
           setRefreshTimeout(null);
         }
+=======
+        clearRefreshTimeout();
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       }
     }, (error) => {
       console.error('Error fetching news:', error);
@@ -111,10 +137,14 @@ export default function NewsScreen() {
       // Stop refreshing on error
       if (refreshing) {
         setRefreshing(false);
+<<<<<<< HEAD
         if (refreshTimeout) {
           clearTimeout(refreshTimeout);
           setRefreshTimeout(null);
         }
+=======
+        clearRefreshTimeout();
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       }
       
       // Check if it's a network error
@@ -132,12 +162,24 @@ export default function NewsScreen() {
 
     return () => {
       unsubscribe();
+<<<<<<< HEAD
       // Clear timeout on cleanup
       if (refreshTimeout) {
         clearTimeout(refreshTimeout);
       }
     };
   }, [user, refreshing, refreshTimeout]);
+=======
+      clearRefreshTimeout();
+    };
+  }, [user, refreshing, clearRefreshTimeout]);
+
+  useEffect(() => {
+    return () => {
+      clearRefreshTimeout();
+    };
+  }, [clearRefreshTimeout]);
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 
   const handleRefresh = async () => {
     console.log('Pull to refresh triggered for news');
@@ -156,6 +198,7 @@ export default function NewsScreen() {
     setShowConnectivityError(false);
     
     // Clear any existing timeout
+<<<<<<< HEAD
     if (refreshTimeout) {
       clearTimeout(refreshTimeout);
     }
@@ -168,6 +211,16 @@ export default function NewsScreen() {
     }, 5000); // 5 seconds timeout
     
     setRefreshTimeout(timeout);
+=======
+    clearRefreshTimeout();
+    
+    // Fallback timeout to ensure refresh completes
+    refreshTimeoutRef.current = setTimeout(() => {
+      console.log('News refresh timeout - completing refresh');
+      setRefreshing(false);
+      refreshTimeoutRef.current = null;
+    }, 5000); // 5 seconds timeout
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   };
 
   const handleManageNews = () => {

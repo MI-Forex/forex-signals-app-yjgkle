@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import { StyleSheet, ViewStyle, TextStyle, Platform } from 'react-native';
 
 export const colors = {
@@ -24,6 +28,10 @@ export const colors = {
   white: '#ffffff',
   black: '#000000',
   overlay: 'rgba(0, 0, 0, 0.5)',
+<<<<<<< HEAD
+=======
+  error: '#ef4444', // Add error color for consistency
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   
   // Modern gradient colors
   gradientStart: '#667eea',
@@ -393,4 +401,8 @@ export const commonStyles = StyleSheet.create({
     ...shadows.md,
     overflow: 'hidden',
   },
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62

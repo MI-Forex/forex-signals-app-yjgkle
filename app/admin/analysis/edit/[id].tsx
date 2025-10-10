@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
@@ -18,11 +19,28 @@ import { db } from '../../../../firebase/config';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
+=======
+
+import { db } from '../../../../firebase/config';
+import { commonStyles, colors, spacing, borderRadius } from '../../../../styles/commonStyles';
+import { doc, getDoc, updateDoc, serverTimestamp } from '@firebase/firestore';
+import { router, useLocalSearchParams } from 'expo-router';
+import Button from '../../../../components/Button';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { View, Text, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadImageToCloudinary } from '../../../../utils/cloudinaryUtils';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 
 interface AnalysisData {
   title: string;
   content: string;
+<<<<<<< HEAD
   imageUrl?: string;
+=======
+  imageUrl: string;
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 }
 
 const styles = StyleSheet.create({
@@ -34,7 +52,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+<<<<<<< HEAD
     padding: spacing.md,
+=======
+    padding: spacing.lg,
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -47,6 +69,10 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     padding: spacing.lg,
+<<<<<<< HEAD
+=======
+    paddingBottom: spacing.xxxl,
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   },
   inputContainer: {
     marginBottom: spacing.lg,
@@ -59,7 +85,11 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.surface,
+<<<<<<< HEAD
     borderRadius: borderRadius.md,
+=======
+    borderRadius: borderRadius.lg,
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     padding: spacing.md,
     fontSize: 16,
     color: colors.text,
@@ -68,12 +98,17 @@ const styles = StyleSheet.create({
   },
   textArea: {
     backgroundColor: colors.surface,
+<<<<<<< HEAD
     borderRadius: borderRadius.md,
+=======
+    borderRadius: borderRadius.lg,
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     padding: spacing.md,
     fontSize: 16,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
+<<<<<<< HEAD
     minHeight: 120,
     textAlignVertical: 'top',
   },
@@ -89,6 +124,16 @@ const styles = StyleSheet.create({
   imageButtons: {
     flexDirection: 'row',
     gap: spacing.sm,
+=======
+    minHeight: 200,
+    textAlignVertical: 'top',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.sm,
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   },
   buttonContainer: {
     marginTop: spacing.xl,
@@ -103,6 +148,7 @@ export default function EditAnalysisScreen() {
     content: '',
     imageUrl: '',
   });
+<<<<<<< HEAD
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -134,19 +180,65 @@ export default function EditAnalysisScreen() {
         router.back();
       }
     } catch (error) {
+=======
+  const [loading, setLoading] = useState(false);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const { userData } = useAuth();
+
+  const loadAnalysis = useCallback(async () => {
+    if (!id || typeof id !== 'string') {
+      Alert.alert('Error', 'Invalid analysis ID');
+      router.back();
+      return;
+    }
+
+    try {
+      const analysisDoc = await getDoc(doc(db, 'analysis', id));
+      
+      if (!analysisDoc.exists()) {
+        Alert.alert('Error', 'Analysis not found');
+        router.back();
+        return;
+      }
+
+      const data = analysisDoc.data();
+      setFormData({
+        title: data.title || '',
+        content: data.content || '',
+        imageUrl: data.imageUrl || '',
+      });
+    } catch (error: any) {
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       console.error('Error loading analysis:', error);
       Alert.alert('Error', 'Failed to load analysis');
       router.back();
     } finally {
+<<<<<<< HEAD
       setLoading(false);
+=======
+      setLoadingAnalysis(false);
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     }
   }, [id]);
 
   useEffect(() => {
+<<<<<<< HEAD
     if (id) {
       loadAnalysis();
     }
   }, [id, loadAnalysis]);
+=======
+    // Check if user has permission to edit analysis
+    if (!userData?.isAdmin && userData?.role !== 'admin' && !userData?.isEditor && userData?.role !== 'editor') {
+      Alert.alert('Access Denied', 'You do not have permission to edit analysis');
+      router.back();
+      return;
+    }
+
+    loadAnalysis();
+  }, [userData, loadAnalysis]);
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 
   const validateForm = () => {
     if (!formData.title.trim()) {
@@ -154,7 +246,11 @@ export default function EditAnalysisScreen() {
       return false;
     }
     if (!formData.content.trim()) {
+<<<<<<< HEAD
       Alert.alert('Error', 'Please enter content');
+=======
+      Alert.alert('Error', 'Please enter the content');
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       return false;
     }
     return true;
@@ -173,6 +269,7 @@ export default function EditAnalysisScreen() {
         setUploadingImage(true);
         const imageUrl = await uploadImageToCloudinary(result.assets[0].uri);
         setFormData(prev => ({ ...prev, imageUrl }));
+<<<<<<< HEAD
         console.log('Image uploaded successfully:', imageUrl);
       }
     } catch (error: any) {
@@ -186,6 +283,13 @@ export default function EditAnalysisScreen() {
       
       Alert.alert('Error', errorMessage);
     } finally {
+=======
+        setUploadingImage(false);
+      }
+    } catch (error: any) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to upload image');
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       setUploadingImage(false);
     }
   };
@@ -193,6 +297,7 @@ export default function EditAnalysisScreen() {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
+<<<<<<< HEAD
     setSaving(true);
     try {
       const updateData = {
@@ -206,12 +311,26 @@ export default function EditAnalysisScreen() {
 
       console.log('Updating analysis with data:', updateData);
       await updateDoc(doc(db, 'analysis', id as string), updateData);
+=======
+    setLoading(true);
+    try {
+      const analysisData = {
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        imageUrl: formData.imageUrl.trim() || null,
+        updatedAt: serverTimestamp(),
+        updatedBy: userData?.uid || '',
+      };
+
+      await updateDoc(doc(db, 'analysis', id as string), analysisData);
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       
       Alert.alert('Success', 'Analysis updated successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
       console.error('Error updating analysis:', error);
+<<<<<<< HEAD
       
       // Generic error messages for security
       let errorMessage = 'Failed to update analysis. Please try again.';
@@ -224,6 +343,11 @@ export default function EditAnalysisScreen() {
       Alert.alert('Error', errorMessage);
     } finally {
       setSaving(false);
+=======
+      Alert.alert('Error', 'Failed to update analysis. Please try again.');
+    } finally {
+      setLoading(false);
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     }
   };
 
@@ -235,10 +359,17 @@ export default function EditAnalysisScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+<<<<<<< HEAD
   if (loading) {
     return (
       <View style={commonStyles.loading}>
         <Text style={commonStyles.text}>Loading analysis...</Text>
+=======
+  if (loadingAnalysis) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: colors.text }}>Loading analysis...</Text>
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       </View>
     );
   }
@@ -247,6 +378,10 @@ export default function EditAnalysisScreen() {
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+<<<<<<< HEAD
+=======
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     >
       <View style={styles.header}>
         <Text style={styles.title}>Edit Analysis</Text>
@@ -254,13 +389,21 @@ export default function EditAnalysisScreen() {
           text="Cancel"
           onPress={handleBack}
           variant="outline"
+<<<<<<< HEAD
           style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}
+=======
+          size="small"
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
         />
       </View>
 
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
+<<<<<<< HEAD
+=======
+        showsVerticalScrollIndicator={false}
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
       >
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Title *</Text>
@@ -278,16 +421,25 @@ export default function EditAnalysisScreen() {
           <Text style={styles.label}>Content *</Text>
           <TextInput
             style={styles.textArea}
+<<<<<<< HEAD
             placeholder="Enter detailed analysis content..."
+=======
+            placeholder="Enter the full analysis content..."
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
             placeholderTextColor={colors.textSecondary}
             value={formData.content}
             onChangeText={(value) => updateFormData('content', value)}
             multiline
+<<<<<<< HEAD
             numberOfLines={6}
+=======
+            numberOfLines={10}
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
           />
         </View>
 
         <View style={styles.inputContainer}>
+<<<<<<< HEAD
           <Text style={styles.label}>Analysis Image (Optional)</Text>
           <View style={styles.imageContainer}>
             {formData.imageUrl ? (
@@ -318,17 +470,43 @@ export default function EditAnalysisScreen() {
               )}
             </View>
           </View>
+=======
+          <Text style={styles.label}>Image (Optional)</Text>
+          <Button
+            text={uploadingImage ? "Uploading..." : "Pick Image"}
+            onPress={pickImage}
+            variant="outline"
+            disabled={uploadingImage}
+          />
+          {formData.imageUrl ? (
+            <Image 
+              source={{ uri: formData.imageUrl }} 
+              style={styles.imagePreview}
+              resizeMode="cover"
+            />
+          ) : null}
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
         </View>
 
         <View style={styles.buttonContainer}>
           <Button
             text="Update Analysis"
             onPress={handleSubmit}
+<<<<<<< HEAD
             loading={saving}
             disabled={saving}
+=======
+            loading={loading}
+            disabled={loading || uploadingImage}
+            size="large"
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
           />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62

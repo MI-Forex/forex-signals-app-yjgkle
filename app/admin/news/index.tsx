@@ -1,8 +1,16 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert, RefreshControl, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../contexts/AuthContext';
+<<<<<<< HEAD
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+=======
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from '@firebase/firestore';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import { db } from '../../../firebase/config';
 import AdminNewsCard from '../../../components/AdminNewsCard';
 import Button from '../../../components/Button';
@@ -298,4 +306,8 @@ export default function AdminNewsScreen() {
       </ScrollView>
     </View>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62

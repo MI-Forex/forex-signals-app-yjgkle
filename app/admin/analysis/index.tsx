@@ -1,9 +1,17 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert, RefreshControl, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../firebase/config';
+<<<<<<< HEAD
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+=======
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from '@firebase/firestore';
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import Button from '../../../components/Button';
 import AdminAnalysisCard from '../../../components/AdminAnalysisCard';
 import { commonStyles, colors, spacing, borderRadius, shadows } from '../../../styles/commonStyles';
@@ -297,4 +305,8 @@ export default function AdminAnalysisScreen() {
       </ScrollView>
     </View>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62

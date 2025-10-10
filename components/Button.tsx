@@ -1,10 +1,19 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
 import React from 'react';
 import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, ActivityIndicator, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, buttonStyles, spacing, borderRadius, shadows, typography } from '../styles/commonStyles';
 
 interface ButtonProps {
+<<<<<<< HEAD
   text: string;
+=======
+  title?: string;
+  text?: string;
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   onPress: () => void;
   style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle;
@@ -37,6 +46,10 @@ const styles = StyleSheet.create({
 });
 
 export default function Button({
+<<<<<<< HEAD
+=======
+  title,
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   text,
   onPress,
   style,
@@ -48,6 +61,12 @@ export default function Button({
   gradient,
   children
 }: ButtonProps) {
+<<<<<<< HEAD
+=======
+  // Support both title and text props for backward compatibility
+  const buttonText = title || text || '';
+
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
   const getButtonStyle = (): ViewStyle => {
     const baseStyles: ViewStyle[] = [buttonStyles.base];
     
@@ -117,7 +136,11 @@ export default function Button({
           style={styles.loadingIndicator}
         />
       )}
+<<<<<<< HEAD
       {children || <Text style={getTextStyle()}>{text}</Text>}
+=======
+      {children || <Text style={getTextStyle()}>{buttonText}</Text>}
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
     </View>
   );
 
@@ -185,9 +208,17 @@ export default function Button({
         activeOpacity={0.8}
       >
         <Text style={{ color: colors.white, fontSize: 16, fontWeight: '600' }}>
+<<<<<<< HEAD
           {text}
+=======
+          {buttonText}
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
         </Text>
       </TouchableOpacity>
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> d25a57f3098c8051d06235d06891a35f0636fc62
