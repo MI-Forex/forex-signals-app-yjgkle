@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "cnc-forex-signals",
+    "slug": "cnc-forex-signals",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/1cf58509-969a-4fb1-9889-114ad9df58ce.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/1cf58509-969a-4fb1-9889-114ad9df58ce.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cncforexsignals.app",
+      "displayName": "CNC Forex Signals",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/1cf58509-969a-4fb1-9889-114ad9df58ce.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.cnc.forexsignal"
+    },
+    "web": {
+      "favicon": "./assets/images/1cf58509-969a-4fb1-9889-114ad9df58ce.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router"
+    ],
+    "scheme": "cnc-forex-signals",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {}
+    }
+  }
+}

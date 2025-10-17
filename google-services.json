@@ -1,0 +1,47 @@
+
+{
+  "project_info": {
+    "project_number": "940152361938",
+    "project_id": "forex-abd77",
+    "storage_bucket": "forex-abd77.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:940152361938:android:a72b610bdcb1e2459eee0b",
+        "android_client_info": {
+          "package_name": "forex.signals"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "940152361938-h7m43ve3d2q7ksut4q26mapdoiok2bc6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBFfFd1SFCrRxOpQ02TpAOFtMau1rECtg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "940152361938-h7m43ve3d2q7ksut4q26mapdoiok2bc6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "940152361938-8uhdle3a3tdsl6oo3ov835vksc24jajg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.cnc.forexsignal"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
